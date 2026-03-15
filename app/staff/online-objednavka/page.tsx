@@ -654,7 +654,7 @@ export default function StaffOnlineOrdersPage() {
           const nm = (x?.name ?? x?.nazev ?? "").toString();
           return { kind: "cart" as const, idx, name: nm };
         })
-        .filter((r) => r.name.trim().length > 0);
+        .filter((r: { name: string }) => r.name.trim().length > 0);
 
       return { mode: "cart", rows };
     }
@@ -665,7 +665,7 @@ export default function StaffOnlineOrdersPage() {
           const nm = (x?.name ?? x?.nazev ?? "").toString();
           return { kind: "cart" as const, idx, name: nm };
         })
-        .filter((r) => r.name.trim().length > 0);
+        .filter((r: { name: string }) => r.name.trim().length > 0);
 
       return { mode: "cart", rows };
     }
@@ -818,7 +818,7 @@ export default function StaffOnlineOrdersPage() {
           idx,
           name: (x?.name ?? x?.nazev ?? "").toString(),
         }))
-        .filter((r) => r.name.trim().length > 0);
+        .filter((r: { name: string }) => r.name.trim().length > 0);
     });
   }
 

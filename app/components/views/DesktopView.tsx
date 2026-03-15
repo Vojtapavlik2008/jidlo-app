@@ -210,7 +210,11 @@ function getTodayHoursFromRows(rows: SystemItemRow[]) {
 }
 
 // ===================== DesktopView =====================
-export default function DesktopView() {
+export default function DesktopView({
+  onOpenCart,
+}: {
+  onOpenCart: () => void;
+}) {
   const [activeSection, setActiveSection] = useState<
     "daily" | "order" | "shop" | "canteen" | "about"
   >("daily");
@@ -589,7 +593,7 @@ function DailyMenuPanel() {
         return;
       }
 
-      const rows = (data ?? []) as DbMenuRow[];
+      const rows = (data ?? []) as unknown as DbMenuRow[];
 
       const map: Record<string, DbMenuRow[]> = {};
       for (const d of days) map[d] = [];
@@ -849,7 +853,7 @@ function OrderPanel() {
         return;
       }
 
-      const rows = (data ?? []) as DbMenuRow[];
+      const rows = (data ?? []) as unknown as DbMenuRow[];
       const map: Record<string, DbMenuRow[]> = {};
       for (const d of days) map[d] = [];
       for (const r of rows) {

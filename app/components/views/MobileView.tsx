@@ -1592,7 +1592,11 @@ useEffect(() => {
   );
 }
 /** ===================== Main MobileView ===================== */
-export default function MobileView() {
+export default function MobileView({
+  onOpenCart,
+}: {
+  onOpenCart: () => void;
+}) {
   const router = useRouter();
 
   type Section = "daily" | "order" | "cart" | "shop" | "contact";

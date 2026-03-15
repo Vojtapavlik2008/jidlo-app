@@ -142,12 +142,12 @@ export default function StaffMenuEditor() {
   const [msg, setMsg] = useState<string | null>(null);
 
   const [calOpen, setCalOpen] = useState(false);
-  const calBtnRefMobile = useRef<HTMLButtonElement | null>(null);
-  const calBtnRefDesktop = useRef<HTMLButtonElement | null>(null);
+  const calBtnRefMobile = useRef<HTMLButtonElement>(null!);
+  const calBtnRefDesktop = useRef<HTMLButtonElement>(null!);
 
   const [numKbOpen, setNumKbOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const searchRef = useRef<HTMLInputElement | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null!);
   const [alphaKbOpen, setAlphaKbOpen] = useState(false);
 
   useEffect(() => {

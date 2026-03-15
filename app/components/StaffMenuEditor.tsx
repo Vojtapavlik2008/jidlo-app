@@ -343,7 +343,7 @@ export default function StaffMenuEditor() {
 
   // calendar
   const [calOpen, setCalOpen] = useState(false);
-  const calBtnRef = useRef<HTMLButtonElement | null>(null);
+  const calBtnRef = useRef<HTMLButtonElement>(null!);
 
   // numeric keyboard panel
   const [numKbOpen, setNumKbOpen] = useState(false);

@@ -98,23 +98,31 @@ function getOrderItemsText(cart: any): string[] {
         const qty = Number(x?.qty ?? 0);
         const name = String(x?.name ?? x?.nazev ?? "").trim();
         const day = String(x?.day ?? x?.datum ?? "").trim();
+
         if (!name) return null;
-        return `${qty > 0 ? `${qty}× ` : ""}${name}${day ? ` • ${day}` : ""}`;
+        return `${qty > 0 ? `${qty}x ` : ""}${name}${day ? ` • ${day}` : ""}`;
       })
-      .filter(Boolean);
+      .filter((x: string | null): x is string => Boolean(x));
   }
 
+  return [];
+}
+
+function getOrderItemsTextFromItems(cart: any): string[] {
   const items = Array.isArray(cart?.items) ? cart.items : [];
+
   return items
     .map((x: any) => {
       const qty = Number(x?.qty ?? 0);
       const name = String(x?.name ?? x?.nazev ?? "").trim();
       const day = String(x?.day ?? x?.datum ?? "").trim();
+
       if (!name) return null;
-      return `${qty > 0 ? `${qty}× ` : ""}${name}${day ? ` • ${day}` : ""}`;
+      return `${qty > 0 ? `${qty}x ` : ""}${name}${day ? ` • ${day}` : ""}`;
     })
-    .filter(Boolean);
+    .filter((x: string | null): x is string => Boolean(x));
 }
+
 
 export default function StaffCustomersPage() {
   const router = useRouter();

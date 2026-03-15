@@ -44,7 +44,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const rows = (data ?? []) as DbMenuRow[];
+    const rows = (data ?? []) as unknown as DbMenuRow[];
 
     const safe = rows
       .filter((r) => r.jidla && (r.jidla.aktivni ?? true))

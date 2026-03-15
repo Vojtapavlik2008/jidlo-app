@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 type MenuRow = {
   id: string; // jidelnik.id
@@ -306,7 +306,7 @@ export default function Page() {
         setErr(error.message);
         setRows([]);
       } else {
-        setRows(((data ?? []) as MenuRow[]).filter((r) => r.jidlo != null));
+        setRows(((data ?? []) as unknown as MenuRow[]).filter((r) => r.jidlo !== null));
       }
 
       setLoading(false);
@@ -338,9 +338,9 @@ export default function Page() {
           key,
           source: "db",
           datum: selectedDate,
-          legacy_id: r.jidlo.legacy_id,
-          nazev: r.jidlo.nazev,
-          cena: r.jidlo.cena,
+          legacy_id: r.jidlo!.legacy_id,
+nazev: r.jidlo!.nazev,
+cena: r.jidlo!.cena ?? 0,
           qty: 1,
         },
       ];
