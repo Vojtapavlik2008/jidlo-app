@@ -49,6 +49,7 @@ type ViewMode =
   | "aboutText"
   | "deliveryZones"
   | "foodCounts";
+  | "deliveries";
 
 type InvoiceCustomerRow = {
   name: string;
@@ -1015,6 +1016,14 @@ export default function ReportyPage() {
                 >
                   Nastavení
                 </button>
+
+<button
+  type="button"
+  className={tileClass("green")}
+  onClick={() => setView("deliveries")}
+>
+  Rozvozy
+</button>
               </div>
             </div>
           </>
@@ -1928,6 +1937,48 @@ export default function ReportyPage() {
             </div>
           </>
         ) : null}
+
+{view === "deliveries" ? (
+  <>
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <h1 className="text-[38px] font-extrabold tracking-tight text-[#0b2149]">
+          Rozvozy
+        </h1>
+        <div className="mt-1 text-[14px] font-semibold text-gray-500">
+          Správa rozvozů
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setView("settingsHome")}
+          className="rounded-[18px] border border-[#78d3a0] bg-white px-5 py-3 text-[15px] font-extrabold text-[#0b7c4d]"
+        >
+          Zpět
+        </button>
+
+        <Link
+          href="/staff"
+          className="rounded-[18px] bg-[#08a35c] px-5 py-3 text-[15px] font-extrabold text-white"
+        >
+          Rozcestník
+        </Link>
+      </div>
+    </div>
+
+    <div className="mt-8 rounded-[28px] border border-[#bde7c8] bg-white p-6">
+      <div className="text-[22px] font-extrabold text-[#0b2149]">
+        Rozvozový dispečink
+      </div>
+
+      <div className="mt-2 text-sm text-gray-500">
+        Tady bude správa rozvozů.
+      </div>
+    </div>
+  </>
+) : null}
 
         <EditItemModal
           open={editOpen}
