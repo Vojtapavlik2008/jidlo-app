@@ -1,6 +1,7 @@
 import "./globals.css";
 import { OrderProvider } from "@/app/components/order/order-context";
 import type { Metadata, Viewport } from "next";
+import "leaflet/dist/leaflet.css";
 
 export const metadata: Metadata = {
   title: "Jiřka",
