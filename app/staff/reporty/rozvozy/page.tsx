@@ -42,6 +42,11 @@ type OrderUi = {
   delivery_zone: DeliveryZone;
 };
 
+type RouteInfo = {
+  distanceKm: number;
+  durationMin: number;
+};
+
 const JIRKA_BASE = {
   name: "Jiřka",
   address: "Havlíčkova 72, 29001 Poděbrady",
@@ -49,7 +54,6 @@ const JIRKA_BASE = {
   lng: 15.1188,
 };
 
-// přibližná hranice železnice v Poděbradech
 const RAILWAY_LAT_SPLIT = 50.1425;
 
 function formatPrice(value: number) {
@@ -71,51 +75,20 @@ function formatShortTime(value: string | null) {
   }).format(d);
 }
 
+function formatDateTime(value: string | null) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("cs-CZ", {
+    day: "numeric",
+    month: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}
+
 function normalizePhone(phone: string) {
   return phone.trim().replace(/\s+/g, "");
-}
-
-function haversineKm(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-) {
-  const toRad = (v: number) => (v * Math.PI) / 180;
-  const R = 6371;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-function estimateMinutesFromRoute(orders: OrderUi[]): Record<string, number> {
-  const result: Record<string, number> = {};
-  let running = 0;
-  let prevLat = JIRKA_BASE.lat;
-  let prevLng = JIRKA_BASE.lng;
-
-  for (const order of orders) {
-    if (order.lat == null || order.lng == null) continue;
-
-    const km = haversineKm(prevLat, prevLng, order.lat, order.lng);
-    const minutes = Math.max(3, Math.round(km * 3.2));
-    running += minutes;
-    result[order.id] = running;
-
-    prevLat = order.lat;
-    prevLng = order.lng;
-  }
-
-  return result;
 }
 
 function autoZoneFromLat(lat: number | null): DeliveryZone {
@@ -160,23 +133,61 @@ async function geocodeAddress(address: string) {
   return { lat, lng };
 }
 
+async function fetchDrivingRoute(
+  fromLng: number,
+  fromLat: number,
+  toLng: number,
+  toLat: number
+) {
+  const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
+
+  const res = await fetch(url);
+  if (!res.ok) return null;
+
+  const json = await res.json();
+  const route = json?.routes?.[0];
+  if (!route?.geometry?.coordinates?.length) return null;
+
+  const points = route.geometry.coordinates.map(
+    (p: [number, number]) => [p[1], p[0]] as [number, number]
+  );
+
+  return {
+    points,
+    distanceKm: route.distance / 1000,
+    durationMin: route.duration / 60,
+  };
+}
+
 export default function RozvozyPage() {
   const [orders, setOrders] = useState<OrderUi[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
-  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [mobileTab, setMobileTab] = useState<"mapa" | "seznam">("seznam");
+  const [mobileTab, setMobileTab] = useState<"seznam" | "mapa">("seznam");
   const [filter, setFilter] = useState<FilterKey>("vsechny");
-  const [showSettings, setShowSettings] = useState(false);
   const [leafletReady, setLeafletReady] = useState(false);
 
+  const [editOrder, setEditOrder] = useState<OrderUi | null>(null);
+  const [editForm, setEditForm] = useState({
+    full_name: "",
+    phone: "",
+    address: "",
+    total: "",
+    driver_note: "",
+  });
+
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
+  const [routingOrderId, setRoutingOrderId] = useState<string | null>(null);
+
   const geocodingIdsRef = useRef<Set<string>>(new Set());
+
   const mapWrapRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
   const leafletRef = useRef<any>(null);
   const markersLayerRef = useRef<any>(null);
+  const routeLayerRef = useRef<any>(null);
 
   async function loadOrders() {
     setLoading(true);
@@ -216,19 +227,11 @@ export default function RozvozyPage() {
         lng: row.lng ?? null,
         driver_note: row.driver_note ?? "",
         delivered_at: row.delivered_at ?? null,
-        delivery_zone:
-          (row.delivery_zone as DeliveryZone) || autoZone || null,
+        delivery_zone: (row.delivery_zone as DeliveryZone) || autoZone || null,
       };
     });
 
     setOrders(mapped);
-
-    const nextDrafts: Record<string, string> = {};
-    for (const order of mapped) {
-      nextDrafts[order.id] = order.driver_note || "";
-    }
-    setNoteDrafts(nextDrafts);
-
     setSelectedId((prev) => prev ?? mapped[0]?.id ?? null);
     setLoading(false);
   }
@@ -298,9 +301,7 @@ export default function RozvozyPage() {
       }
     }
 
-    const needZoneOnly = orders.filter(
-      (o) => o.lat != null && !o.delivery_zone
-    );
+    const needZoneOnly = orders.filter((o) => o.lat != null && !o.delivery_zone);
 
     for (const order of needZoneOnly) {
       const zone = autoZoneFromLat(order.lat);
@@ -313,9 +314,7 @@ export default function RozvozyPage() {
 
       if (!error) {
         setOrders((prev) =>
-          prev.map((p) =>
-            p.id === order.id ? { ...p, delivery_zone: zone } : p
-          )
+          prev.map((p) => (p.id === order.id ? { ...p, delivery_zone: zone } : p))
         );
       }
     }
@@ -340,11 +339,78 @@ export default function RozvozyPage() {
     return sortedOrders.filter((o) => o.delivery_zone === filter);
   }, [sortedOrders, filter]);
 
-  const selectedOrder = useMemo(() => {
-    return filteredOrders.find((o) => o.id === selectedId) ?? null;
-  }, [filteredOrders, selectedId]);
+  const selectedOrder = useMemo(
+    () => filteredOrders.find((o) => o.id === selectedId) ?? null,
+    [filteredOrders, selectedId]
+  );
 
-  const etaMap = useMemo(() => estimateMinutesFromRoute(filteredOrders), [filteredOrders]);
+  async function setZone(orderId: string, zone: DeliveryZone) {
+    setBusyId(orderId);
+
+    const { error } = await supabase
+      .from("orders")
+      .update({ delivery_zone: zone })
+      .eq("id", orderId);
+
+    if (!error) {
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, delivery_zone: zone } : o))
+      );
+    }
+
+    setBusyId(null);
+  }
+
+  async function saveEdit() {
+    if (!editOrder) return;
+
+    setBusyId(editOrder.id);
+
+    const totalValue = Number(editForm.total || 0);
+
+    const updatePayload: Record<string, any> = {
+      full_name: editForm.full_name.trim(),
+      phone: editForm.phone.trim(),
+      address: editForm.address.trim(),
+      total: Number.isFinite(totalValue) ? totalValue : 0,
+      driver_note: editForm.driver_note,
+    };
+
+    const found = editForm.address.trim()
+      ? await geocodeAddress(editForm.address.trim())
+      : null;
+
+    if (found) {
+      updatePayload.lat = found.lat;
+      updatePayload.lng = found.lng;
+      if (!editOrder.delivery_zone || editOrder.delivery_zone !== "skolky") {
+        updatePayload.delivery_zone = autoZoneFromLat(found.lat);
+      }
+    }
+
+    const { error } = await supabase
+      .from("orders")
+      .update(updatePayload)
+      .eq("id", editOrder.id);
+
+    if (!error) {
+      await loadOrders();
+      setEditOrder(null);
+    }
+
+    setBusyId(null);
+  }
+
+  function openEdit(order: OrderUi) {
+    setEditOrder(order);
+    setEditForm({
+      full_name: order.full_name,
+      phone: order.phone,
+      address: order.address,
+      total: String(order.total || 0),
+      driver_note: order.driver_note || "",
+    });
+  }
 
   async function markOnRoute(orderId: string) {
     setBusyId(orderId);
@@ -365,116 +431,77 @@ export default function RozvozyPage() {
     setBusyId(null);
   }
 
-  async function markDelivered(orderId: string) {
-    setBusyId(orderId);
-
-    const deliveredAt = new Date().toISOString();
-
-    const { error } = await supabase
-      .from("orders")
-      .update({
-        delivery_status: "delivered",
-        delivered_at: deliveredAt,
-      })
-      .eq("id", orderId);
-
-    if (!error) {
-      setOrders((prev) => prev.filter((o) => o.id !== orderId));
-      setSelectedId((prev) => {
-        if (prev !== orderId) return prev;
-        const next = filteredOrders.find((o) => o.id !== orderId);
-        return next?.id ?? null;
-      });
-    }
-
-    setBusyId(null);
-  }
-
-  async function saveDriverNote(orderId: string) {
-    setBusyId(orderId);
-    const note = noteDrafts[orderId] ?? "";
-
-    const { error } = await supabase
-      .from("orders")
-      .update({ driver_note: note })
-      .eq("id", orderId);
-
-    if (!error) {
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, driver_note: note } : o))
-      );
-    }
-
-    setBusyId(null);
-  }
-
-  async function assignOrderNumbers() {
-    setBusyId("reorder");
-
-    for (let i = 0; i < filteredOrders.length; i++) {
-      const order = filteredOrders[i];
-      await supabase
-        .from("orders")
-        .update({ delivery_order: i + 1 })
-        .eq("id", order.id);
-    }
-
-    await loadOrders();
-    setBusyId(null);
-  }
-
-  async function setZone(orderId: string, zone: DeliveryZone) {
-    setBusyId(orderId);
-
-    const { error } = await supabase
-      .from("orders")
-      .update({ delivery_zone: zone })
-      .eq("id", orderId);
-
-    if (!error) {
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, delivery_zone: zone } : o))
-      );
-    }
-
-    setBusyId(null);
-  }
-
-  function openNavigation(order: OrderUi) {
-    if (order.lat != null && order.lng != null) {
-      window.open(
-        `https://www.google.com/maps/dir/?api=1&destination=${order.lat},${order.lng}&travelmode=driving`,
-        "_blank"
-      );
-      return;
-    }
-
-    if (order.address) {
-      window.open(
-        `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-          order.address
-        )}&travelmode=driving`,
-        "_blank"
-      );
-    }
-  }
-
   function callCustomer(order: OrderUi) {
     if (!order.phone) return;
-    const phone = normalizePhone(order.phone);
-    window.location.href = `tel:${phone}`;
+    window.location.href = `tel:${normalizePhone(order.phone)}`;
   }
 
   function smsCustomer(order: OrderUi) {
     if (!order.phone) return;
-    const phone = normalizePhone(order.phone);
-    const eta = etaMap[order.id];
-    const text =
-      typeof eta === "number"
-        ? `Dobrý den, za ${Math.max(1, Math.round(eta))} minut jsme u Vás. Jiřka`
-        : "Dobrý den, za chvíli jsme u Vás. Jiřka";
+    const text = "Dobrý den, za chvíli jsme u Vás. Jiřka";
+    window.location.href = `sms:${normalizePhone(order.phone)}?body=${encodeURIComponent(
+      text
+    )}`;
+  }
 
-    window.location.href = `sms:${phone}?body=${encodeURIComponent(text)}`;
+  function focusOnMap(order: OrderUi) {
+    setSelectedId(order.id);
+    setMobileTab("mapa");
+
+    if (mapRef.current && order.lat != null && order.lng != null) {
+      mapRef.current.flyTo([order.lat, order.lng], 16, {
+        duration: 0.6,
+      });
+    }
+  }
+
+  async function startInternalNavigation(order: OrderUi) {
+    if (order.lat == null || order.lng == null) return;
+
+    setRoutingOrderId(order.id);
+    setSelectedId(order.id);
+    setMobileTab("mapa");
+
+    const route = await fetchDrivingRoute(
+      JIRKA_BASE.lng,
+      JIRKA_BASE.lat,
+      order.lng,
+      order.lat
+    );
+
+    if (!routeLayerRef.current || !leafletRef.current || !mapRef.current) return;
+
+    const L = leafletRef.current;
+    routeLayerRef.current.clearLayers();
+
+    if (route) {
+      const poly = L.polyline(route.points, {
+        color: "#16a34a",
+        weight: 6,
+        opacity: 0.9,
+      }).addTo(routeLayerRef.current);
+
+      mapRef.current.fitBounds(poly.getBounds(), { padding: [30, 30] });
+      setRouteInfo({
+        distanceKm: route.distanceKm,
+        durationMin: route.durationMin,
+      });
+    } else {
+      setRouteInfo(null);
+    }
+  }
+
+  function clearRoute() {
+    setRoutingOrderId(null);
+    setRouteInfo(null);
+    if (routeLayerRef.current) {
+      routeLayerRef.current.clearLayers();
+    }
+    if (mapRef.current && selectedOrder?.lat != null && selectedOrder?.lng != null) {
+      mapRef.current.flyTo([selectedOrder.lat, selectedOrder.lng], 16, {
+        duration: 0.6,
+      });
+    }
   }
 
   useEffect(() => {
@@ -493,6 +520,7 @@ export default function RozvozyPage() {
     }).addTo(map);
 
     markersLayerRef.current = L.layerGroup().addTo(map);
+    routeLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
 
     return () => {
@@ -597,17 +625,10 @@ export default function RozvozyPage() {
     }
   }, [leafletReady, filteredOrders, selectedId]);
 
-  useEffect(() => {
-    if (!leafletReady || !mapRef.current || !selectedOrder?.lat || !selectedOrder?.lng) return;
-    mapRef.current.flyTo([selectedOrder.lat, selectedOrder.lng], 16, {
-      duration: 0.6,
-    });
-  }, [leafletReady, selectedOrder]);
-
   const filterBtn = (key: FilterKey, label: string) => (
     <button
       onClick={() => setFilter(key)}
-      className={`rounded-full px-3 py-2 text-sm font-bold transition ${
+      className={`rounded-full px-4 py-2 text-sm font-bold transition ${
         filter === key
           ? "bg-[#00a63e] text-white"
           : "border border-[#cfe5d5] bg-white text-[#103f20] hover:bg-[#f6fbf7]"
@@ -620,70 +641,32 @@ export default function RozvozyPage() {
   return (
     <div className="min-h-screen bg-[#f7faf7] text-[#123b1f]">
       <div className="mx-auto max-w-[1600px] px-3 py-3 md:px-5 md:py-5">
-        <div className="mb-4 rounded-[26px] border border-[#d7eadb] bg-white p-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div className="min-w-0">
-              <div className="text-[30px] font-extrabold leading-none text-[#00a63e]">
-                Rozvozy
-              </div>
-              <div className="mt-1 text-sm text-[#5e7568]">
-                Kompaktní přehled rozvozů podle okruhů
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {filterBtn("okruh1", "Okruh 1")}
-              {filterBtn("okruh2", "Okruh 2")}
-              {filterBtn("skolky", "Školky")}
-              {filterBtn("vsechny", "Všechny")}
-
-              <button
-                onClick={() => setShowSettings((v) => !v)}
-                className={`rounded-full px-3 py-2 text-sm font-bold ${
-                  showSettings
-                    ? "bg-[#0b4a8f] text-white"
-                    : "border border-[#cfe5d5] bg-white text-[#103f20]"
-                }`}
-              >
-                Nastavení
-              </button>
-
-              <button
-                onClick={loadOrders}
-                className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-sm font-bold text-[#103f20]"
-              >
-                Obnovit
-              </button>
-
-              <Link
-                href="/staff/reporty"
-                className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-sm font-bold text-[#103f20]"
-              >
-                Zpět
-              </Link>
-            </div>
+        <div className="mb-4 rounded-[26px] border border-[#d7eadb] bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
+          <div className="flex items-center justify-end gap-2">
+            <Link
+              href="/staff"
+              className="rounded-full border border-[#cfe5d5] bg-white px-4 py-2 text-sm font-bold text-[#103f20]"
+            >
+              Rozcestník
+            </Link>
+            <Link
+              href="/staff/reporty"
+              className="rounded-full border border-[#cfe5d5] bg-white px-4 py-2 text-sm font-bold text-[#103f20]"
+            >
+              Zpět
+            </Link>
           </div>
 
-          {showSettings ? (
-            <div className="mt-3 rounded-[20px] border border-[#e3efe6] bg-[#fbfefb] p-3 text-sm text-[#556d62]">
-              <div>
-                <span className="font-bold text-[#103f20]">Automatické rozdělení:</span>{" "}
-                sever od železnice = Okruh 1, jih = Okruh 2.
-              </div>
-              <div className="mt-1">
-                Školky můžeš ručně přepnout přímo u objednávky v seznamu.
-              </div>
-              <div className="mt-2">
-                <button
-                  onClick={assignOrderNumbers}
-                  disabled={busyId === "reorder"}
-                  className="rounded-full bg-[#0b4a8f] px-3 py-2 text-sm font-bold text-white disabled:opacity-60"
-                >
-                  {busyId === "reorder" ? "Nastavuji pořadí..." : "Nastavit pořadí v aktuálním filtru"}
-                </button>
-              </div>
-            </div>
-          ) : null}
+          <div className="mt-3 text-[30px] font-extrabold leading-none text-[#00a63e]">
+            Rozvozy
+          </div>
+
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            {filterBtn("okruh1", "Okruh 1")}
+            {filterBtn("okruh2", "Okruh 2")}
+            {filterBtn("skolky", "Školky")}
+            {filterBtn("vsechny", "Všechny")}
+          </div>
         </div>
 
         <div className="mb-3 flex gap-2 md:hidden">
@@ -715,25 +698,22 @@ export default function RozvozyPage() {
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[0.95fr_1.25fr]">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[0.92fr_1.28fr]">
           <div className={mobileTab !== "seznam" ? "hidden md:block" : ""}>
-            <div className="rounded-[26px] border border-[#d7eadb] bg-white p-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
-              <div className="mb-2 flex items-center justify-between px-1">
-                <div>
-                  <div className="text-[22px] font-extrabold text-[#103f20]">
-                    Seznam objednávek
-                  </div>
-                  <div className="text-sm text-[#5e7568]">
-                    {filter === "vsechny" ? "Všechny aktivní rozvozy" : zoneLabel(filter)}
-                  </div>
+            <div className="rounded-[24px] border border-[#d7eadb] bg-white p-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="text-[24px] font-extrabold text-[#103f20]">
+                  Seznam objednávek
                 </div>
-
-                <div className="rounded-full bg-[#f4faf5] px-3 py-1 text-xs font-bold text-[#103f20]">
-                  {filteredOrders.length} objednávek
-                </div>
+                <button
+                  onClick={loadOrders}
+                  className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-xs font-bold text-[#103f20]"
+                >
+                  Obnovit
+                </button>
               </div>
 
-              <div className="max-h-[76vh] overflow-y-auto">
+              <div className="max-h-[78vh] overflow-y-auto">
                 {loading ? (
                   <div className="rounded-[18px] border border-[#e3efe6] bg-[#fbfefb] p-4 text-[#5e7568]">
                     Načítám rozvozy...
@@ -749,7 +729,6 @@ export default function RozvozyPage() {
                 {!loading &&
                   filteredOrders.map((order, idx) => {
                     const selected = selectedId === order.id;
-                    const noteDraft = noteDrafts[order.id] ?? "";
 
                     return (
                       <div
@@ -758,158 +737,112 @@ export default function RozvozyPage() {
                           setSelectedId(order.id);
                           setMobileTab("mapa");
                         }}
-                        className={`mb-2 rounded-[18px] border px-3 py-3 transition ${
+                        className={`mb-3 rounded-[20px] border p-4 transition ${
                           selected
                             ? "border-[#a6dcb4] bg-[#f4fbf5]"
                             : "border-[#e3efe6] bg-white hover:bg-[#fafdfb]"
                         }`}
                       >
-                        <div className="grid grid-cols-[34px_1fr_auto] items-start gap-3">
-                          <div className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[#00a63e] text-sm font-extrabold text-white">
-                            {order.delivery_order ?? idx + 1}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-[22px] font-extrabold text-[#103f20]">
+                            {order.full_name}
                           </div>
 
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <div className="truncate text-[18px] font-extrabold text-[#103f20]">
-                                {order.full_name}
-                              </div>
-
-                              <span
-                                className={`rounded-full px-2 py-1 text-[11px] font-bold ${zoneBadgeClass(
-                                  order.delivery_zone
-                                )}`}
-                              >
-                                {zoneLabel(order.delivery_zone)}
-                              </span>
-
-                              <span
-                                className={`rounded-full px-2 py-1 text-[11px] font-bold ${
-                                  order.delivery_status === "waiting"
-                                    ? "bg-[#fff6db] text-[#8a6610]"
-                                    : "bg-[#e6f1ff] text-[#0b4a8f]"
-                                }`}
-                              >
-                                {order.delivery_status === "waiting" ? "Čeká" : "Na cestě"}
-                              </span>
-                            </div>
-
-                            <div className="mt-1 truncate text-sm text-[#4f685d]">
-                              {order.address}
-                            </div>
-
-                            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm font-semibold text-[#103f20]">
-                              {order.phone ? <span>{order.phone}</span> : null}
-                              <span>{formatPrice(order.total)}</span>
-                              <span>{formatShortTime(order.created_at)}</span>
-                              {etaMap[order.id] ? <span>ETA {etaMap[order.id]}m</span> : null}
-                            </div>
-                          </div>
-
-                          <div
-                            className="flex flex-col gap-2"
+                          <select
+                            value={order.delivery_zone ?? ""}
                             onClick={(e) => e.stopPropagation()}
+                            onChange={(e) =>
+                              setZone(
+                                order.id,
+                                (e.target.value || null) as DeliveryZone
+                              )
+                            }
+                            className="rounded-full border border-[#cfe5d5] bg-white px-3 py-1 text-sm font-bold text-[#103f20]"
                           >
-                            <button
-                              onClick={() => {
-                                setSelectedId(order.id);
-                                setMobileTab("mapa");
-                              }}
-                              className="rounded-full border border-[#d6e8da] px-3 py-1.5 text-xs font-bold text-[#103f20]"
-                            >
-                              Mapa
-                            </button>
+                            <option value="okruh1">Okruh 1</option>
+                            <option value="okruh2">Okruh 2</option>
+                            <option value="skolky">Školky</option>
+                          </select>
 
-                            <button
-                              onClick={() => openNavigation(order)}
-                              className="rounded-full bg-[#0b4a8f] px-3 py-1.5 text-xs font-bold text-white"
-                            >
-                              Navigovat
-                            </button>
-                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEdit(order);
+                            }}
+                            className="text-sm font-semibold text-[#5e7568] underline underline-offset-2"
+                          >
+                            Upravit
+                          </button>
                         </div>
 
-                        <div
-                          className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-7"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            onClick={() => callCustomer(order)}
-                            className="rounded-xl border border-[#d6e8da] bg-white px-2 py-2 text-xs font-bold text-[#103f20]"
-                          >
-                            Zavolat
-                          </button>
+                        <div className="mt-2 text-sm text-[#4f685d]">
+                          {order.address}{" "}
+                          <span className="text-[#aab7af]">|</span> {order.phone || "bez telefonu"}{" "}
+                          <span className="text-[#aab7af]">|</span> {formatPrice(order.total)}
+                        </div>
 
+                        <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
                           <button
-                            onClick={() => smsCustomer(order)}
-                            className="rounded-xl border border-[#d6e8da] bg-white px-2 py-2 text-xs font-bold text-[#103f20]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              smsCustomer(order);
+                            }}
+                            className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
                           >
                             SMS
                           </button>
 
                           <button
-                            onClick={() => setZone(order.id, "okruh1")}
-                            disabled={busyId === order.id}
-                            className="rounded-xl border border-[#d6e8da] bg-white px-2 py-2 text-xs font-bold text-[#103f20] disabled:opacity-60"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              callCustomer(order);
+                            }}
+                            className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
                           >
-                            O1
+                            Zavolat
                           </button>
 
                           <button
-                            onClick={() => setZone(order.id, "okruh2")}
-                            disabled={busyId === order.id}
-                            className="rounded-xl border border-[#d6e8da] bg-white px-2 py-2 text-xs font-bold text-[#103f20] disabled:opacity-60"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              focusOnMap(order);
+                            }}
+                            className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
                           >
-                            O2
+                            Mapa
                           </button>
 
                           <button
-                            onClick={() => setZone(order.id, "skolky")}
-                            disabled={busyId === order.id}
-                            className="rounded-xl border border-[#d6e8da] bg-white px-2 py-2 text-xs font-bold text-[#103f20] disabled:opacity-60"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startInternalNavigation(order);
+                            }}
+                            className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
                           >
-                            Školky
+                            Navigovat
                           </button>
+                        </div>
 
+                        <div className="mt-3 flex flex-wrap gap-2">
                           {order.delivery_status === "waiting" ? (
                             <button
-                              onClick={() => markOnRoute(order.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markOnRoute(order.id);
+                              }}
                               disabled={busyId === order.id}
-                              className="rounded-xl bg-[#0b4a8f] px-2 py-2 text-xs font-bold text-white disabled:opacity-60"
+                              className="rounded-xl border border-[#cfe5d5] bg-white px-3 py-2 text-sm font-bold text-[#103f20] disabled:opacity-60"
                             >
                               Na cestě
                             </button>
                           ) : (
                             <button
-                              onClick={() => markDelivered(order.id)}
-                              disabled={busyId === order.id}
-                              className="rounded-xl bg-[#00a63e] px-2 py-2 text-xs font-bold text-white disabled:opacity-60"
+                              disabled
+                              className="rounded-xl border border-[#cfe5d5] bg-[#f7faf7] px-3 py-2 text-sm font-bold text-[#103f20]"
                             >
-                              Vyřízeno
+                              Na cestě
                             </button>
                           )}
-
-                          <button
-                            onClick={() => saveDriverNote(order.id)}
-                            disabled={busyId === order.id}
-                            className="rounded-xl border border-[#d6e8da] bg-white px-2 py-2 text-xs font-bold text-[#103f20] disabled:opacity-60"
-                          >
-                            Uložit
-                          </button>
-                        </div>
-
-                        <div onClick={(e) => e.stopPropagation()} className="mt-2">
-                          <input
-                            value={noteDraft}
-                            onChange={(e) =>
-                              setNoteDrafts((prev) => ({
-                                ...prev,
-                                [order.id]: e.target.value,
-                              }))
-                            }
-                            placeholder="Poznámka řidiče..."
-                            className="h-10 w-full rounded-xl border border-[#d6e8da] bg-white px-3 text-sm outline-none focus:border-[#9acbab]"
-                          />
                         </div>
                       </div>
                     );
@@ -919,30 +852,45 @@ export default function RozvozyPage() {
           </div>
 
           <div className={mobileTab !== "mapa" ? "hidden md:block" : ""}>
-            <div className="rounded-[26px] border border-[#d7eadb] bg-white p-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
-              <div className="mb-2 px-1">
-                <div className="text-[22px] font-extrabold text-[#103f20]">
-                  Mapa
+            <div className="rounded-[24px] border border-[#d7eadb] bg-white p-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
+              <div className="mb-2 flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-[24px] font-extrabold text-[#103f20]">Mapa</div>
+                  <div className="text-sm text-[#5e7568]">
+                    Body objednávek a interní navigace v okně
+                  </div>
                 </div>
-                <div className="text-sm text-[#5e7568]">
-                  Jen body objednávek, bez trasy
-                </div>
+
+                {routingOrderId ? (
+                  <button
+                    onClick={clearRoute}
+                    className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-xs font-bold text-[#103f20]"
+                  >
+                    Zavřít navigaci
+                  </button>
+                ) : null}
               </div>
+
+              {routeInfo ? (
+                <div className="mb-3 rounded-[16px] border border-[#dff0e3] bg-[#f7fcf8] px-4 py-3 text-sm font-semibold text-[#103f20]">
+                  Trasa: {routeInfo.distanceKm.toFixed(1)} km • přibližně{" "}
+                  {Math.max(1, Math.round(routeInfo.durationMin))} min
+                </div>
+              ) : null}
 
               <div className="overflow-hidden rounded-[20px] border border-[#e3efe6]">
                 <div
                   ref={mapWrapRef}
-                  style={{ height: "74vh", minHeight: 420, width: "100%" }}
+                  style={{ height: "76vh", minHeight: 430, width: "100%" }}
                 />
               </div>
 
               {selectedOrder ? (
-                <div className="mt-3 rounded-[20px] border border-[#e3efe6] bg-[#fbfefb] p-4">
+                <div className="mt-3 rounded-[18px] border border-[#e3efe6] bg-[#fbfefb] p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="text-[22px] font-extrabold text-[#103f20]">
                       {selectedOrder.full_name}
                     </div>
-
                     <span
                       className={`rounded-full px-2 py-1 text-[11px] font-bold ${zoneBadgeClass(
                         selectedOrder.delivery_zone
@@ -952,67 +900,155 @@ export default function RozvozyPage() {
                     </span>
                   </div>
 
-                  <div className="mt-1 text-sm text-[#4f685d]">
-                    {selectedOrder.address}
-                  </div>
-
-                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-semibold text-[#103f20]">
-                    {selectedOrder.phone ? <div>{selectedOrder.phone}</div> : null}
-                    <div>{formatPrice(selectedOrder.total)}</div>
-                    <div>{formatShortTime(selectedOrder.created_at)}</div>
-                    {etaMap[selectedOrder.id] ? <div>ETA {etaMap[selectedOrder.id]} min</div> : null}
+                  <div className="mt-2 text-sm text-[#4f685d]">
+                    {selectedOrder.address}{" "}
+                    <span className="text-[#aab7af]">|</span> {selectedOrder.phone || "bez telefonu"}{" "}
+                    <span className="text-[#aab7af]">|</span> {formatPrice(selectedOrder.total)}
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
                     <button
-                      onClick={() => openNavigation(selectedOrder)}
-                      className="rounded-xl bg-[#0b4a8f] px-3 py-2 text-sm font-bold text-white"
+                      onClick={() => smsCustomer(selectedOrder)}
+                      className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
                     >
-                      Navigovat
+                      SMS
                     </button>
 
                     <button
                       onClick={() => callCustomer(selectedOrder)}
-                      className="rounded-xl border border-[#d6e8da] bg-white px-3 py-2 text-sm font-bold text-[#103f20]"
+                      className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
                     >
                       Zavolat
                     </button>
 
                     <button
-                      onClick={() => smsCustomer(selectedOrder)}
-                      className="rounded-xl border border-[#d6e8da] bg-white px-3 py-2 text-sm font-bold text-[#103f20]"
+                      onClick={() => focusOnMap(selectedOrder)}
+                      className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
                     >
-                      Poslat zprávu
+                      Mapa
                     </button>
 
-                    {selectedOrder.delivery_status === "waiting" ? (
-                      <button
-                        onClick={() => markOnRoute(selectedOrder.id)}
-                        disabled={busyId === selectedOrder.id}
-                        className="rounded-xl bg-[#0b4a8f] px-3 py-2 text-sm font-bold text-white disabled:opacity-60"
-                      >
-                        Na cestě
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => markDelivered(selectedOrder.id)}
-                        disabled={busyId === selectedOrder.id}
-                        className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white disabled:opacity-60"
-                      >
-                        Vyřízeno
-                      </button>
-                    )}
+                    <button
+                      onClick={() => startInternalNavigation(selectedOrder)}
+                      className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
+                    >
+                      Navigovat
+                    </button>
                   </div>
                 </div>
-              ) : (
-                <div className="mt-3 rounded-[20px] border border-[#e3efe6] bg-[#fbfefb] p-4 text-[#5e7568]">
-                  Vyber objednávku v seznamu.
-                </div>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
       </div>
+
+      {editOrder ? (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-[620px] rounded-[24px] bg-white p-5 shadow-[0_25px_80px_rgba(0,0,0,0.18)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[26px] font-extrabold text-[#103f20]">
+                  Upravit zákazníka
+                </div>
+                <div className="mt-1 text-sm text-[#5e7568]">
+                  Vytvořeno: {formatDateTime(editOrder.created_at)}
+                </div>
+              </div>
+
+              <button
+                onClick={() => setEditOrder(null)}
+                className="rounded-full border border-[#cfe5d5] px-3 py-2 text-sm font-bold text-[#103f20]"
+              >
+                Zavřít
+              </button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm font-bold text-[#103f20]">
+                  Jméno
+                </label>
+                <input
+                  value={editForm.full_name}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, full_name: e.target.value }))
+                  }
+                  className="h-11 w-full rounded-xl border border-[#d6e8da] px-3 text-sm outline-none focus:border-[#9acbab]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-bold text-[#103f20]">
+                  Telefon
+                </label>
+                <input
+                  value={editForm.phone}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, phone: e.target.value }))
+                  }
+                  className="h-11 w-full rounded-xl border border-[#d6e8da] px-3 text-sm outline-none focus:border-[#9acbab]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-bold text-[#103f20]">
+                  Cena
+                </label>
+                <input
+                  value={editForm.total}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, total: e.target.value }))
+                  }
+                  className="h-11 w-full rounded-xl border border-[#d6e8da] px-3 text-sm outline-none focus:border-[#9acbab]"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm font-bold text-[#103f20]">
+                  Adresa
+                </label>
+                <input
+                  value={editForm.address}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, address: e.target.value }))
+                  }
+                  className="h-11 w-full rounded-xl border border-[#d6e8da] px-3 text-sm outline-none focus:border-[#9acbab]"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm font-bold text-[#103f20]">
+                  Poznámka
+                </label>
+                <textarea
+                  value={editForm.driver_note}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, driver_note: e.target.value }))
+                  }
+                  className="min-h-[110px] w-full rounded-xl border border-[#d6e8da] px-3 py-3 text-sm outline-none focus:border-[#9acbab]"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button
+                onClick={() => setEditOrder(null)}
+                className="rounded-full border border-[#cfe5d5] bg-white px-4 py-2 text-sm font-bold text-[#103f20]"
+              >
+                Zrušit
+              </button>
+
+              <button
+                onClick={saveEdit}
+                disabled={busyId === editOrder.id}
+                className="rounded-full bg-[#00a63e] px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+              >
+                Uložit změny
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
