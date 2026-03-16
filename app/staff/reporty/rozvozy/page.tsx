@@ -49,9 +49,9 @@ type RouteInfo = {
 
 const JIRKA_BASE = {
   name: "Jiřka",
-  address: "Havlíčkova 72, 29001 Poděbrady",
-  lat: 50.1434,
-  lng: 15.1188,
+  address: "Havlíčkova 72/1, 29001 Poděbrady",
+  lat: 50.14277,
+  lng: 15.11838,
 };
 
 const RAILWAY_LAT_SPLIT = 50.1425;
@@ -540,14 +540,32 @@ export default function RozvozyPage() {
       className: "",
       html: `
         <div style="
-          width:40px;height:40px;border-radius:12px;background:#fff;border:2px solid #d7eadb;
-          display:flex;align-items:center;justify-content:center;font-size:19px;
+          width:46px;
+          height:46px;
+          border-radius:14px;
+          background:#fff;
+          border:2px solid #d7eadb;
+          display:flex;
+          align-items:center;
+          justify-content:center;
           box-shadow:0 8px 18px rgba(0,0,0,.12);
-        ">🏠</div>
+          overflow:hidden;
+        ">
+          <img
+            src="/logo-jirka.png"
+            alt="Jiřka"
+            style="
+              width:30px;
+              height:30px;
+              object-fit:contain;
+              display:block;
+            "
+          />
+        </div>
       `,
-      iconSize: [40, 40],
-      iconAnchor: [20, 38],
-      popupAnchor: [0, -30],
+      iconSize: [46, 46],
+      iconAnchor: [23, 42],
+      popupAnchor: [0, -34],
     });
 
     L.marker([JIRKA_BASE.lat, JIRKA_BASE.lng], { icon: homeIcon })
@@ -646,31 +664,38 @@ export default function RozvozyPage() {
   return (
     <div className="min-h-screen bg-[#f7faf7] text-[#123b1f]">
       <div className="mx-auto max-w-[1600px] px-3 py-3 md:px-5 md:py-5">
-        <div className="mb-4 rounded-[26px] border border-[#d7eadb] bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
-          <div className="flex items-center justify-end gap-2">
-            <Link
-              href="/staff"
-              className="rounded-full border border-[#cfe5d5] bg-white px-4 py-2 text-sm font-bold text-[#103f20]"
-            >
-              Rozcestník
-            </Link>
-            <Link
-              href="/staff/reporty"
-              className="rounded-full border border-[#cfe5d5] bg-white px-4 py-2 text-sm font-bold text-[#103f20]"
-            >
-              Zpět
-            </Link>
-          </div>
+        <div className="mb-4 rounded-[22px] border border-[#d7eadb] bg-white px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="text-[28px] font-extrabold leading-none text-[#00a63e]">
+                Rozvozy
+              </div>
 
-          <div className="mt-3 text-[30px] font-extrabold leading-none text-[#00a63e]">
-            Rozvozy
-          </div>
+              <div className="hidden h-7 w-px bg-[#dfeee3] xl:block" />
 
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
-            {filterBtn("okruh1", "Okruh 1")}
-            {filterBtn("okruh2", "Okruh 2")}
-            {filterBtn("skolky", "Školky")}
-            {filterBtn("vsechny", "Všechny")}
+              <div className="flex flex-wrap gap-2">
+                {filterBtn("okruh1", "Okruh 1")}
+                {filterBtn("okruh2", "Okruh 2")}
+                {filterBtn("skolky", "Školky")}
+                {filterBtn("vsechny", "Všechny")}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Link
+                href="/staff/reporty"
+                className="rounded-full border border-[#cfe5d5] bg-white px-4 py-2 text-sm font-bold text-[#103f20]"
+              >
+                Zpět
+              </Link>
+
+              <Link
+                href="/staff"
+                className="rounded-full border border-[#cfe5d5] bg-white px-4 py-2 text-sm font-bold text-[#103f20]"
+              >
+                Rozcestník
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -813,7 +838,7 @@ export default function RozvozyPage() {
                               e.stopPropagation();
                               focusOnMap(order);
                             }}
-                            className={routingOrderId === order.id ? activeBtn : outlineBtn}
+                            className={!routingOrderId || routingOrderId !== order.id ? activeBtn : outlineBtn}
                           >
                             Mapa
                           </button>
@@ -919,7 +944,7 @@ export default function RozvozyPage() {
 
                     <button
                       onClick={() => focusOnMap(selectedOrder)}
-                      className={routingOrderId === selectedOrder.id ? activeBtn : outlineBtn}
+                      className={!routingOrderId || routingOrderId !== selectedOrder.id ? activeBtn : outlineBtn}
                     >
                       Mapa
                     </button>
