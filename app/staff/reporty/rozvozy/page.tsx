@@ -65,16 +65,6 @@ function formatPrice(value: number) {
   }).format(value);
 }
 
-function formatShortTime(value: string | null) {
-  if (!value) return "";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  return new Intl.DateTimeFormat("cs-CZ", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(d);
-}
-
 function formatDateTime(value: string | null) {
   if (!value) return "";
   const d = new Date(value);
@@ -170,6 +160,8 @@ export default function RozvozyPage() {
   const [leafletReady, setLeafletReady] = useState(false);
 
   const [editOrder, setEditOrder] = useState<OrderUi | null>(null);
+  const [confirmDeliveredOrder, setConfirmDeliveredOrder] = useState<OrderUi | null>(null);
+
   const [editForm, setEditForm] = useState({
     full_name: "",
     phone: "",
@@ -412,20 +404,28 @@ export default function RozvozyPage() {
     });
   }
 
-  async function markOnRoute(orderId: string) {
+  async function markDelivered(orderId: string) {
     setBusyId(orderId);
+
+    const deliveredAt = new Date().toISOString();
 
     const { error } = await supabase
       .from("orders")
-      .update({ delivery_status: "on_route" })
+      .update({
+        delivery_status: "delivered",
+        delivered_at: deliveredAt,
+      })
       .eq("id", orderId);
 
     if (!error) {
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === orderId ? { ...o, delivery_status: "on_route" } : o
-        )
-      );
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+      setSelectedId((prev) => {
+        if (prev !== orderId) return prev;
+        const next = filteredOrders.find((o) => o.id !== orderId);
+        return next?.id ?? null;
+      });
+      setConfirmDeliveredOrder(null);
+      clearRoute();
     }
 
     setBusyId(null);
@@ -445,6 +445,7 @@ export default function RozvozyPage() {
   }
 
   function focusOnMap(order: OrderUi) {
+    clearRoute();
     setSelectedId(order.id);
     setMobileTab("mapa");
 
@@ -496,11 +497,6 @@ export default function RozvozyPage() {
     setRouteInfo(null);
     if (routeLayerRef.current) {
       routeLayerRef.current.clearLayers();
-    }
-    if (mapRef.current && selectedOrder?.lat != null && selectedOrder?.lng != null) {
-      mapRef.current.flyTo([selectedOrder.lat, selectedOrder.lng], 16, {
-        duration: 0.6,
-      });
     }
   }
 
@@ -612,6 +608,7 @@ export default function RozvozyPage() {
       );
 
       marker.on("click", () => {
+        clearRoute();
         setSelectedId(order.id);
         setMobileTab("mapa");
       });
@@ -625,12 +622,20 @@ export default function RozvozyPage() {
     }
   }, [leafletReady, filteredOrders, selectedId]);
 
+  const outlineBtn =
+    "rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a] transition hover:bg-[#f4fbf5]";
+  const activeBtn =
+    "rounded-xl border border-[#00a63e] bg-[#00a63e] px-3 py-2 text-sm font-bold text-white transition hover:brightness-95";
+
   const filterBtn = (key: FilterKey, label: string) => (
     <button
-      onClick={() => setFilter(key)}
+      onClick={() => {
+        clearRoute();
+        setFilter(key);
+      }}
       className={`rounded-full px-4 py-2 text-sm font-bold transition ${
         filter === key
-          ? "bg-[#00a63e] text-white"
+          ? "border border-[#00a63e] bg-[#00a63e] text-white"
           : "border border-[#cfe5d5] bg-white text-[#103f20] hover:bg-[#f6fbf7]"
       }`}
     >
@@ -674,7 +679,7 @@ export default function RozvozyPage() {
             onClick={() => setMobileTab("seznam")}
             className={`rounded-full px-4 py-2 text-sm font-bold ${
               mobileTab === "seznam"
-                ? "bg-[#00a63e] text-white"
+                ? "border border-[#00a63e] bg-[#00a63e] text-white"
                 : "border border-[#cfe5d5] bg-white text-[#103f20]"
             }`}
           >
@@ -684,7 +689,7 @@ export default function RozvozyPage() {
             onClick={() => setMobileTab("mapa")}
             className={`rounded-full px-4 py-2 text-sm font-bold ${
               mobileTab === "mapa"
-                ? "bg-[#00a63e] text-white"
+                ? "border border-[#00a63e] bg-[#00a63e] text-white"
                 : "border border-[#cfe5d5] bg-white text-[#103f20]"
             }`}
           >
@@ -727,13 +732,14 @@ export default function RozvozyPage() {
                 ) : null}
 
                 {!loading &&
-                  filteredOrders.map((order, idx) => {
+                  filteredOrders.map((order) => {
                     const selected = selectedId === order.id;
 
                     return (
                       <div
                         key={order.id}
                         onClick={() => {
+                          clearRoute();
                           setSelectedId(order.id);
                           setMobileTab("mapa");
                         }}
@@ -787,7 +793,7 @@ export default function RozvozyPage() {
                               e.stopPropagation();
                               smsCustomer(order);
                             }}
-                            className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
+                            className={outlineBtn}
                           >
                             SMS
                           </button>
@@ -797,7 +803,7 @@ export default function RozvozyPage() {
                               e.stopPropagation();
                               callCustomer(order);
                             }}
-                            className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
+                            className={outlineBtn}
                           >
                             Zavolat
                           </button>
@@ -807,7 +813,7 @@ export default function RozvozyPage() {
                               e.stopPropagation();
                               focusOnMap(order);
                             }}
-                            className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
+                            className={routingOrderId === order.id ? activeBtn : outlineBtn}
                           >
                             Mapa
                           </button>
@@ -817,32 +823,22 @@ export default function RozvozyPage() {
                               e.stopPropagation();
                               startInternalNavigation(order);
                             }}
-                            className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
+                            className={routingOrderId === order.id ? activeBtn : outlineBtn}
                           >
                             Navigovat
                           </button>
                         </div>
 
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {order.delivery_status === "waiting" ? (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                markOnRoute(order.id);
-                              }}
-                              disabled={busyId === order.id}
-                              className="rounded-xl border border-[#cfe5d5] bg-white px-3 py-2 text-sm font-bold text-[#103f20] disabled:opacity-60"
-                            >
-                              Na cestě
-                            </button>
-                          ) : (
-                            <button
-                              disabled
-                              className="rounded-xl border border-[#cfe5d5] bg-[#f7faf7] px-3 py-2 text-sm font-bold text-[#103f20]"
-                            >
-                              Na cestě
-                            </button>
-                          )}
+                        <div className="mt-3 flex justify-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmDeliveredOrder(order);
+                            }}
+                            className={outlineBtn}
+                          >
+                            Vyřízeno
+                          </button>
                         </div>
                       </div>
                     );
@@ -909,28 +905,28 @@ export default function RozvozyPage() {
                   <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
                     <button
                       onClick={() => smsCustomer(selectedOrder)}
-                      className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
+                      className={outlineBtn}
                     >
                       SMS
                     </button>
 
                     <button
                       onClick={() => callCustomer(selectedOrder)}
-                      className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
+                      className={outlineBtn}
                     >
                       Zavolat
                     </button>
 
                     <button
                       onClick={() => focusOnMap(selectedOrder)}
-                      className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
+                      className={routingOrderId === selectedOrder.id ? activeBtn : outlineBtn}
                     >
                       Mapa
                     </button>
 
                     <button
                       onClick={() => startInternalNavigation(selectedOrder)}
-                      className="rounded-xl bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
+                      className={routingOrderId === selectedOrder.id ? activeBtn : outlineBtn}
                     >
                       Navigovat
                     </button>
@@ -1044,6 +1040,37 @@ export default function RozvozyPage() {
                 className="rounded-full bg-[#00a63e] px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
               >
                 Uložit změny
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {confirmDeliveredOrder ? (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-[460px] rounded-[24px] bg-white p-5 shadow-[0_25px_80px_rgba(0,0,0,0.18)]">
+            <div className="text-[24px] font-extrabold text-[#103f20]">
+              Objednávka předána?
+            </div>
+
+            <div className="mt-2 text-sm text-[#5e7568]">
+              {confirmDeliveredOrder.full_name}
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmDeliveredOrder(null)}
+                className="rounded-full border border-[#cfe5d5] bg-white px-4 py-2 text-sm font-bold text-[#103f20]"
+              >
+                Ne
+              </button>
+
+              <button
+                onClick={() => markDelivered(confirmDeliveredOrder.id)}
+                disabled={busyId === confirmDeliveredOrder.id}
+                className="rounded-full bg-[#00a63e] px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+              >
+                Ano
               </button>
             </div>
           </div>
