@@ -28,3 +28,51 @@ body {
   margin: 0;
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@import "leaflet/dist/leaflet.css";
+
+.delivery-map-wrap .leaflet-popup-content-wrapper {
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
+}
+
+.delivery-map-wrap .leaflet-popup-content {
+  margin: 12px 14px;
+}
+
+.delivery-stop-marker {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #00a63e;
+  color: white;
+  border: 3px solid white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: 0 8px 18px rgba(0, 166, 62, 0.28);
+}
+
+.delivery-stop-marker.active {
+  background: #0b4a8f;
+}
+
+.delivery-stop-marker.done {
+  background: #6b7280;
+}
+
+.delivery-home-marker {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: white;
+  color: #00a63e;
+  border: 2px solid #d7f0df;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+}
