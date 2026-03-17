@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import { useOrder, type DbMenuRow } from "./order-context";
 import {
   formatDayLabel,
@@ -37,14 +38,6 @@ function uiTodayISO() {
   return today;
 }
 
-async function fetchMenu(from: string, to: string): Promise<DbMenuRow[]> {
-  const qs = new URLSearchParams({ from, to });
-  const r = await fetch(`/api/menu?${qs.toString()}`, { cache: "no-store" });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j?.error || "Chyba při načítání menu.");
-  return (j?.data ?? []) as DbMenuRow[];
-}
-
 export default function OrderMenuDesktop({
   onOpenCart,
 }: {
@@ -74,9 +67,6 @@ export default function OrderMenuDesktop({
     return arr;
   }, [baseMondayISO, weekOffset]);
 
-  // DŮLEŽITÉ:
-  // selectedDate nesmí při inicializaci používat `days`,
-  // protože `days` ještě v ten moment není připravené.
   const [selectedDate, setSelectedDate] = useState<string>(() => uiTodayISO());
 
   useEffect(() => {
@@ -106,7 +96,19 @@ export default function OrderMenuDesktop({
 
   const zavreno = isSunday(selectedDate);
 
-  const [menuByDate, setMenuByDate] = useState<Record<string, DbMenuRow[]>>({});
+  type MenuRow = {
+    datum: string;
+    poradi: number;
+    jidlo_id: string;
+    jidla: {
+      nazev: string;
+      cena: number | null;
+      kategorie: string | null;
+      alergeny?: any;
+    } | null;
+  };
+
+  const [menuByDate, setMenuByDate] = useState<Record<string, MenuRow[]>>({});
   const [loadingMenu, setLoadingMenu] = useState(false);
 
   useEffect(() => {
@@ -117,29 +119,34 @@ export default function OrderMenuDesktop({
 
       setLoadingMenu(true);
 
-      try {
-        const from = days[0];
-        const to = days[6];
-        const rows = await fetchMenu(from, to);
+      const { data, error } = await supabase
+        .from("menu_den")
+        .select("datum, poradi, jidlo_id, jidla:jidlo_id(nazev, cena, kategorie, alergeny)")
+        .in("datum", days)
+        .order("datum", { ascending: true })
+        .order("poradi", { ascending: true });
 
-        if (!alive) return;
+      if (!alive) return;
 
-        const map: Record<string, DbMenuRow[]> = {};
-        for (const d of days) map[d] = [];
-
-        for (const r of rows) {
-          if (!map[r.datum]) map[r.datum] = [];
-          map[r.datum].push(r);
-        }
-
-        setMenuByDate(map);
-      } catch (e) {
-        console.error("OrderMenuDesktop loadMenu error:", e);
-        if (!alive) return;
+      if (error) {
+        console.error("OrderMenuDesktop loadMenu error:", error);
         setMenuByDate({});
-      } finally {
-        if (alive) setLoadingMenu(false);
+        setLoadingMenu(false);
+        return;
       }
+
+      const rows = (data ?? []) as unknown as MenuRow[];
+
+      const map: Record<string, MenuRow[]> = {};
+      for (const d of days) map[d] = [];
+
+      for (const r of rows) {
+        if (!map[r.datum]) map[r.datum] = [];
+        map[r.datum].push(r);
+      }
+
+      setMenuByDate(map);
+      setLoadingMenu(false);
     }
 
     loadMenu();
@@ -270,6 +277,17 @@ export default function OrderMenuDesktop({
             const qty = cart.find((x) => x.key === key)?.qty ?? 0;
             const cena = Number(r.jidla?.cena ?? 0).toFixed(2);
 
+            const rowForCart: DbMenuRow = {
+              datum: r.datum,
+              poradi: r.poradi,
+              jidlo_id: r.jidlo_id,
+              jidla: {
+                nazev: r.jidla?.nazev ?? "",
+                cena: r.jidla?.cena ?? 0,
+                kategorie: r.jidla?.kategorie ?? "",
+              },
+            };
+
             return (
               <div
                 key={idx}
@@ -300,7 +318,7 @@ export default function OrderMenuDesktop({
                         type="button"
                         onClick={() => {
                           if (zavreno) return;
-                          addOne(selectedDate, r);
+                          addOne(selectedDate, rowForCart);
                         }}
                         className={addBtn}
                         disabled={zavreno}
@@ -311,7 +329,7 @@ export default function OrderMenuDesktop({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => removeOne(selectedDate, r)}
+                          onClick={() => removeOne(selectedDate, rowForCart)}
                           className={qtyBtn}
                         >
                           −
@@ -323,7 +341,7 @@ export default function OrderMenuDesktop({
                           type="button"
                           onClick={() => {
                             if (zavreno) return;
-                            addOne(selectedDate, r);
+                            addOne(selectedDate, rowForCart);
                           }}
                           className={qtyBtn}
                           disabled={zavreno}
