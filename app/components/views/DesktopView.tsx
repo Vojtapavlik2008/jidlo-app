@@ -16,6 +16,59 @@ type SystemItemRow = {
   is_active: boolean | null;
 };
 
+function toISODate(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  const y = x.getFullYear();
+  const m = String(x.getMonth() + 1).padStart(2, "0");
+  const dd = String(x.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
+function isSunday(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  return d.getDay() === 0;
+}
+
+function isSaturday(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  return d.getDay() === 6;
+}
+
+function formatDayLabel(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  const wd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" })
+    .format(d)
+    .replace(".", "");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${wd} ${dd}.${mm}.`;
+}
+
+function formatRangeLabel(fromIso: string, toIso: string) {
+  const f = new Date(fromIso + "T00:00:00");
+  const t = new Date(toIso + "T00:00:00");
+  const fWd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" })
+    .format(f)
+    .replace(".", "");
+  const tWd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" })
+    .format(t)
+    .replace(".", "");
+  const fDd = String(f.getDate()).padStart(2, "0");
+  const fMm = String(f.getMonth() + 1).padStart(2, "0");
+  const tDd = String(t.getDate()).padStart(2, "0");
+  const tMm = String(t.getMonth() + 1).padStart(2, "0");
+  return `${fWd} ${fDd}.${fMm}. – ${tWd} ${tDd}.${tMm}.`;
+}
+
+function msUntilNextMidnightLocal() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(0, 0, 0, 0);
+  next.setDate(next.getDate() + 1);
+  return next.getTime() - now.getTime();
+}
+
 function getTodayHoursFromRows(rows: SystemItemRow[]) {
   const d = new Date();
   const day = d.getDay();
@@ -31,6 +84,48 @@ function getTodayHoursFromRows(rows: SystemItemRow[]) {
   const row = rows.find((x) => x.item_key === key && x.is_active);
   if (!row?.value_text) return null;
   return `dnes ${row.value_text}`;
+}
+
+const ALLERGEN_LABELS: Record<number, string> = {
+  1: "lepek",
+  2: "korýši",
+  3: "vejce",
+  4: "ryby",
+  5: "arašídy",
+  6: "sójové boby",
+  7: "mléko",
+  8: "skořápkové plody",
+  9: "celer",
+  10: "hořčice",
+  11: "sezamová semena",
+  12: "oxid siřičitý a siřičitany",
+  13: "lupina",
+  14: "měkkýši",
+};
+
+function normalizeAllergens(input: any): number[] {
+  if (!input) return [];
+
+  if (Array.isArray(input)) {
+    return input
+      .map((x) => Number(String(x).replace(/[^\d]/g, "")))
+      .filter((n) => Number.isFinite(n) && n >= 1 && n <= 14);
+  }
+
+  if (typeof input === "string") {
+    return input
+      .split(/[,\s;|/]+/)
+      .map((x) => Number(String(x).replace(/[^\d]/g, "")))
+      .filter((n) => Number.isFinite(n) && n >= 1 && n <= 14);
+  }
+
+  return [];
+}
+
+function allergensToText(input: any) {
+  const ids = normalizeAllergens(input);
+  if (!ids.length) return "Bez uvedených alergenů";
+  return ids.map((id) => ALLERGEN_LABELS[id]).filter(Boolean).join(", ");
 }
 
 export default function DesktopView({
@@ -387,14 +482,6 @@ function DailyMenuPanel() {
 
     return () => clearTimeout(t);
   }, [days]);
-function toISODate(d: Date) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  const y = x.getFullYear();
-  const m = String(x.getMonth() + 1).padStart(2, "0");
-  const dd = String(x.getDate()).padStart(2, "0");
-  return `${y}-${m}-${dd}`;
-}
 
   const zavreno = isSunday(selectedDate);
   const sobota = isSaturday(selectedDate);
