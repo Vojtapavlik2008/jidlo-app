@@ -1007,16 +1007,23 @@ export default function ReportyPage() {
             </div>
 
             <div className="mt-20 flex justify-center">
-              <div className="w-full max-w-[620px]">
-                <button
-                  type="button"
-                  className={tileClass("blue")}
-                  onClick={() => setView("settingsHome")}
-                >
-                  Nastavení
-                </button>
-              </div>
-            </div>
+  <div className="w-full max-w-[620px] grid gap-4">
+    <button
+      type="button"
+      className={tileClass("blue")}
+      onClick={() => setView("settingsHome")}
+    >
+      Nastavení
+    </button>
+
+    <Link
+      href="/staff/reporty/rozvozy"
+      className={tileClass("green")}
+    >
+      Rozvozy
+    </Link>
+  </div>
+</div>
           </>
         ) : null}
 
