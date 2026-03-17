@@ -16,76 +16,6 @@ type SystemItemRow = {
   is_active: boolean | null;
 };
 
-function toISODate(d: Date) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  const y = x.getFullYear();
-  const m = String(x.getMonth() + 1).padStart(2, "0");
-  const dd = String(x.getDate()).padStart(2, "0");
-  return `${y}-${m}-${dd}`;
-}
-
-function isSunday(iso: string) {
-  const d = new Date(iso + "T00:00:00");
-  return d.getDay() === 0;
-}
-
-function isSaturday(iso: string) {
-  const d = new Date(iso + "T00:00:00");
-  return d.getDay() === 6;
-}
-
-function formatDayLabel(iso: string) {
-  const d = new Date(iso + "T00:00:00");
-  const wd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" })
-    .format(d)
-    .replace(".", "");
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  return `${wd} ${dd}.${mm}.`;
-}
-
-function formatRangeLabel(fromIso: string, toIso: string) {
-  const f = new Date(fromIso + "T00:00:00");
-  const t = new Date(toIso + "T00:00:00");
-  const fWd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" })
-    .format(f)
-    .replace(".", "");
-  const tWd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" })
-    .format(t)
-    .replace(".", "");
-  const fDd = String(f.getDate()).padStart(2, "0");
-  const fMm = String(f.getMonth() + 1).padStart(2, "0");
-  const tDd = String(t.getDate()).padStart(2, "0");
-  const tMm = String(t.getMonth() + 1).padStart(2, "0");
-  return `${fWd} ${fDd}.${fMm}. – ${tWd} ${tDd}.${tMm}.`;
-}
-
-function msUntilNextMidnightLocal() {
-  const now = new Date();
-  const next = new Date(now);
-  next.setHours(0, 0, 0, 0);
-  next.setDate(next.getDate() + 1);
-  return next.getTime() - now.getTime();
-}
-
-function getTodayHoursFromRows(rows: SystemItemRow[]) {
-  const d = new Date();
-  const day = d.getDay();
-
-  let key = "sun";
-  if (day === 1) key = "mon";
-  else if (day === 2) key = "tue";
-  else if (day === 3) key = "wed";
-  else if (day === 4) key = "thu";
-  else if (day === 5) key = "fri";
-  else if (day === 6) key = "sat";
-
-  const row = rows.find((x) => x.item_key === key && x.is_active);
-  if (!row?.value_text) return null;
-  return `dnes ${row.value_text}`;
-}
-
 const ALLERGEN_LABELS: Record<number, string> = {
   1: "lepek",
   2: "korýši",
@@ -128,6 +58,88 @@ function allergensToText(input: any) {
   return ids.map((id) => ALLERGEN_LABELS[id]).filter(Boolean).join(", ");
 }
 
+// ===================== Date helpers =====================
+function toISODate(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  const y = x.getFullYear();
+  const m = String(x.getMonth() + 1).padStart(2, "0");
+  const dd = String(x.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
+function isSunday(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  return d.getDay() === 0;
+}
+
+function isSaturday(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  return d.getDay() === 6;
+}
+
+function baseMondayAutoNextWeekend(now: Date) {
+  const x = new Date(now);
+  x.setHours(0, 0, 0, 0);
+  const day = x.getDay();
+
+  const diffToMonday = day === 0 ? 6 : day - 1;
+  const monday = new Date(x);
+  monday.setDate(monday.getDate() - diffToMonday);
+
+  if (day === 6 || day === 0) monday.setDate(monday.getDate() + 7);
+
+  return monday;
+}
+
+function formatDayLabel(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  const wd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" })
+    .format(d)
+    .replace(".", "");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${wd} ${dd}.${mm}.`;
+}
+
+function formatRangeLabel(fromIso: string, toIso: string) {
+  const f = new Date(fromIso + "T00:00:00");
+  const t = new Date(toIso + "T00:00:00");
+  const fWd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" }).format(f).replace(".", "");
+  const tWd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" }).format(t).replace(".", "");
+  const fDd = String(f.getDate()).padStart(2, "0");
+  const fMm = String(f.getMonth() + 1).padStart(2, "0");
+  const tDd = String(t.getDate()).padStart(2, "0");
+  const tMm = String(t.getMonth() + 1).padStart(2, "0");
+  return `${fWd} ${fDd}.${fMm}. – ${tWd} ${tDd}.${tMm}.`;
+}
+
+function msUntilNextMidnightLocal() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(0, 0, 0, 0);
+  next.setDate(next.getDate() + 1);
+  return next.getTime() - now.getTime();
+}
+
+function getTodayHoursFromRows(rows: SystemItemRow[]) {
+  const d = new Date();
+  const day = d.getDay();
+
+  let key = "sun";
+  if (day === 1) key = "mon";
+  else if (day === 2) key = "tue";
+  else if (day === 3) key = "wed";
+  else if (day === 4) key = "thu";
+  else if (day === 5) key = "fri";
+  else if (day === 6) key = "sat";
+
+  const row = rows.find((x) => x.item_key === key && x.is_active);
+  if (!row?.value_text) return null;
+  return `dnes ${row.value_text}`;
+}
+
+// ===================== DesktopView =====================
 export default function DesktopView({
   onOpenCart,
 }: {
@@ -208,11 +220,11 @@ export default function DesktopView({
               <img
                 src="/logo.png"
                 alt="Logo Jiřka"
-                className="h-16 w-16 rounded-3xl object-contain md:h-20 md:w-20"
+                className="h-16 w-16 md:h-20 md:w-20 rounded-3xl object-contain"
               />
 
               <div>
-                <h1 className="text-4xl font-extrabold leading-none text-green-700 md:text-5xl">
+                <h1 className="text-4xl md:text-5xl font-extrabold text-green-700 leading-none">
                   Jiřka
                 </h1>
                 <p className="mt-2 text-sm text-gray-500">Jídelna • Zdravá výživa • Obchod</p>
@@ -241,7 +253,7 @@ export default function DesktopView({
           </aside>
 
           <main className="col-span-12 md:col-span-8 lg:col-span-9">
-            <div className="-mt-12 rounded-3xl border border-green-100 bg-white p-5 shadow-sm">
+            <div className="rounded-3xl border border-green-100 bg-white p-5 -mt-12 shadow-sm">
               {activeSection === "daily" ? (
                 <DailyMenuPanel />
               ) : activeSection === "order" ? (
@@ -276,6 +288,7 @@ export default function DesktopView({
   );
 }
 
+// ===================== Sidebar =====================
 function Sidebar({
   active,
   onChange,
@@ -335,6 +348,7 @@ function Sidebar({
   );
 }
 
+// ===================== Panels =====================
 function AboutPanelDynamic({
   text,
   loading,
@@ -346,7 +360,7 @@ function AboutPanelDynamic({
     <div className="rounded-2xl border border-green-100 bg-white p-6 text-gray-700">
       <div className="text-2xl font-extrabold text-green-700">O nás</div>
 
-      <div className="mt-4 whitespace-pre-line text-[15px] leading-7 text-gray-600">
+      <div className="mt-4 text-[15px] leading-7 text-gray-600 whitespace-pre-line">
         {loading ? "Načítám text…" : text || "Text zatím nebyl vyplněn."}
       </div>
 
@@ -377,17 +391,17 @@ function PhotosPanelWithHours({
     <div className="grid gap-4">
       <div className="text-2xl font-extrabold text-green-700">{title}</div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {keys.map((k, i) => (
             <div
               key={k}
               className={
-                "overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/10 " +
+                "rounded-3xl bg-white ring-1 ring-black/10 overflow-hidden shadow-sm " +
                 (i === 2 ? "sm:col-span-2" : "")
               }
             >
-              <img src={`${folder}/${k}`} alt={k} className="h-56 w-full object-cover" />
+              <img src={`${folder}/${k}`} alt={k} className="w-full h-56 object-cover" />
             </div>
           ))}
         </div>
@@ -424,6 +438,7 @@ function PhotosPanelWithHours({
   );
 }
 
+// ===================== DailyMenuPanel =====================
 function DailyMenuPanel() {
   const [tick, setTick] = useState(0);
 
@@ -432,26 +447,10 @@ function DailyMenuPanel() {
     return () => clearInterval(id);
   }, []);
 
-  const baseMondayISO = useMemo(() => {
-    const now = new Date();
-    const x = new Date(now);
-    x.setHours(0, 0, 0, 0);
-    const day = x.getDay();
-
-    const diffToMonday = day === 0 ? 6 : day - 1;
-    const monday = new Date(x);
-    monday.setDate(monday.getDate() - diffToMonday);
-
-    if (day === 6 || day === 0) monday.setDate(monday.getDate() + 7);
-
-    return toISODate(monday);
-  }, [tick]);
-
+  const baseMondayISO = useMemo(() => toISODate(baseMondayAutoNextWeekend(new Date())), [tick]);
   const [weekOffset, setWeekOffset] = useState<0 | 1>(0);
 
-  useEffect(() => {
-    setWeekOffset(0);
-  }, [baseMondayISO]);
+  useEffect(() => setWeekOffset(0), [baseMondayISO]);
 
   const days = useMemo(() => {
     const base = new Date(baseMondayISO + "T00:00:00");
@@ -466,7 +465,10 @@ function DailyMenuPanel() {
     return arr;
   }, [baseMondayISO, weekOffset]);
 
-  const [selectedDate, setSelectedDate] = useState<string>(() => toISODate(new Date()));
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const todayIso = toISODate(new Date());
+    return days.includes(todayIso) ? todayIso : days[0];
+  });
 
   useEffect(() => {
     const todayIso = toISODate(new Date());
@@ -486,7 +488,7 @@ function DailyMenuPanel() {
   const zavreno = isSunday(selectedDate);
   const sobota = isSaturday(selectedDate);
 
-  type DailyMenuRow = {
+  type DbMenuRow = {
     datum: string;
     poradi: number;
     jidla: {
@@ -497,14 +499,14 @@ function DailyMenuPanel() {
     } | null;
   };
 
-  const [menuByDate, setMenuByDate] = useState<Record<string, DailyMenuRow[]>>({});
+  const [menuByDate, setMenuByDate] = useState<Record<string, DbMenuRow[]>>({});
   const [loadingMenu, setLoadingMenu] = useState(false);
 
   useEffect(() => {
     let alive = true;
 
     async function loadMenu() {
-      if (!days.length) return;
+      if (!days?.length) return;
       setLoadingMenu(true);
 
       const { data, error } = await supabase
@@ -523,8 +525,9 @@ function DailyMenuPanel() {
         return;
       }
 
-      const rows = (data ?? []) as unknown as DailyMenuRow[];
-      const map: Record<string, DailyMenuRow[]> = {};
+      const rows = (data ?? []) as unknown as DbMenuRow[];
+
+      const map: Record<string, DbMenuRow[]> = {};
       for (const d of days) map[d] = [];
 
       for (const r of rows) {
@@ -537,25 +540,24 @@ function DailyMenuPanel() {
     }
 
     loadMenu();
-
     return () => {
       alive = false;
     };
   }, [days]);
 
   const items = (menuByDate[selectedDate] ?? []).filter((x) => x.jidla).slice(0, 10);
+
   const rangeLabel = useMemo(() => formatRangeLabel(days[0], days[6]), [days]);
+  const todayIso = toISODate(new Date());
 
   const dayBtn = (active: boolean) =>
-    "w-full rounded-xl px-3 py-2 text-sm font-semibold transition " +
+    "rounded-xl px-3 py-2 text-sm font-semibold transition w-full " +
     (active
       ? "bg-green-600 text-white shadow-sm"
       : "bg-white text-green-700 ring-1 ring-black/5 hover:bg-green-50");
 
   const arrowBtnFull =
     "h-[40px] w-full rounded-xl bg-white text-green-700 font-extrabold transition ring-1 ring-black/5 hover:bg-green-50";
-
-  const todayIso = toISODate(new Date());
 
   return (
     <div className="grid gap-4">
@@ -568,7 +570,7 @@ function DailyMenuPanel() {
 
       <div className="w-full">
         {weekOffset === 0 ? (
-          <div className="grid w-full grid-cols-8 gap-2">
+          <div className="grid grid-cols-8 gap-2 w-full">
             {days.map((d) => {
               const isToday = d === todayIso;
               const isActive = d === selectedDate;
@@ -579,11 +581,11 @@ function DailyMenuPanel() {
                     {formatDayLabel(d)}
                   </button>
 
-                  {isToday ? (
-                    <div className="pointer-events-none absolute left-1/2 top-full mt-[2px] -translate-x-1/2 text-[9px] font-bold leading-none text-green-700">
+                  {isToday && (
+                    <div className="pointer-events-none absolute left-1/2 top-full -translate-x-1/2 text-[9px] font-bold text-green-700 leading-none mt-[2px]">
                       dnes
                     </div>
-                  ) : null}
+                  )}
                 </div>
               );
             })}
@@ -593,7 +595,7 @@ function DailyMenuPanel() {
             </button>
           </div>
         ) : (
-          <div className="grid w-full grid-cols-8 gap-2">
+          <div className="grid grid-cols-8 gap-2 w-full">
             <button type="button" onClick={() => setWeekOffset(0)} className={arrowBtnFull} title="Zpět na 1. týden">
               ←
             </button>
@@ -608,11 +610,11 @@ function DailyMenuPanel() {
                     {formatDayLabel(d)}
                   </button>
 
-                  {isToday ? (
-                    <div className="pointer-events-none absolute left-1/2 top-full mt-[2px] -translate-x-1/2 text-[9px] font-bold leading-none text-green-700">
+                  {isToday && (
+                    <div className="pointer-events-none absolute left-1/2 top-full -translate-x-1/2 text-[9px] font-bold text-green-700 leading-none mt-[2px]">
                       dnes
                     </div>
-                  ) : null}
+                  )}
                 </div>
               );
             })}
@@ -620,24 +622,24 @@ function DailyMenuPanel() {
         )}
       </div>
 
-      {zavreno ? (
-        <div className="rounded-2xl bg-red-50 p-3 font-semibold text-red-700 ring-2 ring-red-200/60">
+      {zavreno && (
+        <div className="rounded-2xl bg-red-50 ring-2 ring-red-200/60 p-3 text-red-700 font-semibold">
           V neděli je zavřeno.
         </div>
-      ) : null}
+      )}
 
-      {sobota ? (
-        <div className="rounded-2xl bg-yellow-50 p-3 font-semibold text-green-700 ring-2 ring-green-200/60">
+      {sobota && (
+        <div className="rounded-2xl bg-yellow-50 ring-2 ring-green-200/60 p-3 text-green-700 font-semibold">
           V sobotu není rozvoz – obědy jsou dostupné pouze v jídelně.
         </div>
-      ) : null}
+      )}
 
       {loadingMenu ? (
-        <div className="rounded-2xl bg-gray-50 px-4 py-4 text-sm font-semibold text-gray-600 ring-1 ring-black/5">
+        <div className="rounded-2xl bg-gray-50 ring-1 ring-black/5 px-4 py-4 text-sm font-semibold text-gray-600">
           Načítám menu…
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-2xl bg-gray-50 px-4 py-4 text-sm font-semibold text-gray-600 ring-1 ring-black/5">
+        <div className="rounded-2xl bg-gray-50 ring-1 ring-black/5 px-4 py-4 text-sm font-semibold text-gray-600">
           Zatím nebylo zveřejněné menu.
         </div>
       ) : (
@@ -657,8 +659,8 @@ function DailyMenuPanel() {
                       {r.jidla?.nazev ?? ""}
                     </div>
 
-                    <div className="group relative shrink-0">
-                      <div className="flex h-5 w-5 cursor-default items-center justify-center rounded-full border border-[#7ac796] bg-white text-[11px] font-extrabold text-[#067647]">
+                    <div className="relative group shrink-0">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full border border-[#7ac796] bg-white text-[11px] font-extrabold text-[#067647] cursor-default">
                         i
                       </div>
 
