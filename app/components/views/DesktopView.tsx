@@ -31,18 +31,6 @@ type SystemItemRow = {
   is_active: boolean | null;
 };
 
-type ApiMenuRow = {
-  datum: string;
-  poradi: number;
-  jidlo_id: string;
-  jidla: {
-    nazev: string;
-    cena: number | null;
-    kategorie: string | null;
-    alergeny?: any;
-  } | null;
-};
-
 const ALLERGEN_LABELS: Record<number, string> = {
   1: "lepek",
   2: "korýši",
@@ -83,14 +71,6 @@ function allergensToText(input: any) {
   const ids = normalizeAllergens(input);
   if (!ids.length) return "Bez uvedených alergenů";
   return ids.map((id) => ALLERGEN_LABELS[id]).filter(Boolean).join(", ");
-}
-
-async function fetchOrderMenu(from: string, to: string): Promise<ApiMenuRow[]> {
-  const qs = new URLSearchParams({ from, to });
-  const r = await fetch(`/api/menu?${qs.toString()}`, { cache: "no-store" });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j?.error || "Chyba při načítání menu.");
-  return (j?.data ?? []) as ApiMenuRow[];
 }
 
 export async function createOrder(params: {
@@ -347,7 +327,7 @@ export default function DesktopView({
               {activeSection === "daily" ? (
                 <DailyMenuPanel />
               ) : activeSection === "order" ? (
-                <OrderPanel />
+                <OrderPanel onOpenCart={onOpenCart} />
               ) : activeSection === "shop" ? (
                 <PhotosPanelWithHours
                   title="Obchod & Zdravá výživa"
@@ -531,6 +511,7 @@ function PhotosPanelWithHours({
 // ===================== DailyMenuPanel =====================
 function DailyMenuPanel() {
   const [tick, setTick] = useState(0);
+
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 60_000);
     return () => clearInterval(id);
@@ -538,6 +519,7 @@ function DailyMenuPanel() {
 
   const baseMondayISO = useMemo(() => toISODate(baseMondayAutoNextWeekend(new Date())), [tick]);
   const [weekOffset, setWeekOffset] = useState<0 | 1>(0);
+
   useEffect(() => setWeekOffset(0), [baseMondayISO]);
 
   const days = useMemo(() => {
@@ -553,14 +535,14 @@ function DailyMenuPanel() {
     return arr;
   }, [baseMondayISO, weekOffset]);
 
-  const [selectedDate, setSelectedDate] = useState<string>(() => {
-    const todayIso = toISODate(new Date());
-    return days.includes(todayIso) ? todayIso : days[0] ?? todayIso;
-  });
+  const [selectedDate, setSelectedDate] = useState<string>(toISODate(new Date()));
 
   useEffect(() => {
     const todayIso = toISODate(new Date());
-    setSelectedDate(days.includes(todayIso) ? todayIso : days[0] ?? todayIso);
+    setSelectedDate((prev) => {
+      if (days.includes(prev)) return prev;
+      return days.includes(todayIso) ? todayIso : days[0];
+    });
   }, [days]);
 
   useEffect(() => {
@@ -787,7 +769,11 @@ function DailyMenuPanel() {
 }
 
 // ===================== OrderPanel =====================
-function OrderPanel() {
+function OrderPanel({
+  onOpenCart,
+}: {
+  onOpenCart: () => void;
+}) {
   const [step, setStep] = useState<"menu" | "summary" | "checkout">("menu");
 
   const [tick, setTick] = useState(0);
@@ -813,14 +799,14 @@ function OrderPanel() {
     return arr;
   }, [baseMondayISO, weekOffset]);
 
-  const [selectedDate, setSelectedDate] = useState<string>(() => {
-    const todayIso = toISODate(new Date());
-    return days.includes(todayIso) ? todayIso : days[0] ?? todayIso;
-  });
+  const [selectedDate, setSelectedDate] = useState<string>(toISODate(new Date()));
 
   useEffect(() => {
     const todayIso = toISODate(new Date());
-    setSelectedDate(days.includes(todayIso) ? todayIso : days[0] ?? todayIso);
+    setSelectedDate((prev) => {
+      if (days.includes(prev)) return prev;
+      return days.includes(todayIso) ? todayIso : days[0];
+    });
   }, [days]);
 
   useEffect(() => {
@@ -858,32 +844,34 @@ function OrderPanel() {
       setLoadingMenu(true);
 
       try {
-        const rows = await fetchOrderMenu(days[0], days[6]);
+        const from = days[0];
+        const to = days[6];
+        const qs = new URLSearchParams({ from, to });
+
+        const res = await fetch(`/api/menu?${qs.toString()}`, {
+          cache: "no-store",
+        });
+
+        const json = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(json?.error || "Nepovedlo se načíst menu.");
+        }
+
         if (!alive) return;
 
+        const rows = (json?.data ?? []) as DbMenuRow[];
         const map: Record<string, DbMenuRow[]> = {};
         for (const d of days) map[d] = [];
 
         for (const r of rows) {
           if (!map[r.datum]) map[r.datum] = [];
-          map[r.datum].push({
-            datum: r.datum,
-            poradi: Number(r.poradi ?? 0),
-            jidlo_id: r.jidlo_id,
-            jidla: r.jidla
-              ? {
-                  nazev: r.jidla.nazev,
-                  cena: r.jidla.cena,
-                  kategorie: r.jidla.kategorie,
-                  alergeny: r.jidla.alergeny,
-                }
-              : null,
-          });
+          map[r.datum].push(r);
         }
 
         setMenuByDate(map);
-      } catch (e) {
-        console.error("OrderPanel loadMenu error:", e);
+      } catch (error) {
+        console.error("OrderPanel loadMenu error:", error);
         if (!alive) return;
         setMenuByDate({});
       } finally {
@@ -1038,13 +1026,6 @@ function OrderPanel() {
 
     setSaving(true);
     try {
-      const paymentToSave: CtxPaymentMethod =
-        payment === "card_on_delivery"
-          ? "card_delivery"
-          : payment === "online"
-          ? "card_online"
-          : (payment as CtxPaymentMethod);
-
       const orderId = await createOrder({
         full_name: name,
         phone,
@@ -1052,7 +1033,7 @@ function OrderPanel() {
         note,
         delivery_mode: deliveryMode as CtxDeliveryMode,
         packaging_mode: packagingMode as CtxPackagingMode,
-        payment_method: paymentToSave,
+        payment_method: payment as CtxPaymentMethod,
         times_by_day: timesByDay as CtxTimesByDay,
         cart: cart as OrderCartItem[],
       });
@@ -1930,7 +1911,7 @@ function OrderPanel() {
           }
           onClick={() => {
             if (cartCount === 0 || zavreno) return;
-            setStep("summary");
+            onOpenCart();
           }}
           title={zavreno ? "V neděli je zavřeno" : cartCount === 0 ? "Košík je prázdný" : "Otevřít souhrn"}
         >
