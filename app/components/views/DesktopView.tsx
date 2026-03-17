@@ -387,6 +387,14 @@ function DailyMenuPanel() {
 
     return () => clearTimeout(t);
   }, [days]);
+function toISODate(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  const y = x.getFullYear();
+  const m = String(x.getMonth() + 1).padStart(2, "0");
+  const dd = String(x.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
 
   const zavreno = isSunday(selectedDate);
   const sobota = isSaturday(selectedDate);
