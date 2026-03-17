@@ -11,6 +11,7 @@ type DbMenuRow = {
     nazev: string | null;
     cena: number | null;
     kategorie: string | null;
+    alergeny?: string | null;
     aktivni?: boolean | null;
   } | null;
 };
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
 
     const { data, error } = await supabaseAdmin
       .from("menu_den")
-      .select("datum, poradi, jidlo_id, jidla:jidlo_id(nazev, cena, kategorie, aktivni)")
+      .select("datum, poradi, jidlo_id, jidla:jidlo_id(nazev, cena, kategorie, alergeny, aktivni)")
       .gte("datum", from)
       .lte("datum", to)
       .order("datum", { ascending: true })
@@ -47,7 +48,7 @@ export async function GET(req: Request) {
     const rows = (data ?? []) as unknown as DbMenuRow[];
 
     const safe = rows
-      .filter((r) => r.jidla && (r.jidla.aktivni ?? true))
+      .filter((r) => r.jidla)
       .map((r) => ({
         datum: r.datum,
         poradi: Number(r.poradi ?? 0),
@@ -56,6 +57,7 @@ export async function GET(req: Request) {
           nazev: r.jidla?.nazev ?? "",
           cena: r.jidla?.cena ?? null,
           kategorie: r.jidla?.kategorie ?? "",
+          alergeny: r.jidla?.alergeny ?? "",
         },
       }));
 
