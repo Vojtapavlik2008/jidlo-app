@@ -2,15 +2,19 @@
 
 import { useState } from "react";
 import { useIsMobile } from "@/app/components/hooks/useIsMobile";
+import { useOrder } from "@/app/components/order/order-context";
+
 import MobileView from "@/app/components/views/MobileView";
 import DesktopView from "@/app/components/views/DesktopView";
 
 import MobileSummary from "@/app/components/order/MobileSummary";
 import DesktopSummary from "@/app/components/order/DesktopSummary";
+import DesktopCheckout from "@/app/components/order/DesktopCheckout";
 
 export default function Page() {
   const isMobile = useIsMobile();
   const [cartOpen, setCartOpen] = useState(false);
+  const { cartStep } = useOrder();
 
   return (
     <>
@@ -35,16 +39,28 @@ export default function Page() {
                   onClick={() => setCartOpen(false)}
                   className="inline-flex items-center gap-2 rounded-full border px-5 py-2 font-semibold text-green-700 hover:bg-green-50"
                 >
-                  ← Zpět
+                  ← Zavřít
                 </button>
 
-                <div className="text-xl font-extrabold">Souhrn objednávky</div>
+                <div className="text-xl font-extrabold">
+                  {isMobile
+                    ? "Souhrn objednávky"
+                    : cartStep === "checkout"
+                    ? "Dokončení objednávky"
+                    : "Souhrn objednávky"}
+                </div>
 
                 <div className="w-[96px]" />
               </div>
 
               <div className="p-5">
-                {isMobile ? <MobileSummary /> : <DesktopSummary />}
+                {isMobile ? (
+                  <MobileSummary />
+                ) : cartStep === "checkout" ? (
+                  <DesktopCheckout />
+                ) : (
+                  <DesktopSummary />
+                )}
               </div>
             </div>
           </div>
