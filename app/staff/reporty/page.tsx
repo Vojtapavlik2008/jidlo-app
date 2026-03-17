@@ -1074,13 +1074,6 @@ export default function ReportyPage() {
   <button type="button" className={tileClass("green")} onClick={() => setView("foodCounts")}>
     Počty jídel
   </button>
-
-  <Link
-    href="/staff/reporty/rozvozy"
-    className={tileClass("green")}
-  >
-    Rozvozy
-  </Link>
 </div>
           </>
         ) : null}
