@@ -1179,11 +1179,12 @@ function OrderPanel() {
   }
 
   function categoryShort(cat: string | null | undefined) {
-    const x = (cat ?? "").toLowerCase();
-    if (x.includes("bezmas")) return "B";
-    if (x.includes("ryb")) return "R";
-    return "";
-  }
+  const x = (cat ?? "").toLowerCase();
+  if (x.includes("bezmas")) return "B";
+  if (x.includes("ryb")) return "R";
+  if (x.includes("hlavní")) return "HK";
+  return "";
+}
 
   function openPrint() {
     window.print();
@@ -1983,62 +1984,48 @@ function OrderPanel() {
   return (
     <>
       <div className="grid gap-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="text-2xl font-extrabold text-green-700">Objednávka jídel</div>
-              {profileName ? (
-                <div className="rounded-full bg-green-50 px-3 py-1 text-sm font-bold text-green-700 ring-1 ring-green-200">
-                  {profileName}
-                </div>
-              ) : null}
-            </div>
-            <div className="mt-1 text-sm text-gray-500">{rangeLabel}</div>
-          </div>
+<div className="flex items-start justify-between gap-4">
+  <div>
+    <div className="flex items-center gap-5">
+      <div className="text-2xl font-extrabold text-green-700">Objednávka jídel</div>
 
-          <button
-            type="button"
-            className={
-              "inline-flex items-center gap-3 rounded-2xl px-4 py-2 ring-1 ring-black/5 transition " +
-              (cartCount > 0 && !zavreno ? "bg-green-50 ring-2 ring-green-600/25" : "bg-white hover:bg-green-50")
-            }
-            onClick={() => {
-              if (cartCount === 0 || zavreno) return;
-              setStep("summary");
-            }}
-            title={zavreno ? "V neděli je zavřeno" : cartCount === 0 ? "Košík je prázdný" : "Otevřít souhrn"}
-          >
-            <span className="text-base font-extrabold text-green-700">Objednávka</span>
+      <button
+        type="button"
+        onClick={() => {
+          setPrintWeekOffset(0);
+          setMenuSheetOpen(true);
+        }}
+        className="text-[13px] font-semibold text-gray-600 underline underline-offset-2 hover:text-green-700"
+        title="Vytisknout jídelníček"
+      >
+        jídelníček
+      </button>
+    </div>
 
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => {
-                e.stopPropagation();
-                setPrintWeekOffset(0);
-                setMenuSheetOpen(true);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setPrintWeekOffset(0);
-                  setMenuSheetOpen(true);
-                }
-              }}
-              className="text-[12px] font-semibold text-gray-600 underline underline-offset-2 hover:text-green-700"
-              title="Vytisknout jídelníček"
-            >
-              jídelníček
-            </span>
+    <div className="mt-1 text-sm text-gray-500">{rangeLabel}</div>
+  </div>
 
-            <span className="text-base">🛒</span>
-            <span className="text-base font-extrabold text-green-700">{total} Kč</span>
-            <span className="text-gray-300">•</span>
-            <span className="text-base font-semibold text-gray-800">{cartCount} ks</span>
-            <span className="ml-1 text-base font-extrabold text-green-700">→</span>
-          </button>
-        </div>
+  <button
+    type="button"
+    className={
+      "inline-flex items-center gap-3 rounded-2xl px-4 py-2 ring-1 ring-black/5 transition " +
+      (cartCount > 0 && !zavreno ? "bg-green-50 ring-2 ring-green-600/25" : "bg-white hover:bg-green-50")
+    }
+    onClick={() => {
+      if (cartCount === 0 || zavreno) return;
+      setStep("summary");
+    }}
+    title={zavreno ? "V neděli je zavřeno" : cartCount === 0 ? "Košík je prázdný" : "Otevřít souhrn"}
+  >
+    <span className="text-base font-extrabold text-green-700">Objednávka</span>
+    <span className="text-base">🛒</span>
+    <span className="text-base font-extrabold text-green-700">{total} Kč</span>
+    <span className="text-gray-300">•</span>
+    <span className="text-base font-semibold text-gray-800">{cartCount} ks</span>
+    <span className="ml-1 text-base font-extrabold text-green-700">→</span>
+  </button>
+</div>
+
 
         <div className="w-full">
           {weekOffset === 0 ? (
@@ -2275,83 +2262,105 @@ function OrderPanel() {
         </>
       )}
 
-      <div className="hidden print:block">
-        <style jsx global>{`
-          @media print {
-            @page {
-              size: A4 landscape;
-              margin: 8mm;
-            }
+     <div className="hidden print:block">
+  <style jsx global>{`
+    @media print {
+      @page {
+        size: A4 landscape;
+        margin: 8mm;
+      }
 
-            body * {
-              visibility: hidden;
-            }
+      body * {
+        visibility: hidden;
+      }
 
-            #print-jidelnicek,
-            #print-jidelnicek * {
-              visibility: visible;
-            }
+      #print-jidelnicek,
+      #print-jidelnicek * {
+        visibility: visible;
+      }
 
-            #print-jidelnicek {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-            }
-          }
-        `}</style>
+      #print-jidelnicek {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
+    }
+  `}</style>
 
-        <div id="print-jidelnicek" className="bg-white p-2 text-black">
-          <div className="text-center text-[22px] font-bold">Jídelníček</div>
-          <div className="mt-1 text-center text-[12px]">{printRangeLabel}</div>
+  <div id="print-jidelnicek" className="bg-white p-2 text-black">
+    <div className="mb-3 flex items-start justify-between">
+      <div className="pt-2">
+        {profileName ? (
+          <div className="text-[12px] font-semibold">Jméno: {profileName}</div>
+        ) : (
+          <div className="text-[12px] font-semibold">&nbsp;</div>
+        )}
+      </div>
 
-          <div className="mt-3 grid grid-cols-5 border border-black">
-            {printDays.map((day) => {
-              const dayItems = (printMenuByDate[day] ?? []).filter((x) => x.jidla);
-              const d = new Date(day + "T00:00:00");
-              const dayNumber = `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
-              const dayName = new Intl.DateTimeFormat("cs-CZ", { weekday: "long" }).format(d);
+      <div className="text-center">
+        <div className="text-[22px] font-bold">Jídelníček</div>
+        <div className="mt-1 text-[12px]">{printRangeLabel}</div>
+      </div>
+
+      <div className="flex justify-end">
+        <img
+          src="/logo.png"
+          alt="Jiřka"
+          className="h-12 w-12 object-contain grayscale"
+        />
+      </div>
+    </div>
+
+    <div className="mt-2 grid grid-cols-5 border border-black">
+      {printDays.map((day) => {
+        const dayItems = (printMenuByDate[day] ?? []).filter((x) => x.jidla);
+        const d = new Date(day + "T00:00:00");
+        const dayNumber = `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+        const dayNameRaw = new Intl.DateTimeFormat("cs-CZ", { weekday: "long" }).format(d);
+        const dayName = dayNameRaw.charAt(0).toUpperCase() + dayNameRaw.slice(1);
+
+        return (
+          <div key={day} className="border-r border-black last:border-r-0">
+            <div className="border-b border-black p-1 text-center text-[11px] font-semibold">
+              {dayNumber}
+            </div>
+            <div className="border-b border-black p-1 text-center text-[12px] font-bold">
+              {dayName}
+            </div>
+
+            {dayItems.map((r, idx) => {
+              const short = categoryShort(r.jidla?.kategorie);
 
               return (
-                <div key={day} className="border-r border-black last:border-r-0">
-                  <div className="border-b border-black p-1 text-center text-[11px] font-semibold">
-                    {dayNumber}
+                <div
+                  key={`${day}-${idx}`}
+                  className="grid min-h-[36px] grid-cols-[20px_minmax(0,1fr)] items-center gap-1 border-b border-black px-1 py-1 text-[10px] leading-[1.15]"
+                >
+                  <div className="mx-auto h-[12px] w-[12px] border border-black" />
+                  <div className="text-center">
+                    <div>{r.jidla?.nazev ?? ""}</div>
+                    {short ? <div className="font-semibold">{short}</div> : null}
                   </div>
-                  <div className="border-b border-black p-1 text-center text-[12px] font-bold capitalize">
-                    {dayName}
-                  </div>
-
-                  {dayItems.map((r, idx) => {
-                    const short = categoryShort(r.jidla?.kategorie);
-                    return (
-                      <div
-                        key={`${day}-${idx}`}
-                        className="min-h-[34px] border-b border-black px-1 py-1 text-center text-[10px] leading-[1.15]"
-                      >
-                        <div>{r.jidla?.nazev ?? ""}</div>
-                        {short ? <div className="font-semibold">{short}</div> : <div>&nbsp;</div>}
-                      </div>
-                    );
-                  })}
-
-                  {Array.from({ length: Math.max(0, 10 - dayItems.length) }).map((_, i) => (
-                    <div
-                      key={`${day}-empty-${i}`}
-                      className="min-h-[34px] border-b border-black px-1 py-1 text-center text-[10px]"
-                    >
-                      &nbsp;
-                    </div>
-                  ))}
                 </div>
               );
             })}
-          </div>
 
-          <div className="mt-4 text-[11px]">
-            Jméno zákazníka: {profileName || "_______________________________"}
+            {Array.from({ length: Math.max(0, 10 - dayItems.length) }).map((_, i) => (
+              <div
+                key={`${day}-empty-${i}`}
+                className="grid min-h-[36px] grid-cols-[20px_minmax(0,1fr)] items-center gap-1 border-b border-black px-1 py-1 text-[10px]"
+              >
+                <div className="mx-auto h-[12px] w-[12px] border border-black" />
+                <div>&nbsp;</div>
+              </div>
+            ))}
           </div>
-        </div>
-      </div>
+        );
+      })}
+    </div>
+  </div>
+</div>
     </>
   );
 }
