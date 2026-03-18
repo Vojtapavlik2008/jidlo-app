@@ -1927,11 +1927,24 @@ function OrderPanel({
       <div className="w-full">
         {weekOffset === 0 ? (
           <div className="grid grid-cols-8 gap-2 w-full">
-            {days.map((d) => (
-              <button key={d} type="button" onClick={() => setSelectedDate(d)} className={dayBtn(d === selectedDate)}>
-                {formatDayLabel(d)}
-              </button>
-            ))}
+            {days.map((d) => {
+              const isToday = d === toISODate(new Date());
+              const isActive = d === selectedDate;
+
+              return (
+                <div key={d} className="relative">
+                  <button type="button" onClick={() => setSelectedDate(d)} className={dayBtn(isActive)}>
+                    {formatDayLabel(d)}
+                  </button>
+
+                  {isToday && (
+                    <div className="pointer-events-none absolute left-1/2 top-full -translate-x-1/2 text-[9px] font-bold text-green-700 leading-none mt-[2px]">
+                      dnes
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             <button type="button" onClick={() => setWeekOffset(1)} className={arrowBtnFull} title="Na 2. týden">
               →
             </button>
@@ -1941,11 +1954,24 @@ function OrderPanel({
             <button type="button" onClick={() => setWeekOffset(0)} className={arrowBtnFull} title="Zpět na 1. týden">
               ←
             </button>
-            {days.map((d) => (
-              <button key={d} type="button" onClick={() => setSelectedDate(d)} className={dayBtn(d === selectedDate)}>
-                {formatDayLabel(d)}
-              </button>
-            ))}
+            {days.map((d) => {
+              const isToday = d === toISODate(new Date());
+              const isActive = d === selectedDate;
+
+              return (
+                <div key={d} className="relative">
+                  <button type="button" onClick={() => setSelectedDate(d)} className={dayBtn(isActive)}>
+                    {formatDayLabel(d)}
+                  </button>
+
+                  {isToday && (
+                    <div className="pointer-events-none absolute left-1/2 top-full -translate-x-1/2 text-[9px] font-bold text-green-700 leading-none mt-[2px]">
+                      dnes
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
