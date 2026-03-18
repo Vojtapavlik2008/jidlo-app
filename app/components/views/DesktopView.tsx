@@ -327,8 +327,8 @@ export default function DesktopView({
               {activeSection === "daily" ? (
                 <DailyMenuPanel />
               ) : activeSection === "order" ? (
-                <OrderPanel onOpenCart={onOpenCart} />
-              ) : activeSection === "shop" ? (
+  <OrderPanel />
+) : activeSection === "shop" ? (
                 <PhotosPanelWithHours
                   title="Obchod & Zdravá výživa"
                   folder="/fotky"
