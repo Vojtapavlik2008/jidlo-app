@@ -848,9 +848,9 @@ function OrderPanel({
         const to = days[6];
         const qs = new URLSearchParams({ from, to });
 
-        const res = await fetch(`/api/menu?${qs.toString()}`, {
-          cache: "no-store",
-        });
+        const res = await fetch(`/api/staff/menu?${qs.toString()}`, {
+  cache: "no-store",
+});
 
         const json = await res.json().catch(() => ({}));
 
