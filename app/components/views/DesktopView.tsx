@@ -769,11 +769,7 @@ function DailyMenuPanel() {
 }
 
 // ===================== OrderPanel =====================
-function OrderPanel({
-  onOpenCart,
-}: {
-  onOpenCart: () => void;
-}) {
+function OrderPanel() {
   const [step, setStep] = useState<"menu" | "summary" | "checkout">("menu");
 
   const [tick, setTick] = useState(0);
@@ -799,14 +795,14 @@ function OrderPanel({
     return arr;
   }, [baseMondayISO, weekOffset]);
 
-  const [selectedDate, setSelectedDate] = useState<string>(toISODate(new Date()));
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const todayIso = toISODate(new Date());
+    return days.includes(todayIso) ? todayIso : days[0];
+  });
 
   useEffect(() => {
     const todayIso = toISODate(new Date());
-    setSelectedDate((prev) => {
-      if (days.includes(prev)) return prev;
-      return days.includes(todayIso) ? todayIso : days[0];
-    });
+    setSelectedDate(days.includes(todayIso) ? todayIso : days[0]);
   }, [days]);
 
   useEffect(() => {
@@ -843,40 +839,32 @@ function OrderPanel({
       if (!days?.length) return;
       setLoadingMenu(true);
 
-      try {
-        const from = days[0];
-        const to = days[6];
-        const qs = new URLSearchParams({ from, to });
+      const { data, error } = await supabase
+        .from("menu_den")
+        .select("datum, poradi, jidlo_id, jidla:jidlo_id(nazev, cena, kategorie, alergeny)")
+        .in("datum", days)
+        .order("datum", { ascending: true })
+        .order("poradi", { ascending: true });
 
-        const res = await fetch(`/api/staff/menu?${qs.toString()}`, {
-  cache: "no-store",
-});
+      if (!alive) return;
 
-        const json = await res.json().catch(() => ({}));
-
-        if (!res.ok) {
-          throw new Error(json?.error || "Nepovedlo se načíst menu.");
-        }
-
-        if (!alive) return;
-
-        const rows = (json?.data ?? []) as DbMenuRow[];
-        const map: Record<string, DbMenuRow[]> = {};
-        for (const d of days) map[d] = [];
-
-        for (const r of rows) {
-          if (!map[r.datum]) map[r.datum] = [];
-          map[r.datum].push(r);
-        }
-
-        setMenuByDate(map);
-      } catch (error) {
+      if (error) {
         console.error("OrderPanel loadMenu error:", error);
-        if (!alive) return;
         setMenuByDate({});
-      } finally {
-        if (alive) setLoadingMenu(false);
+        setLoadingMenu(false);
+        return;
       }
+
+      const rows = (data ?? []) as unknown as DbMenuRow[];
+      const map: Record<string, DbMenuRow[]> = {};
+      for (const d of days) map[d] = [];
+      for (const r of rows) {
+        if (!map[r.datum]) map[r.datum] = [];
+        map[r.datum].push(r);
+      }
+
+      setMenuByDate(map);
+      setLoadingMenu(false);
     }
 
     loadMenu();
@@ -1911,7 +1899,7 @@ function OrderPanel({
           }
           onClick={() => {
             if (cartCount === 0 || zavreno) return;
-            onOpenCart();
+            setStep("summary");
           }}
           title={zavreno ? "V neděli je zavřeno" : cartCount === 0 ? "Košík je prázdný" : "Otevřít souhrn"}
         >
@@ -1927,24 +1915,11 @@ function OrderPanel({
       <div className="w-full">
         {weekOffset === 0 ? (
           <div className="grid grid-cols-8 gap-2 w-full">
-            {days.map((d) => {
-              const isToday = d === toISODate(new Date());
-              const isActive = d === selectedDate;
-
-              return (
-                <div key={d} className="relative">
-                  <button type="button" onClick={() => setSelectedDate(d)} className={dayBtn(isActive)}>
-                    {formatDayLabel(d)}
-                  </button>
-
-                  {isToday && (
-                    <div className="pointer-events-none absolute left-1/2 top-full -translate-x-1/2 text-[9px] font-bold text-green-700 leading-none mt-[2px]">
-                      dnes
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {days.map((d) => (
+              <button key={d} type="button" onClick={() => setSelectedDate(d)} className={dayBtn(d === selectedDate)}>
+                {formatDayLabel(d)}
+              </button>
+            ))}
             <button type="button" onClick={() => setWeekOffset(1)} className={arrowBtnFull} title="Na 2. týden">
               →
             </button>
@@ -1954,24 +1929,11 @@ function OrderPanel({
             <button type="button" onClick={() => setWeekOffset(0)} className={arrowBtnFull} title="Zpět na 1. týden">
               ←
             </button>
-            {days.map((d) => {
-              const isToday = d === toISODate(new Date());
-              const isActive = d === selectedDate;
-
-              return (
-                <div key={d} className="relative">
-                  <button type="button" onClick={() => setSelectedDate(d)} className={dayBtn(isActive)}>
-                    {formatDayLabel(d)}
-                  </button>
-
-                  {isToday && (
-                    <div className="pointer-events-none absolute left-1/2 top-full -translate-x-1/2 text-[9px] font-bold text-green-700 leading-none mt-[2px]">
-                      dnes
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {days.map((d) => (
+              <button key={d} type="button" onClick={() => setSelectedDate(d)} className={dayBtn(d === selectedDate)}>
+                {formatDayLabel(d)}
+              </button>
+            ))}
           </div>
         )}
       </div>
