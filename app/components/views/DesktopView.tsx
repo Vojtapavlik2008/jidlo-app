@@ -858,6 +858,7 @@ function OrderPanel() {
       const rows = (data ?? []) as unknown as DbMenuRow[];
       const map: Record<string, DbMenuRow[]> = {};
       for (const d of days) map[d] = [];
+
       for (const r of rows) {
         if (!map[r.datum]) map[r.datum] = [];
         map[r.datum].push(r);
