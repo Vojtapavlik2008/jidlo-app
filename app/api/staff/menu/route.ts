@@ -35,7 +35,9 @@ export async function GET(req: Request) {
 
     const { data, error } = await supabaseAdmin
       .from("menu_den")
-      .select("datum, poradi, jidlo_id, jidla:jidlo_id(nazev, cena, kategorie, alergeny, aktivni)")
+      .select(
+        "datum, poradi, jidlo_id, jidla:jidlo_id(nazev, cena, kategorie, alergeny, aktivni)"
+      )
       .gte("datum", from)
       .lte("datum", to)
       .order("datum", { ascending: true })
@@ -48,7 +50,7 @@ export async function GET(req: Request) {
     const rows = (data ?? []) as unknown as DbMenuRow[];
 
     const safe = rows
-      .filter((r) => r.jidla)
+      .filter((r) => r.jidla && r.jidla.aktivni !== false)
       .map((r) => ({
         datum: r.datum,
         poradi: Number(r.poradi ?? 0),
@@ -61,7 +63,7 @@ export async function GET(req: Request) {
         },
       }));
 
-    return NextResponse.json({ data: safe });
+    return NextResponse.json({ data: safe }, { status: 200 });
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message ?? "Nepodařilo se načíst menu." },
