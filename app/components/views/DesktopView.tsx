@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AuthButton from "@/app/components/AuthButton";
 import { getMyProfile } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
@@ -772,10 +772,29 @@ function DailyMenuPanel() {
 function OrderPanel() {
   const [step, setStep] = useState<"menu" | "summary" | "checkout">("menu");
 
+  const [profileName, setProfileName] = useState("");
+  const [menuSheetOpen, setMenuSheetOpen] = useState(false);
+  const [printWeekOffset, setPrintWeekOffset] = useState<0 | 1>(0);
+  const [printLoading, setPrintLoading] = useState(false);
+
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 60_000);
     return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      const p = await getMyProfile();
+      if (!alive || !p) return;
+      setProfileName(p.full_name ?? "");
+    })();
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const baseMondayISO = useMemo(() => toISODate(baseMondayAutoNextWeekend(new Date())), [tick]);
@@ -858,7 +877,6 @@ function OrderPanel() {
       const rows = (data ?? []) as unknown as DbMenuRow[];
       const map: Record<string, DbMenuRow[]> = {};
       for (const d of days) map[d] = [];
-
       for (const r of rows) {
         if (!map[r.datum]) map[r.datum] = [];
         map[r.datum].push(r);
@@ -1092,6 +1110,84 @@ function OrderPanel() {
     if (parts.length === 0) return null;
     return parts.join(", ");
   }, [cartDays, timesByDay]);
+
+  const printDays = useMemo(() => {
+    const base = new Date(baseMondayISO + "T00:00:00");
+    base.setDate(base.getDate() + printWeekOffset * 7);
+
+    const arr: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      arr.push(toISODate(d));
+    }
+    return arr;
+  }, [baseMondayISO, printWeekOffset]);
+
+  const [printMenuByDate, setPrintMenuByDate] = useState<Record<string, DbMenuRow[]>>({});
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadPrintMenu() {
+      if (!menuSheetOpen || !printDays.length) return;
+      setPrintLoading(true);
+
+      const { data, error } = await supabase
+        .from("menu_den")
+        .select("datum, poradi, jidlo_id, jidla:jidlo_id(nazev, cena, kategorie, alergeny)")
+        .in("datum", printDays)
+        .order("datum", { ascending: true })
+        .order("poradi", { ascending: true });
+
+      if (!alive) return;
+
+      if (error) {
+        console.error("loadPrintMenu error:", error);
+        setPrintMenuByDate({});
+        setPrintLoading(false);
+        return;
+      }
+
+      const rows = (data ?? []) as unknown as DbMenuRow[];
+      const map: Record<string, DbMenuRow[]> = {};
+      for (const d of printDays) map[d] = [];
+
+      for (const r of rows) {
+        if (!map[r.datum]) map[r.datum] = [];
+        map[r.datum].push(r);
+      }
+
+      setPrintMenuByDate(map);
+      setPrintLoading(false);
+    }
+
+    loadPrintMenu();
+
+    return () => {
+      alive = false;
+    };
+  }, [menuSheetOpen, printDays]);
+
+  const printRangeLabel = useMemo(() => {
+    if (!printDays.length) return "";
+    return formatRangeLabel(printDays[0], printDays[printDays.length - 1]);
+  }, [printDays]);
+
+  function getPrintTitle(offset: 0 | 1) {
+    return offset === 0 ? "aktuální týden" : "další týden";
+  }
+
+  function categoryShort(cat: string | null | undefined) {
+    const x = (cat ?? "").toLowerCase();
+    if (x.includes("bezmas")) return "B";
+    if (x.includes("ryb")) return "R";
+    return "";
+  }
+
+  function openPrint() {
+    window.print();
+  }
 
   const rangeLabel = useMemo(() => formatRangeLabel(days[0], days[6]), [days]);
 
@@ -1885,157 +1981,377 @@ function OrderPanel() {
   }
 
   return (
-    <div className="grid gap-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="text-2xl font-extrabold text-green-700">Objednávka jídel</div>
-          <div className="mt-1 text-sm text-gray-500">{rangeLabel}</div>
+    <>
+      <div className="grid gap-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="text-2xl font-extrabold text-green-700">Objednávka jídel</div>
+              {profileName ? (
+                <div className="rounded-full bg-green-50 px-3 py-1 text-sm font-bold text-green-700 ring-1 ring-green-200">
+                  {profileName}
+                </div>
+              ) : null}
+            </div>
+            <div className="mt-1 text-sm text-gray-500">{rangeLabel}</div>
+          </div>
+
+          <button
+            type="button"
+            className={
+              "inline-flex items-center gap-3 rounded-2xl px-4 py-2 ring-1 ring-black/5 transition " +
+              (cartCount > 0 && !zavreno ? "bg-green-50 ring-2 ring-green-600/25" : "bg-white hover:bg-green-50")
+            }
+            onClick={() => {
+              if (cartCount === 0 || zavreno) return;
+              setStep("summary");
+            }}
+            title={zavreno ? "V neděli je zavřeno" : cartCount === 0 ? "Košík je prázdný" : "Otevřít souhrn"}
+          >
+            <span className="text-base font-extrabold text-green-700">Objednávka</span>
+
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                setPrintWeekOffset(0);
+                setMenuSheetOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setPrintWeekOffset(0);
+                  setMenuSheetOpen(true);
+                }
+              }}
+              className="text-[12px] font-semibold text-gray-600 underline underline-offset-2 hover:text-green-700"
+              title="Vytisknout jídelníček"
+            >
+              jídelníček
+            </span>
+
+            <span className="text-base">🛒</span>
+            <span className="text-base font-extrabold text-green-700">{total} Kč</span>
+            <span className="text-gray-300">•</span>
+            <span className="text-base font-semibold text-gray-800">{cartCount} ks</span>
+            <span className="ml-1 text-base font-extrabold text-green-700">→</span>
+          </button>
         </div>
 
-        <button
-          type="button"
-          className={
-            "inline-flex items-center gap-3 rounded-2xl px-4 py-2 ring-1 ring-black/5 transition " +
-            (cartCount > 0 && !zavreno ? "bg-green-50 ring-2 ring-green-600/25" : "bg-white hover:bg-green-50")
-          }
-          onClick={() => {
-            if (cartCount === 0 || zavreno) return;
-            setStep("summary");
-          }}
-          title={zavreno ? "V neděli je zavřeno" : cartCount === 0 ? "Košík je prázdný" : "Otevřít souhrn"}
-        >
-          <span className="text-base font-extrabold text-green-700">Objednávka</span>
-          <span className="text-base">🛒</span>
-          <span className="text-base font-extrabold text-green-700">{total} Kč</span>
-          <span className="text-gray-300">•</span>
-          <span className="text-base font-semibold text-gray-800">{cartCount} ks</span>
-          <span className="ml-1 text-base font-extrabold text-green-700">→</span>
-        </button>
-      </div>
+        <div className="w-full">
+          {weekOffset === 0 ? (
+            <div className="grid grid-cols-8 gap-2 w-full">
+              {days.map((d) => {
+                const isToday = d === toISODate(new Date());
+                const isActive = d === selectedDate;
 
-      <div className="w-full">
-        {weekOffset === 0 ? (
-          <div className="grid grid-cols-8 gap-2 w-full">
-            {days.map((d) => (
-              <button key={d} type="button" onClick={() => setSelectedDate(d)} className={dayBtn(d === selectedDate)}>
-                {formatDayLabel(d)}
+                return (
+                  <div key={d} className="relative">
+                    <button type="button" onClick={() => setSelectedDate(d)} className={dayBtn(isActive)}>
+                      {formatDayLabel(d)}
+                    </button>
+
+                    {isToday && (
+                      <div className="pointer-events-none absolute left-1/2 top-full -translate-x-1/2 text-[9px] font-bold text-green-700 leading-none mt-[2px]">
+                        dnes
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <button type="button" onClick={() => setWeekOffset(1)} className={arrowBtnFull} title="Na 2. týden">
+                →
               </button>
-            ))}
-            <button type="button" onClick={() => setWeekOffset(1)} className={arrowBtnFull} title="Na 2. týden">
-              →
-            </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-8 gap-2 w-full">
+              <button type="button" onClick={() => setWeekOffset(0)} className={arrowBtnFull} title="Zpět na 1. týden">
+                ←
+              </button>
+              {days.map((d) => {
+                const isToday = d === toISODate(new Date());
+                const isActive = d === selectedDate;
+
+                return (
+                  <div key={d} className="relative">
+                    <button type="button" onClick={() => setSelectedDate(d)} className={dayBtn(isActive)}>
+                      {formatDayLabel(d)}
+                    </button>
+
+                    {isToday && (
+                      <div className="pointer-events-none absolute left-1/2 top-full -translate-x-1/2 text-[9px] font-bold text-green-700 leading-none mt-[2px]">
+                        dnes
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {zavreno && (
+          <div className="rounded-2xl bg-red-50 ring-2 ring-red-200/60 p-3 text-red-700 font-semibold">
+            V neděli je zavřeno.
+          </div>
+        )}
+
+        {loadingMenu ? (
+          <div className="rounded-2xl bg-gray-50 ring-1 ring-black/5 px-4 py-4 text-sm font-semibold text-gray-600">
+            Načítám menu…
+          </div>
+        ) : items.length === 0 ? (
+          <div className="rounded-2xl bg-gray-50 ring-1 ring-black/5 px-4 py-4 text-sm font-semibold text-gray-600">
+            Zatím nebylo zveřejněné menu.
           </div>
         ) : (
-          <div className="grid grid-cols-8 gap-2 w-full">
-            <button type="button" onClick={() => setWeekOffset(0)} className={arrowBtnFull} title="Zpět na 1. týden">
-              ←
-            </button>
-            {days.map((d) => (
-              <button key={d} type="button" onClick={() => setSelectedDate(d)} className={dayBtn(d === selectedDate)}>
-                {formatDayLabel(d)}
-              </button>
-            ))}
+          <div className="grid gap-3">
+            {items.map((r, idx) => {
+              const key = keyFor(selectedDate, r.jidlo_id);
+              const qty = cart.find((x) => x.key === key)?.qty ?? 0;
+              const cena = Number(r.jidla?.cena ?? 0).toFixed(2);
+              const allergenText = allergensToText(r.jidla?.alergeny);
+
+              return (
+                <div
+                  key={idx}
+                  className={
+                    "rounded-[22px] border px-4 py-3 transition " +
+                    (qty > 0
+                      ? "bg-[#f2faf5] border-[#9ad2b0]"
+                      : "bg-white border-[#cfe2d6] hover:bg-[#f7fbf8]")
+                  }
+                >
+                  <div className="grid grid-cols-[minmax(0,1fr)_220px_120px_128px] items-center gap-4">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-[17px] font-bold tracking-[-0.01em] text-[#1f2f56]">
+                          {r.jidla?.nazev ?? ""}
+                        </div>
+                      </div>
+
+                      <div className="relative group shrink-0">
+                        <div className="flex h-5 w-5 items-center justify-center rounded-full border border-[#7ac796] bg-white text-[11px] font-extrabold text-[#067647] cursor-default">
+                          i
+                        </div>
+
+                        <div className="pointer-events-none invisible absolute left-0 top-full z-50 mt-3 w-[340px] rounded-[18px] border border-[#bde7c8] bg-white p-4 text-left opacity-0 shadow-[0_16px_40px_rgba(0,0,0,0.14)] transition-all duration-150 group-hover:visible group-hover:opacity-100">
+                          <div className="text-[14px] font-extrabold text-[#1f2f56]">
+                            {r.jidla?.nazev ?? ""}
+                          </div>
+                          <div className="mt-2 text-[12px] font-bold uppercase tracking-wide text-[#08a652]">
+                            Alergeny
+                          </div>
+                          <div className="mt-1 text-[13px] font-semibold leading-5 text-gray-700">
+                            {allergenText}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="truncate text-[12px] font-semibold text-[#08a652]">
+                        {r.jidla?.kategorie ?? ""}
+                      </div>
+                    </div>
+
+                    <div className="whitespace-nowrap text-[16px] font-extrabold text-[#067647]">
+                      {cena} Kč
+                    </div>
+
+                    <div className="flex justify-end">
+                      {qty === 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (zavreno) return;
+                            addOne(selectedDate, r);
+                          }}
+                          className={addBtn}
+                        >
+                          Přidat
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <button type="button" onClick={() => removeOne(selectedDate, r)} className={qtyBtn}>
+                            −
+                          </button>
+                          <div className="w-8 text-center text-sm font-extrabold text-[#17325c]">{qty}</div>
+                          <button type="button" onClick={() => addOne(selectedDate, r)} className={qtyBtn}>
+                            +
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {zavreno && (
-        <div className="rounded-2xl bg-red-50 ring-2 ring-red-200/60 p-3 text-red-700 font-semibold">
-          V neděli je zavřeno.
-        </div>
-      )}
+      {menuSheetOpen && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-40 bg-black/20"
+            onClick={() => setMenuSheetOpen(false)}
+            aria-label="close"
+          />
 
-      {loadingMenu ? (
-        <div className="rounded-2xl bg-gray-50 ring-1 ring-black/5 px-4 py-4 text-sm font-semibold text-gray-600">
-          Načítám menu…
-        </div>
-      ) : items.length === 0 ? (
-        <div className="rounded-2xl bg-gray-50 ring-1 ring-black/5 px-4 py-4 text-sm font-semibold text-gray-600">
-          Zatím nebylo zveřejněné menu.
-        </div>
-      ) : (
-        <div className="grid gap-3">
-          {items.map((r, idx) => {
-            const key = keyFor(selectedDate, r.jidlo_id);
-            const qty = cart.find((x) => x.key === key)?.qty ?? 0;
-            const cena = Number(r.jidla?.cena ?? 0).toFixed(2);
-            const allergenText = allergensToText(r.jidla?.alergeny);
-
-            return (
-              <div
-                key={idx}
-                className={
-                  "rounded-[22px] border px-4 py-3 transition " +
-                  (qty > 0
-                    ? "bg-[#f2faf5] border-[#9ad2b0]"
-                    : "bg-white border-[#cfe2d6] hover:bg-[#f7fbf8]")
-                }
-              >
-                <div className="grid grid-cols-[minmax(0,1fr)_210px_110px_120px] items-center gap-4">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <div className="min-w-0 truncate text-[17px] font-bold tracking-[-0.01em] text-[#1f2f56]">
-                      {r.jidla?.nazev ?? ""}
-                    </div>
-
-                    <div className="relative group shrink-0">
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full border border-[#7ac796] bg-white text-[11px] font-extrabold text-[#067647] cursor-default">
-                        i
-                      </div>
-
-                      <div className="pointer-events-none invisible absolute left-0 top-full z-50 mt-3 w-[340px] rounded-[18px] border border-[#bde7c8] bg-white p-4 text-left opacity-0 shadow-[0_16px_40px_rgba(0,0,0,0.14)] transition-all duration-150 group-hover:visible group-hover:opacity-100">
-                        <div className="text-[14px] font-extrabold text-[#1f2f56]">
-                          {r.jidla?.nazev ?? ""}
-                        </div>
-                        <div className="mt-2 text-[12px] font-bold uppercase tracking-wide text-[#08a652]">
-                          Alergeny
-                        </div>
-                        <div className="mt-1 text-[13px] font-semibold leading-5 text-gray-700">
-                          {allergenText}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="truncate text-[12px] font-semibold text-[#08a652]">
-                      {r.jidla?.kategorie ?? ""}
-                    </div>
-                  </div>
-
-                  <div className="whitespace-nowrap text-[16px] font-extrabold text-[#067647]">
-                    {cena} Kč
-                  </div>
-
-                  <div className="flex justify-end">
-                    {qty === 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (zavreno) return;
-                          addOne(selectedDate, r);
-                        }}
-                        className={addBtn}
-                      >
-                        Přidat
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => removeOne(selectedDate, r)} className={qtyBtn}>
-                          −
-                        </button>
-                        <div className="w-8 text-center text-sm font-extrabold text-[#17325c]">{qty}</div>
-                        <button type="button" onClick={() => addOne(selectedDate, r)} className={qtyBtn}>
-                          +
-                        </button>
-                      </div>
-                    )}
-                  </div>
+          <div className="fixed left-1/2 top-1/2 z-50 w-[680px] max-w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 rounded-3xl bg-white ring-1 ring-black/10 shadow-[0_20px_60px_rgba(0,0,0,0.18)] p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-2xl font-extrabold text-green-700">Tisk jídelníčku</div>
+                <div className="mt-1 text-sm font-semibold text-gray-500">
+                  {printRangeLabel}
                 </div>
               </div>
-            );
-          })}
-        </div>
+
+              <button
+                type="button"
+                className="h-10 w-10 rounded-full ring-1 ring-black/10 hover:bg-black/5 font-extrabold"
+                onClick={() => setMenuSheetOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPrintWeekOffset(0)}
+                className={
+                  "rounded-2xl px-4 py-2 text-sm font-extrabold ring-1 " +
+                  (printWeekOffset === 0
+                    ? "bg-green-600 text-white ring-green-600"
+                    : "bg-white text-green-700 ring-black/10 hover:bg-green-50")
+                }
+              >
+                Aktuální týden
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPrintWeekOffset(1)}
+                className={
+                  "rounded-2xl px-4 py-2 text-sm font-extrabold ring-1 " +
+                  (printWeekOffset === 1
+                    ? "bg-green-600 text-white ring-green-600"
+                    : "bg-white text-green-700 ring-black/10 hover:bg-green-50")
+                }
+              >
+                Další týden
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-2xl bg-green-50 px-4 py-4 text-sm font-semibold text-gray-700 ring-1 ring-green-100">
+              Vytiskněte si jídelníček, zaškrtejte si vybraná jídla a následně nám ho předejte
+              buď při rozvozech, nebo osobně u nás.
+            </div>
+
+            <div className="mt-5 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setMenuSheetOpen(false)}
+                className="rounded-2xl px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100/60 bg-green-50 ring-1 ring-green-600/25"
+              >
+                ← Zpět
+              </button>
+
+              <button
+                type="button"
+                onClick={openPrint}
+                disabled={printLoading}
+                className="rounded-2xl bg-green-600 px-5 py-3 text-sm font-extrabold text-white hover:brightness-95 disabled:opacity-60"
+              >
+                {printLoading ? "Načítám…" : `Vytisknout (${getPrintTitle(printWeekOffset)})`}
+              </button>
+            </div>
+          </div>
+        </>
       )}
-    </div>
+
+      <div className="hidden print:block">
+        <style jsx global>{`
+          @media print {
+            @page {
+              size: A4 landscape;
+              margin: 8mm;
+            }
+
+            body * {
+              visibility: hidden;
+            }
+
+            #print-jidelnicek,
+            #print-jidelnicek * {
+              visibility: visible;
+            }
+
+            #print-jidelnicek {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
+          }
+        `}</style>
+
+        <div id="print-jidelnicek" className="bg-white p-2 text-black">
+          <div className="text-center text-[22px] font-bold">Jídelníček</div>
+          <div className="mt-1 text-center text-[12px]">{printRangeLabel}</div>
+
+          <div className="mt-3 grid grid-cols-5 border border-black">
+            {printDays.map((day) => {
+              const dayItems = (printMenuByDate[day] ?? []).filter((x) => x.jidla);
+              const d = new Date(day + "T00:00:00");
+              const dayNumber = `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+              const dayName = new Intl.DateTimeFormat("cs-CZ", { weekday: "long" }).format(d);
+
+              return (
+                <div key={day} className="border-r border-black last:border-r-0">
+                  <div className="border-b border-black p-1 text-center text-[11px] font-semibold">
+                    {dayNumber}
+                  </div>
+                  <div className="border-b border-black p-1 text-center text-[12px] font-bold capitalize">
+                    {dayName}
+                  </div>
+
+                  {dayItems.map((r, idx) => {
+                    const short = categoryShort(r.jidla?.kategorie);
+                    return (
+                      <div
+                        key={`${day}-${idx}`}
+                        className="min-h-[34px] border-b border-black px-1 py-1 text-center text-[10px] leading-[1.15]"
+                      >
+                        <div>{r.jidla?.nazev ?? ""}</div>
+                        {short ? <div className="font-semibold">{short}</div> : <div>&nbsp;</div>}
+                      </div>
+                    );
+                  })}
+
+                  {Array.from({ length: Math.max(0, 10 - dayItems.length) }).map((_, i) => (
+                    <div
+                      key={`${day}-empty-${i}`}
+                      className="min-h-[34px] border-b border-black px-1 py-1 text-center text-[10px]"
+                    >
+                      &nbsp;
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 text-[11px]">
+            Jméno zákazníka: {profileName || "_______________________________"}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
