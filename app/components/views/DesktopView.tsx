@@ -1987,7 +1987,7 @@ function OrderPanel() {
 <div className="flex items-start justify-between gap-4">
   <div>
     <div className="flex items-center gap-5">
-      <div className="text-2xl font-extrabold text-green-700">Objednávka jídel XYZ123</div>
+      <div className="text-2xl font-extrabold text-green-700">Objednávka jídel</div>
 
       <button
         type="button"
