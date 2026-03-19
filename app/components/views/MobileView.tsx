@@ -1638,7 +1638,6 @@ export default function MobileView({
   // order context
   const { cart, cartCount, total, keyFor, addOne, removeOne } = useOrder();
 
-  // close dropdown on outside / esc
   useEffect(() => {
     const onDoc = (e: PointerEvent) => {
       const el = userMenuRef.current;
@@ -1648,21 +1647,17 @@ export default function MobileView({
       if (el.contains(target)) return;
       setMenuOpen(false);
     };
-
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMenuOpen(false);
     };
-
     document.addEventListener("pointerdown", onDoc);
     document.addEventListener("keydown", onKey);
-
     return () => {
       document.removeEventListener("pointerdown", onDoc);
       document.removeEventListener("keydown", onKey);
     };
   }, []);
 
-  // auth load
   useEffect(() => {
     let alive = true;
 
@@ -1719,7 +1714,6 @@ export default function MobileView({
     };
   }, []);
 
-  // system items load
   useEffect(() => {
     let alive = true;
 
@@ -1759,7 +1753,6 @@ export default function MobileView({
     setMenuOpen(false);
   }
 
-  // ===== week & days =====
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 60_000);
@@ -1804,7 +1797,6 @@ export default function MobileView({
     [tabDays]
   );
 
-  // ===== load menu (DB) =====
   const [menuByDate, setMenuByDate] = useState<Record<string, MenuRow[]>>({});
   const [loadingMenu, setLoadingMenu] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -1905,22 +1897,13 @@ export default function MobileView({
     return `dnes ${row.value_text}`;
   }
 
-  const shopHoursToday = useMemo(
-    () => getTodayHoursFromRows(shopHoursRows),
-    [shopHoursRows]
-  );
-
-  const canteenHoursToday = useMemo(
-    () => getTodayHoursFromRows(canteenHoursRows),
-    [canteenHoursRows]
-  );
+  const shopHoursToday = useMemo(() => getTodayHoursFromRows(shopHoursRows), [shopHoursRows]);
+  const canteenHoursToday = useMemo(() => getTodayHoursFromRows(canteenHoursRows), [canteenHoursRows]);
 
   const dayBtn = (active: boolean) =>
     [
-      "h-10 rounded-2xl px-2 text-[12px] font-extrabold ring-1 transition",
-      active
-        ? "bg-green-600 text-white ring-green-600"
-        : "bg-white text-gray-900 ring-black/10 hover:bg-gray-50",
+      "h-9 rounded-xl px-2 text-[12px] font-semibold ring-1 transition",
+      active ? "bg-green-600 text-white ring-green-600" : "bg-white text-gray-900 ring-black/10 hover:bg-gray-50",
     ].join(" ");
 
   const qtyBtn =
@@ -1935,7 +1918,7 @@ export default function MobileView({
         <button
           type="button"
           onClick={() => setAuthOpen(true)}
-          className="rounded-2xl px-3 py-2 text-[12px] font-extrabold bg-green-600 text-white hover:bg-green-700"
+          className="rounded-xl px-3 py-2 text-[12px] font-extrabold bg-green-600 text-white hover:bg-green-700"
         >
           Přihlásit
         </button>
@@ -1949,7 +1932,7 @@ export default function MobileView({
         <button
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
-          className="max-w-[220px] truncate rounded-2xl px-3 py-2 text-[12px] font-extrabold bg-white ring-1 ring-black/10 hover:bg-gray-50"
+          className="max-w-[220px] truncate rounded-xl px-3 py-2 text-[12px] font-extrabold bg-white ring-1 ring-black/10 hover:bg-gray-50"
           title={name}
         >
           <span className="truncate">
@@ -2015,61 +1998,56 @@ export default function MobileView({
     );
   }
 
-  function TopTabs() {
-    const tabBase =
-      "rounded-2xl px-3 py-2 text-[12px] font-extrabold ring-1 transition whitespace-nowrap";
-    const active = "bg-green-600 text-white ring-green-600";
-    const normal = "bg-white text-gray-900 ring-black/10 hover:bg-gray-50";
-
-    const Tab = ({
-      id,
-      label,
-      sub,
-      icon,
-    }: {
-      id: Section;
-      label: string;
-      sub?: string | null;
-      icon: string;
-    }) => (
+  function SectionCard({
+    active,
+    title,
+    sub,
+    icon,
+    onClick,
+  }: {
+    active: boolean;
+    title: string;
+    sub?: string | null;
+    icon: string;
+    onClick: () => void;
+  }) {
+    return (
       <button
         type="button"
-        onClick={() => setActiveSection(id)}
-        className={`${tabBase} ${activeSection === id ? active : normal}`}
+        onClick={onClick}
+        className={
+          "rounded-2xl px-4 py-3 text-left transition ring-1 shadow-sm " +
+          (active
+            ? "bg-gradient-to-br from-green-50 to-green-100 ring-green-300"
+            : "bg-white ring-black/10 hover:bg-gray-50")
+        }
       >
-        <div className="flex items-center gap-2">
-          <span>{icon}</span>
-          <span>{label}</span>
-        </div>
-        {sub ? <div className="mt-0.5 text-[10px] font-bold opacity-80">{sub}</div> : null}
-      </button>
-    );
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-50 text-lg">
+            {icon}
+          </div>
 
-    return (
-      <div className="overflow-x-auto no-scrollbar">
-        <div className="flex gap-2 min-w-max">
-          <Tab id="daily" label="Denní menu" icon="📋" />
-          <Tab id="order" label="Objednávka" icon="🍽️" />
-          <Tab id="shop" label="Obchod" icon="🛒" sub={shopHoursToday} />
-          <Tab id="canteen" label="Jídelna" icon="🏠" sub={canteenHoursToday} />
-          <Tab id="about" label="O nás" icon="ℹ️" />
+          <div className="min-w-0">
+            <div className="text-[14px] font-extrabold text-green-700">{title}</div>
+            {sub ? <div className="mt-1 text-[12px] font-semibold text-gray-500">{sub}</div> : null}
+          </div>
         </div>
-      </div>
+      </button>
     );
   }
 
   function MenuList({ mode }: { mode: "daily" | "order" }) {
     if (loadingMenu) {
       return (
-        <div className="rounded-3xl bg-white ring-1 ring-black/10 p-4 text-[13px] text-gray-500">
-          Načítám menu…
+        <div className="rounded-2xl ring-1 ring-black/10 bg-white shadow-sm p-3 text-[13px] text-gray-500">
+          Načítám…
         </div>
       );
     }
 
     if (err) {
       return (
-        <div className="rounded-3xl bg-white ring-1 ring-black/10 p-4 text-[13px] font-bold text-red-600">
+        <div className="rounded-2xl ring-1 ring-black/10 bg-white shadow-sm p-3 text-[13px] font-bold text-red-600">
           {err}
         </div>
       );
@@ -2077,14 +2055,14 @@ export default function MobileView({
 
     if (items.length === 0) {
       return (
-        <div className="rounded-3xl bg-white ring-1 ring-black/10 p-4 text-[13px] text-gray-500">
+        <div className="rounded-2xl ring-1 ring-black/10 bg-white shadow-sm p-3 text-[13px] text-gray-500">
           Zatím nebylo zveřejněné menu.
         </div>
       );
     }
 
     return (
-      <div className="space-y-2.5">
+      <div className="space-y-2">
         {items.map((r) => {
           const k = keyFor(selectedDate, r.jidlo_id);
           const qty = cart.find((x) => x.key === k)?.qty ?? 0;
@@ -2100,34 +2078,22 @@ export default function MobileView({
           const price = r.jidla?.cena ?? 0;
           const allergenList = allergenNamesFromColumn(r.jidla?.alergeny ?? "");
 
+          const cardCls =
+            "rounded-2xl px-3 py-3 transition ring-1 " +
+            (qty > 0 ? "bg-green-50 ring-green-300/70" : "bg-white ring-black/10 hover:bg-gray-50");
+
           return (
-            <div
-              key={k}
-              className={
-                "rounded-3xl px-4 py-3 transition ring-1 shadow-sm " +
-                (qty > 0
-                  ? "bg-green-50 ring-green-300/70"
-                  : "bg-white ring-black/10")
-              }
-            >
+            <div key={k} className={cardCls}>
               <div className="flex justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   {r.jidla?.kategorie ? (
-                    <div className="text-[11px] font-bold text-green-700">
-                      {r.jidla.kategorie}
-                    </div>
+                    <div className="text-[11px] font-bold text-green-700">{r.jidla.kategorie}</div>
                   ) : null}
 
-                  <div className="mt-0.5 text-[15px] font-extrabold text-[#1f2f56] leading-snug break-words">
-                    {title}
-                  </div>
+                  <div className="text-[14px] font-semibold text-gray-900 leading-snug break-words">{title}</div>
 
-                  <div className="mt-2 flex items-center gap-2">
-                    <div className="text-[14px] font-extrabold text-green-700">
-                      {price} Kč
-                    </div>
-
-                    {allergenList.length > 0 ? (
+                  <div className="mt-1 flex items-center gap-2">
+                    {mode === "order" && allergenList.length > 0 ? (
                       <button
                         type="button"
                         onClick={() => {
@@ -2135,46 +2101,46 @@ export default function MobileView({
                           setAlgList(allergenList);
                           setAlgOpen(true);
                         }}
-                        className="h-6 w-6 rounded-full border border-[#7ac796] bg-white text-[11px] font-extrabold text-[#067647]"
+                        className="h-5 w-5 rounded-full border border-[#7ac796] bg-white text-[11px] font-extrabold text-[#067647]"
                         title="Alergeny"
                       >
                         i
                       </button>
                     ) : null}
+
+                    <div className="text-[13px] font-extrabold text-green-700">{price} Kč</div>
                   </div>
                 </div>
 
-                {mode === "order" ? (
-                  <div className="flex flex-col items-end justify-center gap-2 shrink-0">
-                    {qty === 0 ? (
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  {mode === "daily" ? null : qty === 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (zavreno) return;
+                        addOne(selectedDate, row);
+                      }}
+                      className={addBtn}
+                    >
+                      Přidat
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => {
-                          if (zavreno) return;
-                          addOne(selectedDate, row);
-                        }}
-                        className={addBtn}
+                        onClick={() => removeOne(selectedDate, row)}
+                        className={qtyBtn}
+                        disabled={qty === 0}
                       >
-                        Přidat
+                        −
                       </button>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => removeOne(selectedDate, row)}
-                          className={qtyBtn}
-                          disabled={qty === 0}
-                        >
-                          −
-                        </button>
-                        <div className="w-6 text-center text-[12px] font-extrabold">{qty}</div>
-                        <button type="button" onClick={() => addOne(selectedDate, row)} className={qtyBtn}>
-                          +
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : null}
+                      <div className="w-6 text-center text-[12px] font-extrabold">{qty}</div>
+                      <button type="button" onClick={() => addOne(selectedDate, row)} className={qtyBtn}>
+                        +
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -2183,86 +2149,34 @@ export default function MobileView({
     );
   }
 
-  function HoursPanel({
-    title,
-    folder,
-    keys,
-    hours,
-  }: {
-    title: string;
-    folder: string;
-    keys: string[];
-    hours: SystemItemRow[];
-  }) {
-    return (
-      <div className="space-y-3">
-        <div className="rounded-3xl bg-white ring-1 ring-black/10 p-4 shadow-sm">
-          <div className="text-xl font-extrabold text-green-700">{title}</div>
-        </div>
+  function HoursList({ rows }: { rows: SystemItemRow[] }) {
+    if (loadingSystemItems) {
+      return <div className="text-[13px] font-semibold text-gray-500">Načítám…</div>;
+    }
 
-        <div className="space-y-3">
-          {keys.map((k) => (
-            <div
-              key={k}
-              className="rounded-3xl overflow-hidden bg-white ring-1 ring-black/10 shadow-sm"
-            >
-              <img src={`${folder}/${k}`} alt={k} className="w-full h-52 object-cover" />
+    if (rows.length === 0) {
+      return (
+        <div className="text-[13px] font-semibold text-gray-500">
+          Otevírací doba zatím není vyplněná.
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid gap-2">
+        {rows.map((row) => (
+          <div
+            key={row.id}
+            className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 ring-1 ring-green-100"
+          >
+            <div className="text-[14px] font-extrabold text-[#1f2f56]">
+              {row.label ?? "Den"}
             </div>
-          ))}
-        </div>
-
-        <div className="rounded-3xl bg-[#f7fbf8] p-4 ring-1 ring-green-100 shadow-sm">
-          <div className="text-xl font-extrabold text-green-700">Otevírací doba</div>
-
-          <div className="mt-3 grid gap-2">
-            {loadingSystemItems ? (
-              <div className="text-[13px] font-semibold text-gray-500">Načítám…</div>
-            ) : hours.length === 0 ? (
-              <div className="text-[13px] font-semibold text-gray-500">
-                Otevírací doba zatím není vyplněná.
-              </div>
-            ) : (
-              hours.map((row) => (
-                <div
-                  key={row.id}
-                  className="flex items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 ring-1 ring-green-100"
-                >
-                  <div className="text-[14px] font-extrabold text-[#1f2f56]">
-                    {row.label ?? "Den"}
-                  </div>
-                  <div className="text-[14px] font-semibold text-gray-700 text-right">
-                    {row.value_text ?? "—"}
-                  </div>
-                </div>
-              ))
-            )}
+            <div className="text-[14px] font-semibold text-gray-700 text-right">
+              {row.value_text ?? "—"}
+            </div>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  function AboutPanel() {
-    return (
-      <div className="space-y-3">
-        <div className="rounded-3xl bg-white ring-1 ring-black/10 p-4 shadow-sm">
-          <div className="text-xl font-extrabold text-green-700">O nás</div>
-
-          <div className="mt-3 text-[14px] leading-7 text-gray-600 whitespace-pre-line">
-            {loadingSystemItems
-              ? "Načítám text…"
-              : aboutTextRow?.value_text || "Text zatím nebyl vyplněn."}
-          </div>
-        </div>
-
-        <div className="rounded-3xl bg-green-50 px-4 py-4 ring-1 ring-green-100 shadow-sm">
-          <div className="text-[12px] font-extrabold uppercase tracking-wide text-green-700">
-            Adresa
-          </div>
-          <div className="mt-1 text-[14px] font-semibold text-gray-700">
-            Havlíčkova 72, 29001, Poděbrady
-          </div>
-        </div>
+        ))}
       </div>
     );
   }
@@ -2271,12 +2185,12 @@ export default function MobileView({
     if (activeSection !== "order") return null;
 
     return (
-      <div className="fixed left-0 right-0 z-40" style={{ bottom: 20 }}>
+      <div className="fixed left-0 right-0 z-40" style={{ bottom: 64 }}>
         <div className="max-w-md mx-auto px-3">
           <div className="rounded-2xl bg-white shadow-lg ring-1 ring-black/10 px-3 py-2.5">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <div className="text-[11px] font-semibold text-gray-600">Objednávka</div>
+                <div className="text-[11px] font-semibold text-gray-600">Košík</div>
                 <div className="text-[13px] font-extrabold text-gray-900">
                   {cartCount} ks · {total} Kč
                 </div>
@@ -2297,7 +2211,8 @@ export default function MobileView({
     );
   }
 
-  const contentPadBottom = activeSection === "order" ? "pb-[110px]" : "pb-6";
+  const showWeekAndDays = activeSection === "daily" || activeSection === "order";
+  const contentPadBottom = activeSection === "order" ? "pb-[140px]" : "pb-20";
 
   return (
     <div className={`min-h-[100dvh] bg-white ${contentPadBottom}`}>
@@ -2313,42 +2228,71 @@ export default function MobileView({
       />
 
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-md mx-auto px-3 py-3">
-          <div className="flex items-start gap-3">
-            <div className="flex items-start gap-3 min-w-0">
-              <div className="h-12 w-12 rounded-3xl bg-white ring-1 ring-black/10 overflow-hidden flex items-center justify-center shrink-0">
-                <Image src="/logo.png" alt="Jiřka" width={48} height={48} />
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-100">
+        <div className="max-w-md mx-auto px-3 py-2">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0 min-w-0">
+              <div className="h-8 w-8 rounded-2xl bg-white ring-1 ring-black/10 overflow-hidden flex items-center justify-center">
+                <Image src="/logo.png" alt="Jiřka" width={32} height={32} />
               </div>
 
               <div className="min-w-0">
-                <div className="text-2xl font-extrabold text-green-700 leading-none">Jiřka</div>
-                <div className="mt-1 text-[12px] text-gray-500">Jídelna • Zdravá výživa • Obchod</div>
-                <div className="text-[12px] font-medium text-gray-500">Havlíčkova 72, Poděbrady</div>
+                <div className="font-extrabold text-green-700 text-[15px] leading-none">Jiřka</div>
+                <div className="text-[10px] text-gray-500">Jídelna • Zdravá výživa • Obchod</div>
               </div>
             </div>
 
-            <div className="ml-auto shrink-0">
-              <UserArea />
-            </div>
+            <div className="flex-1" />
+            <UserArea />
           </div>
-
-          <div className="mt-4 h-1 w-24 rounded-full bg-yellow-400" />
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-md mx-auto px-3 py-3 space-y-3">
-        <TopTabs />
+      <div className="max-w-md mx-auto px-3 py-3 space-y-2.5">
+        <div className="grid gap-2">
+          <SectionCard
+            active={activeSection === "daily"}
+            title="Denní menu"
+            icon="📋"
+            onClick={() => setActiveSection("daily")}
+          />
+          <SectionCard
+            active={activeSection === "order"}
+            title="Objednávka jídel"
+            icon="🍽️"
+            onClick={() => setActiveSection("order")}
+          />
+          <SectionCard
+            active={activeSection === "shop"}
+            title="Obchod"
+            sub={shopHoursToday}
+            icon="🛒"
+            onClick={() => setActiveSection("shop")}
+          />
+          <SectionCard
+            active={activeSection === "canteen"}
+            title="Jídelna"
+            sub={canteenHoursToday}
+            icon="🏠"
+            onClick={() => setActiveSection("canteen")}
+          />
+          <SectionCard
+            active={activeSection === "about"}
+            title="O nás"
+            icon="ℹ️"
+            onClick={() => setActiveSection("about")}
+          />
+        </div>
 
-        {(activeSection === "daily" || activeSection === "order") && (
+        {showWeekAndDays ? (
           <>
-            <div className="rounded-3xl ring-1 ring-black/10 bg-white shadow-sm px-3 py-3 flex items-center justify-between gap-2">
+            <div className="rounded-2xl ring-1 ring-black/10 bg-white shadow-sm px-2 py-2 flex items-center justify-between gap-2">
               <button
                 type="button"
                 onClick={() => setWeekOffset(0)}
                 disabled={weekOffset === 0}
-                className="h-10 w-10 rounded-2xl bg-white ring-1 ring-black/10 font-extrabold text-gray-900 disabled:opacity-40"
+                className="h-9 w-9 rounded-2xl bg-white ring-1 ring-black/10 font-extrabold text-gray-900 disabled:opacity-40"
               >
                 ‹
               </button>
@@ -2361,13 +2305,13 @@ export default function MobileView({
                 type="button"
                 onClick={() => setWeekOffset(1)}
                 disabled={weekOffset === 1}
-                className="h-10 w-10 rounded-2xl bg-white ring-1 ring-black/10 font-extrabold text-gray-900 disabled:opacity-40"
+                className="h-9 w-9 rounded-2xl bg-white ring-1 ring-black/10 font-extrabold text-gray-900 disabled:opacity-40"
               >
                 ›
               </button>
             </div>
 
-            <div className="rounded-3xl ring-1 ring-black/10 bg-white shadow-sm px-3 py-3">
+            <div className="rounded-2xl ring-1 ring-black/10 bg-white shadow-sm px-2 py-2">
               <div className="grid grid-cols-6 gap-2">
                 {tabDays.map((d) => (
                   <button key={d} type="button" onClick={() => setSelectedDate(d)} className={dayBtn(d === selectedDate)}>
@@ -2383,33 +2327,103 @@ export default function MobileView({
               </div>
             ) : null}
           </>
-        )}
+        ) : null}
 
         {activeSection === "daily" && <MenuList mode="daily" />}
         {activeSection === "order" && <MenuList mode="order" />}
 
         {activeSection === "shop" && (
-          <HoursPanel
-            title="Obchod & Zdravá výživa"
-            folder="/fotky"
-            keys={["obchod-1.jpg", "obchod-2.jpg", "obchod-3.jpg"]}
-            hours={shopHoursRows}
-          />
+          <div className="space-y-2.5">
+            <div className="rounded-2xl ring-1 ring-black/10 bg-white shadow-sm p-3">
+              <div className="text-lg font-extrabold text-green-700">Obchod & Zdravá výživa</div>
+            </div>
+
+            <div className="space-y-2">
+              {["obchod-1.jpg", "obchod-2.jpg", "obchod-3.jpg"].map((k) => (
+                <div key={k} className="rounded-2xl overflow-hidden bg-white ring-1 ring-black/10 shadow-sm">
+                  <img src={`/fotky/${k}`} alt={k} className="w-full h-48 object-cover" />
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-2xl bg-[#f7fbf8] p-4 ring-1 ring-green-100 shadow-sm">
+              <div className="text-lg font-extrabold text-green-700 mb-3">Otevírací doba</div>
+              <HoursList rows={shopHoursRows} />
+            </div>
+          </div>
         )}
 
         {activeSection === "canteen" && (
-          <HoursPanel
-            title="Jídelna"
-            folder="/fotky"
-            keys={["jidelna-1.jpg", "jidelna-2.jpg", "jidelna-3.jpg"]}
-            hours={canteenHoursRows}
-          />
+          <div className="space-y-2.5">
+            <div className="rounded-2xl ring-1 ring-black/10 bg-white shadow-sm p-3">
+              <div className="text-lg font-extrabold text-green-700">Jídelna</div>
+            </div>
+
+            <div className="space-y-2">
+              {["jidelna-1.jpg", "jidelna-2.jpg", "jidelna-3.jpg"].map((k) => (
+                <div key={k} className="rounded-2xl overflow-hidden bg-white ring-1 ring-black/10 shadow-sm">
+                  <img src={`/fotky/${k}`} alt={k} className="w-full h-48 object-cover" />
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-2xl bg-[#f7fbf8] p-4 ring-1 ring-green-100 shadow-sm">
+              <div className="text-lg font-extrabold text-green-700 mb-3">Otevírací doba</div>
+              <HoursList rows={canteenHoursRows} />
+            </div>
+          </div>
         )}
 
-        {activeSection === "about" && <AboutPanel />}
+        {activeSection === "about" && (
+          <div className="space-y-2.5">
+            <div className="rounded-2xl ring-1 ring-black/10 bg-white shadow-sm p-4">
+              <div className="text-lg font-extrabold text-green-700">O nás</div>
+
+              <div className="mt-3 text-[14px] leading-7 text-gray-600 whitespace-pre-line">
+                {loadingSystemItems
+                  ? "Načítám text…"
+                  : aboutTextRow?.value_text || "Text zatím nebyl vyplněn."}
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-green-50 px-4 py-4 ring-1 ring-green-100 shadow-sm">
+              <div className="text-[12px] font-extrabold uppercase tracking-wide text-green-700">
+                Adresa
+              </div>
+              <div className="mt-1 text-[14px] font-semibold text-gray-700">
+                Havlíčkova 72, 29001, Poděbrady
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <FixedCartBar />
+
+      {/* Bottom nav */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200">
+        <div className="max-w-md mx-auto grid grid-cols-5 text-[11px] font-semibold text-gray-600">
+          {[
+            { id: "daily", label: "Menu", icon: "📋" },
+            { id: "order", label: "Objednat", icon: "🍽️" },
+            { id: "shop", label: "Obchod", icon: "🏪" },
+            { id: "canteen", label: "Jídelna", icon: "🏠" },
+            { id: "about", label: "O nás", icon: "ℹ️" },
+          ].map((x) => {
+            const isActive = activeSection === x.id;
+            return (
+              <button
+                key={x.id}
+                onClick={() => setActiveSection(x.id as Section)}
+                className={`flex flex-col items-center py-2 ${isActive ? "text-green-700" : "text-gray-500"}`}
+              >
+                <span className="text-lg leading-none">{x.icon}</span>
+                {x.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
