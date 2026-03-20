@@ -702,67 +702,66 @@ export default function PokladnaPage() {
     }
   }
 
-  const page = "min-h-screen bg-white";
-  const wrap = "mx-auto w-full max-w-[1220px] px-5 pt-4 pb-24";
+  const shell = "min-h-screen bg-white";
+  const wrap = "mx-auto w-full max-w-[1220px] px-3 sm:px-4 md:px-5 pt-3 pb-36";
 
   const topCard =
     "rounded-[24px] border border-[#bde7c8] bg-white p-4 shadow-[0_10px_26px_rgba(27,54,39,0.04)]";
 
   const whiteBtn =
-    "rounded-full bg-white px-4 py-2 text-[14px] font-extrabold text-gray-800 ring-1 ring-black/10 hover:bg-gray-50 transition";
+    "rounded-full bg-white px-4 py-2 text-[13px] sm:text-[14px] font-extrabold text-gray-800 ring-1 ring-black/10 hover:bg-gray-50 transition";
   const greenBtn =
-    "rounded-full bg-[#08a35c] px-4 py-2 text-[14px] font-extrabold text-white shadow-sm hover:brightness-95 transition";
+    "rounded-full bg-[#08a35c] px-4 py-2 text-[13px] sm:text-[14px] font-extrabold text-white shadow-sm hover:brightness-95 transition";
 
   const switchBtn = (active: boolean) =>
     [
-      "flex-1 rounded-full px-5 py-3 text-[16px] font-extrabold transition",
+      "flex-1 rounded-full px-4 py-3 text-[15px] sm:text-[16px] font-extrabold transition",
       active
         ? "bg-[#08a35c] text-white shadow-[0_6px_18px_rgba(8,163,92,0.18)]"
         : "bg-[#eef8f1] text-[#0d6b44] ring-1 ring-[#bde7c8] hover:bg-[#e4f4e8]",
     ].join(" ");
 
-  const sebouInline =
+  const sectionCard =
     "mt-3 rounded-[20px] border border-[#bde7c8] bg-white px-4 py-3 shadow-[0_8px_20px_rgba(27,54,39,0.03)]";
-  const sebouGrid = "grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-4 lg:gap-12";
-  const label = "text-[13px] font-extrabold text-gray-900 whitespace-nowrap";
-  const btnBar = "flex items-center gap-2 flex-wrap";
+
+  const miniLabel = "text-[13px] font-extrabold text-gray-900";
+  const optionWrap = "flex items-center gap-2 flex-wrap";
   const smallBtn = (active: boolean) =>
     [
-      "min-w-[84px] rounded-full px-3 py-1.5 text-[13px] font-extrabold transition",
+      "min-w-[80px] rounded-full px-3 py-2 text-[13px] font-extrabold transition",
       active ? "bg-[#08a35c] text-white" : "bg-white text-gray-900 ring-1 ring-black/10 hover:bg-gray-50",
     ].join(" ");
 
-  const list = "mt-3 grid gap-3";
-  const row =
-    "grid grid-cols-[minmax(0,1.9fr)_minmax(0,1.2fr)_170px_100px_110px] items-center gap-4 rounded-[22px] border border-[#bde7c8] bg-white px-6 py-3";
-  const rowActive = "!bg-[#dff0e5] !border-[#8ec8a1]";
-  const cellName = "truncate text-[16px] font-extrabold text-gray-900";
-  const cellCategory = "truncate text-[13px] font-extrabold text-[#0b8b52]";
-  const price = "text-center text-[16px] font-extrabold text-[#0b7c4d]";
-  const addBtn =
-    "rounded-full px-5 py-2 text-[14px] font-extrabold text-[#0b7c4d] ring-1 ring-[#78d3a0] bg-white hover:bg-[#f5fbf7] transition";
-  const qtyWrap = "flex items-center justify-center gap-3";
+  const itemCard =
+    "rounded-[22px] border border-[#bde7c8] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(27,54,39,0.03)]";
+  const itemCardActive = "bg-[#dff0e5] border-[#8ec8a1]";
+  const itemName = "text-[16px] font-extrabold text-gray-900 leading-snug";
+  const itemCategory = "mt-1 text-[12px] font-extrabold text-[#0b8b52]";
+  const itemPrice = "text-[16px] font-extrabold text-[#0b7c4d]";
+  const addFoodBtn =
+    "rounded-full px-4 py-2 text-[13px] font-extrabold text-[#0b7c4d] ring-1 ring-[#78d3a0] bg-white hover:bg-[#f5fbf7] transition";
+  const qtyWrap = "flex items-center gap-3";
   const qtyBtn =
     "h-10 w-10 rounded-[16px] bg-white text-[22px] font-extrabold text-[#0b7c4d] ring-1 ring-[#78d3a0] hover:bg-[#f5fbf7] transition";
-  const qtyNum = "min-w-[16px] text-center text-[16px] font-extrabold text-gray-900";
+  const qtyNum = "min-w-[18px] text-center text-[16px] font-extrabold text-gray-900";
   const specText =
-    "text-center text-[13px] font-extrabold text-[#0b7c4d] hover:underline underline-offset-4 whitespace-nowrap";
+    "text-[12px] sm:text-[13px] font-extrabold text-[#0b7c4d] hover:underline underline-offset-4 whitespace-nowrap";
 
-  const bottomFixed = "fixed left-0 right-0 bottom-0 z-30 bg-white/95 backdrop-blur";
-  const bottomInner = "mx-auto w-full max-w-[1220px] px-5 pb-4 pt-2";
+  const bottomFixed = "fixed left-0 right-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-black/5";
+  const bottomInner = "mx-auto w-full max-w-[1220px] px-3 sm:px-4 md:px-5 pb-4 pt-3";
   const btnCancel =
-    "flex-1 rounded-full bg-white px-5 py-3 text-[16px] font-extrabold text-gray-900 ring-1 ring-black/10 hover:bg-gray-50 transition";
+    "flex-1 rounded-full bg-white px-4 py-3 text-[15px] sm:text-[16px] font-extrabold text-gray-900 ring-1 ring-black/10 hover:bg-gray-50 transition";
   const btnPay =
-    "flex-1 rounded-full bg-[#08a35c] px-5 py-3 text-[16px] font-extrabold text-white shadow-sm hover:brightness-95 transition disabled:opacity-40";
+    "flex-1 rounded-full bg-[#08a35c] px-4 py-3 text-[15px] sm:text-[16px] font-extrabold text-white shadow-sm hover:brightness-95 transition disabled:opacity-40";
 
   const modalCard =
-    "w-full max-w-[520px] rounded-[28px] bg-white p-5 shadow-[0_22px_70px_rgba(0,0,0,0.2)] ring-1 ring-black/10";
+    "w-full max-w-[520px] rounded-[28px] bg-white p-4 sm:p-5 shadow-[0_22px_70px_rgba(0,0,0,0.2)] ring-1 ring-black/10";
   const modalBtn =
-    "rounded-full bg-white px-4 py-2 text-[14px] font-extrabold text-gray-800 ring-1 ring-black/10 hover:bg-gray-50";
+    "rounded-full bg-white px-4 py-2 text-[13px] sm:text-[14px] font-extrabold text-gray-800 ring-1 ring-black/10 hover:bg-gray-50";
 
   const payBig = (active: boolean) =>
     [
-      "rounded-full px-4 py-3 text-[16px] font-extrabold transition",
+      "rounded-full px-4 py-3 text-[15px] sm:text-[16px] font-extrabold transition",
       active ? "bg-[#08a35c] text-white" : "bg-[#eef8f1] text-[#0d6b44] ring-1 ring-[#bde7c8] hover:bg-[#e4f4e8]",
     ].join(" ");
 
@@ -770,16 +769,16 @@ export default function PokladnaPage() {
     "text-center text-[14px] font-extrabold text-[#0b7c4d] hover:underline underline-offset-4";
 
   return (
-    <div className={page}>
+    <div className={shell}>
       <div className={wrap}>
         <div className={topCard}>
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="text-[24px] font-extrabold tracking-tight text-gray-900">Pokladna</div>
               <div className="mt-1 text-[14px] font-extrabold text-[#0b7c4d]">{todayLabel}</div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button type="button" className={whiteBtn} onClick={() => setEditOpen(true)}>
                 Upravit jídla
               </button>
@@ -800,11 +799,11 @@ export default function PokladnaPage() {
         </div>
 
         {mode === "sebou" && (
-          <div className={sebouInline}>
-            <div className={sebouGrid}>
-              <div className="flex items-center gap-3">
-                <div className={label}>Doprava</div>
-                <div className={btnBar}>
+          <div className={sectionCard}>
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <div className={miniLabel}>Doprava</div>
+                <div className={optionWrap}>
                   <button type="button" className={smallBtn(delivery === "ano")} onClick={() => setDelivery("ano")}>
                     Ano
                   </button>
@@ -814,13 +813,17 @@ export default function PokladnaPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className={label}>Balení</div>
-                <div className={btnBar}>
+              <div className="grid gap-2">
+                <div className={miniLabel}>Balení</div>
+                <div className={optionWrap}>
                   <button type="button" className={smallBtn(packaging === "plast")} onClick={() => setPackaging("plast")}>
                     Plast
                   </button>
-                  <button type="button" className={smallBtn(packaging === "rekrabicka")} onClick={() => setPackaging("rekrabicka")}>
+                  <button
+                    type="button"
+                    className={smallBtn(packaging === "rekrabicka")}
+                    onClick={() => setPackaging("rekrabicka")}
+                  >
                     Rekr
                   </button>
                 </div>
@@ -829,7 +832,7 @@ export default function PokladnaPage() {
           </div>
         )}
 
-        <div className={list}>
+        <div className="mt-3 grid gap-3">
           {loadingItems ? (
             <div className="rounded-[22px] border border-[#bde7c8] bg-white px-5 py-4 text-sm font-semibold text-gray-600">
               Načítám dnešní menu…
@@ -848,38 +851,41 @@ export default function PokladnaPage() {
               const unit = specialPrice[it.id] ?? it.price;
 
               return (
-                <div key={it.id} className={`${row} ${q > 0 ? rowActive : ""}`}>
+                <div key={it.id} className={`${itemCard} ${q > 0 ? itemCardActive : ""}`}>
                   <button
                     type="button"
-                    className="min-w-0 text-left"
+                    className="w-full text-left"
                     onClick={() => (q === 0 ? setToOne(it.id) : inc(it.id))}
                   >
-                    <div className={cellName}>{it.name}</div>
+                    <div className={itemName}>{it.name}</div>
                   </button>
 
-                  <div className={cellCategory}>{it.category}</div>
-
-                  <div className="flex justify-center">
-                    {q === 0 ? (
-                      <button type="button" className={addBtn} onClick={() => setToOne(it.id)}>
-                        Přidat
-                      </button>
-                    ) : (
-                      <div className={qtyWrap}>
-                        <button type="button" className={qtyBtn} onClick={() => dec(it.id)}>
-                          −
-                        </button>
-                        <div className={qtyNum}>{q}</div>
-                        <button type="button" className={qtyBtn} onClick={() => inc(it.id)}>
-                          +
-                        </button>
-                      </div>
-                    )}
+                  <div className="mt-1 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className={itemCategory}>{it.category}</div>
+                    </div>
+                    <div className={`${itemPrice} shrink-0`}>{czk(unit)}</div>
                   </div>
 
-                  <div className={price}>{czk(unit)}</div>
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      {q === 0 ? (
+                        <button type="button" className={addFoodBtn} onClick={() => setToOne(it.id)}>
+                          Přidat
+                        </button>
+                      ) : (
+                        <div className={qtyWrap}>
+                          <button type="button" className={qtyBtn} onClick={() => dec(it.id)}>
+                            −
+                          </button>
+                          <div className={qtyNum}>{q}</div>
+                          <button type="button" className={qtyBtn} onClick={() => inc(it.id)}>
+                            +
+                          </button>
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="flex justify-center">
                     <button type="button" className={specText} onClick={() => openKeypadFor(it.id)}>
                       {specialPrice[it.id] == null ? "Spec. cena" : `Spec: ${czk(specialPrice[it.id]!)}`}
                     </button>
@@ -893,7 +899,7 @@ export default function PokladnaPage() {
 
       <div className={bottomFixed}>
         <div className={bottomInner}>
-          <div className="flex gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <button type="button" className={btnCancel} onClick={resetOrder}>
               Zpět / Zrušit
             </button>
@@ -907,9 +913,9 @@ export default function PokladnaPage() {
       {editOpen && (
         <>
           <button type="button" className="fixed inset-0 z-40 bg-black/40" onClick={() => setEditOpen(false)} />
-          <div className="fixed inset-0 z-50 grid place-items-center px-4">
-            <div className="w-full max-w-[760px] rounded-[28px] bg-white p-5 shadow-xl ring-1 ring-black/10">
-              <div className="flex items-center justify-between gap-3">
+          <div className="fixed inset-0 z-50 overflow-auto px-3 py-4 sm:grid sm:place-items-center">
+            <div className="mx-auto w-full max-w-[760px] rounded-[28px] bg-white p-4 sm:p-5 shadow-xl ring-1 ring-black/10">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-[20px] font-extrabold text-gray-900">Upravit jídla</div>
                   <div className="mt-1 text-[13px] font-semibold text-gray-500">
@@ -924,7 +930,7 @@ export default function PokladnaPage() {
               <div className="mt-4 max-h-[34vh] overflow-auto rounded-[22px] border border-[#bde7c8]">
                 <div className="divide-y divide-[#dff2e5]">
                   {localItems.map((it) => (
-                    <div key={it.id} className="grid grid-cols-[1fr_220px_120px_80px] items-center gap-2 px-3 py-3">
+                    <div key={it.id} className="grid gap-2 px-3 py-3 md:grid-cols-[1fr_220px_120px_80px] md:items-center">
                       <input
                         value={it.name}
                         onChange={(e) => renameLocalItem(it.id, e.target.value)}
@@ -1033,7 +1039,7 @@ export default function PokladnaPage() {
       {paymentOpen && (
         <>
           <button type="button" className="fixed inset-0 z-40 bg-black/40" onClick={() => setPaymentOpen(false)} />
-          <div className="fixed inset-0 z-50 grid place-items-center px-4">
+          <div className="fixed inset-0 z-50 overflow-auto px-3 py-4 sm:grid sm:place-items-center">
             <div className={modalCard}>
               <div className="flex items-center justify-between gap-3">
                 <div className="text-[20px] font-extrabold text-gray-900">Platba</div>
@@ -1044,10 +1050,10 @@ export default function PokladnaPage() {
 
               <div className="mt-4 rounded-[22px] bg-[#eef8f1] p-5 ring-1 ring-[#bde7c8]">
                 <div className="text-xs font-bold text-gray-500">Celkem k úhradě</div>
-                <div className="mt-1 text-[34px] font-extrabold text-[#0b7c4d]">{czk(total)}</div>
+                <div className="mt-1 text-[30px] sm:text-[34px] font-extrabold text-[#0b7c4d]">{czk(total)}</div>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button type="button" className={payBig(paymentMethod === "cash")} onClick={() => setPaymentMethod("cash")}>
                   Hotově
                 </button>
@@ -1112,7 +1118,7 @@ export default function PokladnaPage() {
                 </div>
               )}
 
-              <div className="mt-5 flex gap-3">
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button type="button" className={btnCancel} onClick={() => setPaymentOpen(false)}>
                   Zpět
                 </button>
@@ -1128,8 +1134,8 @@ export default function PokladnaPage() {
       {customerPickerOpen && (
         <>
           <button type="button" className="fixed inset-0 z-[60] bg-black/40" onClick={() => setCustomerPickerOpen(false)} />
-          <div className="fixed inset-0 z-[70] grid place-items-center px-4">
-            <div className="w-full max-w-[620px] rounded-[28px] bg-white p-5 shadow-xl ring-1 ring-black/10">
+          <div className="fixed inset-0 z-[70] overflow-auto px-3 py-4 sm:grid sm:place-items-center">
+            <div className="mx-auto w-full max-w-[620px] rounded-[28px] bg-white p-4 sm:p-5 shadow-xl ring-1 ring-black/10">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-[20px] font-extrabold text-gray-900">Výběr zákazníka</div>
@@ -1189,8 +1195,8 @@ export default function PokladnaPage() {
             }}
           />
 
-          <div className="fixed inset-0 z-[90] grid place-items-center px-4">
-            <div className="w-full max-w-[520px] rounded-[28px] bg-white p-5 shadow-[0_22px_70px_rgba(0,0,0,0.2)] ring-1 ring-black/10">
+          <div className="fixed inset-0 z-[90] overflow-auto px-3 py-4 sm:grid sm:place-items-center">
+            <div className="mx-auto w-full max-w-[520px] rounded-[28px] bg-white p-4 sm:p-5 shadow-[0_22px_70px_rgba(0,0,0,0.2)] ring-1 ring-black/10">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-[20px] font-extrabold text-gray-900">Dobití kreditu</div>
@@ -1240,7 +1246,7 @@ export default function PokladnaPage() {
                 ))}
               </div>
 
-              <div className="mt-5 flex gap-3">
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button
                   type="button"
                   className={btnCancel}
@@ -1267,8 +1273,8 @@ export default function PokladnaPage() {
       {keypadOpen && (
         <>
           <button type="button" className="fixed inset-0 z-40 bg-black/40" onClick={() => setKeypadOpen(false)} />
-          <div className="fixed inset-0 z-50 grid place-items-center px-4">
-            <div className="w-full max-w-[420px] rounded-[26px] bg-white p-5 shadow-xl ring-1 ring-black/10">
+          <div className="fixed inset-0 z-50 overflow-auto px-3 py-4 sm:grid sm:place-items-center">
+            <div className="mx-auto w-full max-w-[420px] rounded-[26px] bg-white p-4 sm:p-5 shadow-xl ring-1 ring-black/10">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-[18px] font-extrabold text-gray-900">Speciální cena</div>
                 <button type="button" className={modalBtn} onClick={() => setKeypadOpen(false)}>
@@ -1297,7 +1303,7 @@ export default function PokladnaPage() {
                 ))}
               </div>
 
-              <div className="mt-4 flex gap-3">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button type="button" className={btnPay} onClick={keypadApply}>
                   Potvrdit
                 </button>
