@@ -275,12 +275,13 @@ export type PokladnaViewProps = {
   customersLoading: boolean;
   setSelectedCustomer: (v: CustomerRow | null) => void;
 
-  creditTopupOpen: boolean;
-  setCreditTopupOpen: (v: boolean) => void;
-  creditTopupValue: string;
-  creditTopupSaving: boolean;
-  topupKeypadPress: (ch: string) => void;
-  confirmCreditTopup: () => void | Promise<void>;
+creditTopupOpen: boolean;
+setCreditTopupOpen: (v: boolean) => void;
+creditTopupValue: string;
+setCreditTopupValue: (v: string) => void;
+creditTopupSaving: boolean;
+topupKeypadPress: (ch: string) => void;
+confirmCreditTopup: () => void | Promise<void>;
 
   keypadOpen: boolean;
   setKeypadOpen: (v: boolean) => void;
@@ -858,12 +859,13 @@ export default function PokladnaPage() {
     customersLoading,
     setSelectedCustomer,
 
-    creditTopupOpen,
-    setCreditTopupOpen,
-    creditTopupValue,
-    creditTopupSaving,
-    topupKeypadPress,
-    confirmCreditTopup,
+creditTopupOpen,
+setCreditTopupOpen,
+creditTopupValue,
+setCreditTopupValue,
+creditTopupSaving,
+topupKeypadPress,
+confirmCreditTopup,
 
     keypadOpen,
     setKeypadOpen,

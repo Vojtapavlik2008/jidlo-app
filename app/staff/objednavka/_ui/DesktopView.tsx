@@ -60,6 +60,7 @@ export default function DesktopView({
   customersLoading,
   setSelectedCustomer,
   creditTopupOpen,
+setCreditTopupValue,
   setCreditTopupOpen,
   creditTopupValue,
   creditTopupSaving,

@@ -60,6 +60,7 @@ export default function MobileView({
   customersLoading,
   setSelectedCustomer,
   creditTopupOpen,
+setCreditTopupValue,
   setCreditTopupOpen,
   creditTopupValue,
   creditTopupSaving,
