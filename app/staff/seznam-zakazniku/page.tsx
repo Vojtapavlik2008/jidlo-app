@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import DesktopView from "./DesktopView";
+import MobileView from "./MobileView";
 
 type ProfileRow = {
   id: string;
@@ -29,20 +31,6 @@ const cls = (...a: Array<string | false | undefined | null>) => a.filter(Boolean
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
-}
-
-function PencilIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-      <path d="M12 20h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path
-        d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 function XIcon({ className = "" }: { className?: string }) {
@@ -107,22 +95,6 @@ function getOrderItemsText(cart: any): string[] {
 
   return [];
 }
-
-function getOrderItemsTextFromItems(cart: any): string[] {
-  const items = Array.isArray(cart?.items) ? cart.items : [];
-
-  return items
-    .map((x: any) => {
-      const qty = Number(x?.qty ?? 0);
-      const name = String(x?.name ?? x?.nazev ?? "").trim();
-      const day = String(x?.day ?? x?.datum ?? "").trim();
-
-      if (!name) return null;
-      return `${qty > 0 ? `${qty}x ` : ""}${name}${day ? ` • ${day}` : ""}`;
-    })
-    .filter((x: string | null): x is string => Boolean(x));
-}
-
 
 export default function StaffCustomersPage() {
   const router = useRouter();
@@ -427,230 +399,46 @@ export default function StaffCustomersPage() {
 
   const pageBg = "bg-[#f6f8f6]";
   const shell = "mx-auto max-w-[1260px] px-4 py-6";
-  const pillBtn =
-    "inline-flex items-center justify-center rounded-full border transition font-bold";
-  const pillWhite =
-    "border-gray-200 bg-white text-gray-800 hover:bg-gray-50";
-  const pillGreen =
-    "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700";
 
   return (
     <div className={cls("min-h-screen", pageBg)}>
       <div className={shell}>
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <div className="text-[34px] font-extrabold leading-none tracking-tight text-[#0b2149]">
-              Seznam zákazníků
-            </div>
-            <div className="mt-2 text-[14px] font-semibold text-emerald-700">
-              Přepni mezi plátícími / zálohovanými / všemi
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {loading ? (
-              <span className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-500">
-                Načítám…
-              </span>
-            ) : (
-              <span className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-500">
-                {rows.length} záznamů
-              </span>
-            )}
-
-            <button
-              type="button"
-              onClick={() => router.push("/staff")}
-              className={cls(pillBtn, pillWhite, "h-11 px-5 text-[15px]")}
-            >
-              Rozcestník
-            </button>
-          </div>
+        <div className="hidden md:block">
+          <DesktopView
+            loading={loading}
+            rowsCount={rows.length}
+            tab={tab}
+            setTab={setTab}
+            search={search}
+            setSearch={setSearch}
+            filtered={filtered}
+            platiciCount={platiciCount}
+            zalohovaniCount={zalohovaniCount}
+            vsichniCount={vsichniCount}
+            msg={msg}
+            onBack={() => router.push("/staff")}
+            onOpenTopUp={openTopUpModal}
+            onOpenEdit={openEdit}
+          />
         </div>
 
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setTab("platici")}
-            className={cls(
-              pillBtn,
-              "h-10 px-4 text-[14px]",
-              tab === "platici" ? pillGreen : pillWhite
-            )}
-          >
-            Plátící
-            <span
-              className={cls(
-                "ml-2 rounded-full px-2 py-0.5 text-[11px] font-extrabold",
-                tab === "platici" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
-              )}
-            >
-              {platiciCount}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setTab("zalohovani")}
-            className={cls(
-              pillBtn,
-              "h-10 px-4 text-[14px]",
-              tab === "zalohovani" ? pillGreen : pillWhite
-            )}
-          >
-            Zálohovaní
-            <span
-              className={cls(
-                "ml-2 rounded-full px-2 py-0.5 text-[11px] font-extrabold",
-                tab === "zalohovani" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
-              )}
-            >
-              {zalohovaniCount}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setTab("vsichni")}
-            className={cls(
-              pillBtn,
-              "h-10 px-4 text-[14px]",
-              tab === "vsichni" ? pillGreen : pillWhite
-            )}
-          >
-            Všichni
-            <span
-              className={cls(
-                "ml-2 rounded-full px-2 py-0.5 text-[11px] font-extrabold",
-                tab === "vsichni" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"
-              )}
-            >
-              {vsichniCount}
-            </span>
-          </button>
-
-          <div className="min-w-[260px] max-w-[380px] flex-1">
-            <div className="relative">
-              <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Hledat jméno nebo e-mail"
-                className="h-10 w-full rounded-full border border-gray-200 bg-white pl-11 pr-4 text-[14px] font-medium text-gray-800 outline-none transition focus:border-emerald-300"
-              />
-            </div>
-          </div>
-
-          <div className="ml-auto">
-            <button
-              type="button"
-              onClick={openTopUpModal}
-              className="inline-flex h-10 items-center justify-center rounded-full border border-emerald-300 bg-white px-4 text-[14px] font-bold text-emerald-700 transition hover:bg-emerald-50"
-            >
-              Dobít kredit
-            </button>
-          </div>
-        </div>
-
-        {msg ? (
-          <div className="mb-4 rounded-[20px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {msg}
-          </div>
-        ) : null}
-
-        <div className="overflow-hidden rounded-[28px] border border-emerald-200 bg-white shadow-sm">
-          <div className="hidden gap-3 border-b border-emerald-100 bg-white px-6 py-3 text-xs font-extrabold uppercase tracking-wide text-gray-400 md:grid md:grid-cols-[80px_1.2fr_1.6fr_160px_1.2fr_140px_80px]">
-            <div>ID</div>
-            <div>Jméno</div>
-            <div>Adresa</div>
-            <div className="text-right">Telefon</div>
-            <div>Email</div>
-            <div className="text-right">Kredit</div>
-            <div className="text-right">Upr.</div>
-          </div>
-
-          <div>
-            {loading ? (
-              <div className="px-6 py-6 text-sm text-gray-600">Načítám…</div>
-            ) : filtered.length === 0 ? (
-              <div className="px-6 py-6 text-sm text-gray-600">Nic tu není.</div>
-            ) : (
-              filtered.map((r, i) => {
-                const k = round2(Number(r.kredit ?? 0));
-                const zebra = i % 2 === 0 ? "bg-white" : "bg-emerald-50/50";
-
-                return (
-                  <div
-                    key={r.id}
-                    onClick={() => openEdit(r)}
-                    className={cls(
-                      "cursor-pointer px-6 py-4 md:grid md:grid-cols-[80px_1.2fr_1.6fr_160px_1.2fr_140px_80px] md:gap-3",
-                      "border-b border-emerald-100 last:border-b-0",
-                      zebra,
-                      "hover:bg-emerald-50/80 transition"
-                    )}
-                  >
-                    <div className="text-sm font-extrabold text-[#0b2149]">
-                      {String(i + 1).padStart(2, "0")}
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="truncate text-[15px] font-bold text-gray-900">{r.full_name || "—"}</div>
-                      <div className="mt-1 space-y-1 text-xs text-gray-600 md:hidden">
-                        <div className="truncate">{r.address || "—"}</div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="truncate">{r.email || "—"}</span>
-                          <span className="font-semibold text-gray-900">{r.phone || "—"}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="hidden min-w-0 md:block">
-                      <div className="truncate text-[15px] text-gray-800">{r.address || "—"}</div>
-                    </div>
-
-                    <div className="hidden text-right md:block">
-                      <div className="text-[15px] font-bold text-gray-900">{r.phone || "—"}</div>
-                    </div>
-
-                    <div className="hidden min-w-0 md:block">
-                      <div className="truncate text-[15px] text-gray-700">{r.email || "—"}</div>
-                    </div>
-
-                    <div className="mt-3 text-right md:mt-0">
-                      <span
-                        className={cls(
-                          "inline-flex items-center rounded-full px-3 py-1 text-xs font-extrabold border",
-                          k > 0
-                            ? "border-emerald-200 bg-emerald-100 text-emerald-800"
-                            : k < 0
-                            ? "border-red-200 bg-red-100 text-red-800"
-                            : "border-gray-200 bg-gray-100 text-gray-700"
-                        )}
-                      >
-                        {k > 0 ? "+" : ""}
-                        {k} Kč
-                      </span>
-                    </div>
-
-                    <div className="mt-3 text-right md:mt-0">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEdit(r);
-                        }}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 transition hover:bg-gray-50"
-                        title="Upravit"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+        <div className="md:hidden">
+          <MobileView
+            loading={loading}
+            rowsCount={rows.length}
+            tab={tab}
+            setTab={setTab}
+            search={search}
+            setSearch={setSearch}
+            filtered={filtered}
+            platiciCount={platiciCount}
+            zalohovaniCount={zalohovaniCount}
+            vsichniCount={vsichniCount}
+            msg={msg}
+            onBack={() => router.push("/staff")}
+            onOpenTopUp={openTopUpModal}
+            onOpenEdit={openEdit}
+          />
         </div>
       </div>
 
@@ -663,21 +451,21 @@ export default function StaffCustomersPage() {
             aria-label="Zavřít"
           />
 
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-4">
             {!creditOpen ? (
-              <div className="max-h-[92vh] w-full max-w-[760px] overflow-auto rounded-[30px] border border-gray-200 bg-white p-5 shadow-[0_30px_80px_rgba(0,0,0,0.30)]">
+              <div className="max-h-[92vh] w-full max-w-[760px] overflow-auto rounded-[26px] md:rounded-[30px] border border-gray-200 bg-white p-4 md:p-5 shadow-[0_30px_80px_rgba(0,0,0,0.30)]">
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div>
-                    <div className="text-[18px] font-extrabold text-[#182033]">
+                    <div className="text-[17px] md:text-[18px] font-extrabold text-[#182033]">
                       Upravit zákazníka
                     </div>
-                    <div className="text-[14px] text-gray-500">Uprav údaje a ulož.</div>
+                    <div className="text-[13px] md:text-[14px] text-gray-500">Uprav údaje a ulož.</div>
                   </div>
 
                   <button
                     type="button"
                     onClick={closeEdit}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 transition hover:bg-gray-50"
+                    className="inline-flex h-10 w-10 md:h-11 md:w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 transition hover:bg-gray-50"
                     title="Zavřít"
                   >
                     <XIcon className="h-5 w-5" />
@@ -718,7 +506,7 @@ export default function StaffCustomersPage() {
                   </Field>
 
                   <Field label="Kredit (Kč)">
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
                       <input
                         value={fKredit}
                         onChange={(e) => setFKredit(e.target.value)}
@@ -740,10 +528,10 @@ export default function StaffCustomersPage() {
                   </Field>
                 </div>
 
-                <div className="mt-6 rounded-[24px] border border-emerald-200 bg-[#f5fbf7] p-4">
+                <div className="mt-6 rounded-[22px] md:rounded-[24px] border border-emerald-200 bg-[#f5fbf7] p-4">
                   <div className="mb-2 flex items-center gap-2">
                     <CalendarIcon className="h-5 w-5 text-[#0b7c4d]" />
-                    <div className="text-[18px] font-extrabold text-[#182033]">Objednávky</div>
+                    <div className="text-[17px] md:text-[18px] font-extrabold text-[#182033]">Objednávky</div>
                   </div>
 
                   {ordersLoading ? (
@@ -790,12 +578,12 @@ export default function StaffCustomersPage() {
                   )}
                 </div>
 
-                <div className="mt-5 flex items-center justify-between gap-3">
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <button
                     type="button"
                     disabled={busy}
                     onClick={() => setConfirmDeleteOpen(true)}
-                    className="text-sm font-bold text-red-600 transition hover:text-red-700 disabled:text-gray-400"
+                    className="text-left text-sm font-bold text-red-600 transition hover:text-red-700 disabled:text-gray-400"
                   >
                     Smazat zákazníka
                   </button>
@@ -804,7 +592,7 @@ export default function StaffCustomersPage() {
                     <button
                       type="button"
                       onClick={closeEdit}
-                      className="rounded-full border border-gray-200 bg-white px-5 py-3 text-sm font-bold text-gray-700 hover:bg-gray-50"
+                      className="flex-1 rounded-full border border-gray-200 bg-white px-5 py-3 text-sm font-bold text-gray-700 hover:bg-gray-50"
                     >
                       Zrušit
                     </button>
@@ -813,7 +601,7 @@ export default function StaffCustomersPage() {
                       disabled={busy}
                       onClick={saveEdit}
                       className={cls(
-                        "rounded-full px-5 py-3 text-sm font-extrabold text-white",
+                        "flex-1 rounded-full px-5 py-3 text-sm font-extrabold text-white",
                         busy ? "bg-emerald-400" : "bg-emerald-600 hover:bg-emerald-700"
                       )}
                     >
@@ -823,17 +611,17 @@ export default function StaffCustomersPage() {
                 </div>
               </div>
             ) : (
-              <div className="w-full max-w-[560px] rounded-[30px] border border-gray-200 bg-white p-5 shadow-[0_30px_80px_rgba(0,0,0,0.30)]">
+              <div className="w-full max-w-[560px] rounded-[26px] md:rounded-[30px] border border-gray-200 bg-white p-4 md:p-5 shadow-[0_30px_80px_rgba(0,0,0,0.30)]">
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div>
-                    <div className="text-[18px] font-extrabold text-[#182033]">Dobití kreditu</div>
-                    <div className="text-[14px] text-gray-500">Připiš kredit vybranému zákazníkovi.</div>
+                    <div className="text-[17px] md:text-[18px] font-extrabold text-[#182033]">Dobití kreditu</div>
+                    <div className="text-[13px] md:text-[14px] text-gray-500">Připiš kredit vybranému zákazníkovi.</div>
                   </div>
 
                   <button
                     type="button"
                     onClick={() => setCreditOpen(false)}
-                    className="inline-flex h-11 items-center justify-center rounded-full border border-gray-200 bg-white px-5 text-sm font-bold text-gray-700 transition hover:bg-gray-50"
+                    className="inline-flex h-10 md:h-11 items-center justify-center rounded-full border border-gray-200 bg-white px-4 md:px-5 text-sm font-bold text-gray-700 transition hover:bg-gray-50"
                   >
                     Zavřít
                   </button>
@@ -890,7 +678,7 @@ export default function StaffCustomersPage() {
 
                   <div className="rounded-[24px] border border-gray-200 bg-gray-50 px-4 py-4">
                     <div className="text-[13px] font-bold text-gray-500">Částka k dobití</div>
-                    <div className="mt-3 text-[34px] font-extrabold leading-none text-[#182033]">
+                    <div className="mt-3 text-[30px] md:text-[34px] font-extrabold leading-none text-[#182033]">
                       {creditAmount ? `${creditAmount} Kč` : "—"}
                     </div>
                   </div>
