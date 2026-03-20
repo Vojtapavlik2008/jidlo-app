@@ -2,10 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useIsMobile } from "@/app/components/hooks/useIsMobile";
+import DesktopView from "./_ui/DesktopView";
+import MobileView from "./_ui/MobileView";
 
 type Mode = "tady" | "sebou";
 type DeliveryChoice = "ano" | "ne";
 type PackagingChoice = "plast" | "rekrabicka";
+type PaymentMethod = "cash" | "card" | "credit";
 
 type TodayItem = {
   id: string;
@@ -23,8 +27,6 @@ type KeypadTarget = {
   itemId: string;
   current: number | null;
 };
-
-type PaymentMethod = "cash" | "card" | "credit";
 
 type CustomerRow = {
   id: string;
@@ -205,8 +207,94 @@ async function fetchCustomers(q: string): Promise<CustomerRow[]> {
   return (j?.data ?? []) as CustomerRow[];
 }
 
+export type PokladnaViewProps = {
+  todayLabel: string;
+  mode: Mode;
+  setMode: (v: Mode) => void;
+  delivery: DeliveryChoice;
+  setDelivery: (v: DeliveryChoice) => void;
+  packaging: PackagingChoice;
+  setPackaging: (v: PackagingChoice) => void;
+
+  items: EditableItem[];
+  qty: Record<string, number>;
+  specialPrice: Record<string, number | null>;
+  loadingItems: boolean;
+  loadErr: string | null;
+
+  setToOne: (id: string) => void;
+  inc: (id: string) => void;
+  dec: (id: string) => void;
+  openKeypadFor: (id: string) => void;
+
+  total: number;
+  totalCount: number;
+  resetOrder: () => void;
+  openPayment: () => void;
+
+  editOpen: boolean;
+  setEditOpen: (v: boolean) => void;
+
+  localItems: EditableItem[];
+  renameLocalItem: (id: string, name: string) => void;
+  changeLocalPrice: (id: string, raw: string) => void;
+  removeLocalItem: (id: string) => void | Promise<void>;
+
+  foodSearchQuery: string;
+  setFoodSearchQuery: (v: string) => void;
+  foodSearchOpen: boolean;
+  setFoodSearchOpen: (v: boolean) => void;
+  filteredFoods: StaffFoodRow[];
+  addFoodFromDatabase: (food: StaffFoodRow) => void | Promise<void>;
+
+  manualFoodName: string;
+  setManualFoodName: (v: string) => void;
+  manualFoodCategory: string;
+  setManualFoodCategory: (v: string) => void;
+  manualFoodPrice: string;
+  setManualFoodPrice: (v: string) => void;
+  addManualFood: () => void;
+
+  paymentOpen: boolean;
+  setPaymentOpen: (v: boolean) => void;
+  paymentMethod: PaymentMethod;
+  setPaymentMethod: (v: PaymentMethod) => void;
+  savingOrder: boolean;
+  canConfirmPayment: boolean;
+  confirmPayment: () => void | Promise<void>;
+
+  selectedCustomer: CustomerRow | null;
+  selectedCustomerCredit: number;
+  creditEnough: boolean;
+
+  customerPickerOpen: boolean;
+  setCustomerPickerOpen: (v: boolean) => void;
+  customerQuery: string;
+  setCustomerQuery: (v: string) => void;
+  customers: CustomerRow[];
+  customersLoading: boolean;
+  setSelectedCustomer: (v: CustomerRow | null) => void;
+
+  creditTopupOpen: boolean;
+  setCreditTopupOpen: (v: boolean) => void;
+  creditTopupValue: string;
+  creditTopupSaving: boolean;
+  topupKeypadPress: (ch: string) => void;
+  confirmCreditTopup: () => void | Promise<void>;
+
+  keypadOpen: boolean;
+  setKeypadOpen: (v: boolean) => void;
+  keypad: { target: KeypadTarget | null; value: string };
+  keypadPress: (ch: string) => void;
+  keypadApply: () => void;
+
+  router: ReturnType<typeof useRouter>;
+  czk: (n: number) => string;
+};
+
 export default function PokladnaPage() {
   const router = useRouter();
+  const isMobile = useIsMobile();
 
   const todayISO = useMemo(() => getUiTodayISO(), []);
   const todayLabel = useMemo(() => prettyDayLong(todayISO), [todayISO]);
@@ -702,619 +790,90 @@ export default function PokladnaPage() {
     }
   }
 
-  const shell = "min-h-screen bg-white";
-  const wrap = "mx-auto w-full max-w-[1220px] px-3 sm:px-4 md:px-5 pt-3 pb-36";
+  const viewProps: PokladnaViewProps = {
+    todayLabel,
+    mode,
+    setMode,
+    delivery,
+    setDelivery,
+    packaging,
+    setPackaging,
 
-  const topCard =
-    "rounded-[24px] border border-[#bde7c8] bg-white p-4 shadow-[0_10px_26px_rgba(27,54,39,0.04)]";
+    items,
+    qty,
+    specialPrice,
+    loadingItems,
+    loadErr,
 
-  const whiteBtn =
-    "rounded-full bg-white px-4 py-2 text-[13px] sm:text-[14px] font-extrabold text-gray-800 ring-1 ring-black/10 hover:bg-gray-50 transition";
-  const greenBtn =
-    "rounded-full bg-[#08a35c] px-4 py-2 text-[13px] sm:text-[14px] font-extrabold text-white shadow-sm hover:brightness-95 transition";
+    setToOne,
+    inc,
+    dec,
+    openKeypadFor,
 
-  const switchBtn = (active: boolean) =>
-    [
-      "flex-1 rounded-full px-4 py-3 text-[15px] sm:text-[16px] font-extrabold transition",
-      active
-        ? "bg-[#08a35c] text-white shadow-[0_6px_18px_rgba(8,163,92,0.18)]"
-        : "bg-[#eef8f1] text-[#0d6b44] ring-1 ring-[#bde7c8] hover:bg-[#e4f4e8]",
-    ].join(" ");
+    total,
+    totalCount,
+    resetOrder,
+    openPayment: () => setPaymentOpen(true),
 
-  const sectionCard =
-    "mt-3 rounded-[20px] border border-[#bde7c8] bg-white px-4 py-3 shadow-[0_8px_20px_rgba(27,54,39,0.03)]";
+    editOpen,
+    setEditOpen,
 
-  const miniLabel = "text-[13px] font-extrabold text-gray-900";
-  const optionWrap = "flex items-center gap-2 flex-wrap";
-  const smallBtn = (active: boolean) =>
-    [
-      "min-w-[80px] rounded-full px-3 py-2 text-[13px] font-extrabold transition",
-      active ? "bg-[#08a35c] text-white" : "bg-white text-gray-900 ring-1 ring-black/10 hover:bg-gray-50",
-    ].join(" ");
+    localItems,
+    renameLocalItem,
+    changeLocalPrice,
+    removeLocalItem,
 
-  const itemCard =
-    "rounded-[22px] border border-[#bde7c8] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(27,54,39,0.03)]";
-  const itemCardActive = "bg-[#dff0e5] border-[#8ec8a1]";
-  const itemName = "text-[16px] font-extrabold text-gray-900 leading-snug";
-  const itemCategory = "mt-1 text-[12px] font-extrabold text-[#0b8b52]";
-  const itemPrice = "text-[16px] font-extrabold text-[#0b7c4d]";
-  const addFoodBtn =
-    "rounded-full px-4 py-2 text-[13px] font-extrabold text-[#0b7c4d] ring-1 ring-[#78d3a0] bg-white hover:bg-[#f5fbf7] transition";
-  const qtyWrap = "flex items-center gap-3";
-  const qtyBtn =
-    "h-10 w-10 rounded-[16px] bg-white text-[22px] font-extrabold text-[#0b7c4d] ring-1 ring-[#78d3a0] hover:bg-[#f5fbf7] transition";
-  const qtyNum = "min-w-[18px] text-center text-[16px] font-extrabold text-gray-900";
-  const specText =
-    "text-[12px] sm:text-[13px] font-extrabold text-[#0b7c4d] hover:underline underline-offset-4 whitespace-nowrap";
+    foodSearchQuery,
+    setFoodSearchQuery,
+    foodSearchOpen,
+    setFoodSearchOpen,
+    filteredFoods,
+    addFoodFromDatabase,
 
-  const bottomFixed = "fixed left-0 right-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-black/5";
-  const bottomInner = "mx-auto w-full max-w-[1220px] px-3 sm:px-4 md:px-5 pb-4 pt-3";
-  const btnCancel =
-    "flex-1 rounded-full bg-white px-4 py-3 text-[15px] sm:text-[16px] font-extrabold text-gray-900 ring-1 ring-black/10 hover:bg-gray-50 transition";
-  const btnPay =
-    "flex-1 rounded-full bg-[#08a35c] px-4 py-3 text-[15px] sm:text-[16px] font-extrabold text-white shadow-sm hover:brightness-95 transition disabled:opacity-40";
+    manualFoodName,
+    setManualFoodName,
+    manualFoodCategory,
+    setManualFoodCategory,
+    manualFoodPrice,
+    setManualFoodPrice,
+    addManualFood,
 
-  const modalCard =
-    "w-full max-w-[520px] rounded-[28px] bg-white p-4 sm:p-5 shadow-[0_22px_70px_rgba(0,0,0,0.2)] ring-1 ring-black/10";
-  const modalBtn =
-    "rounded-full bg-white px-4 py-2 text-[13px] sm:text-[14px] font-extrabold text-gray-800 ring-1 ring-black/10 hover:bg-gray-50";
+    paymentOpen,
+    setPaymentOpen,
+    paymentMethod,
+    setPaymentMethod,
+    savingOrder,
+    canConfirmPayment,
+    confirmPayment,
 
-  const payBig = (active: boolean) =>
-    [
-      "rounded-full px-4 py-3 text-[15px] sm:text-[16px] font-extrabold transition",
-      active ? "bg-[#08a35c] text-white" : "bg-[#eef8f1] text-[#0d6b44] ring-1 ring-[#bde7c8] hover:bg-[#e4f4e8]",
-    ].join(" ");
+    selectedCustomer,
+    selectedCustomerCredit,
+    creditEnough,
 
-  const creditLink =
-    "text-center text-[14px] font-extrabold text-[#0b7c4d] hover:underline underline-offset-4";
+    customerPickerOpen,
+    setCustomerPickerOpen,
+    customerQuery,
+    setCustomerQuery,
+    customers,
+    customersLoading,
+    setSelectedCustomer,
 
-  return (
-    <div className={shell}>
-      <div className={wrap}>
-        <div className={topCard}>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="text-[24px] font-extrabold tracking-tight text-gray-900">Pokladna</div>
-              <div className="mt-1 text-[14px] font-extrabold text-[#0b7c4d]">{todayLabel}</div>
-            </div>
+    creditTopupOpen,
+    setCreditTopupOpen,
+    creditTopupValue,
+    creditTopupSaving,
+    topupKeypadPress,
+    confirmCreditTopup,
 
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="button" className={whiteBtn} onClick={() => setEditOpen(true)}>
-                Upravit jídla
-              </button>
-              <button type="button" className={greenBtn} onClick={() => router.push("/staff")}>
-                Rozcestník
-              </button>
-            </div>
-          </div>
+    keypadOpen,
+    setKeypadOpen,
+    keypad,
+    keypadPress,
+    keypadApply,
 
-          <div className="mt-4 flex gap-3">
-            <button type="button" className={switchBtn(mode === "tady")} onClick={() => setMode("tady")}>
-              Tady
-            </button>
-            <button type="button" className={switchBtn(mode === "sebou")} onClick={() => setMode("sebou")}>
-              Sebou
-            </button>
-          </div>
-        </div>
+    router,
+    czk,
+  };
 
-        {mode === "sebou" && (
-          <div className={sectionCard}>
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <div className={miniLabel}>Doprava</div>
-                <div className={optionWrap}>
-                  <button type="button" className={smallBtn(delivery === "ano")} onClick={() => setDelivery("ano")}>
-                    Ano
-                  </button>
-                  <button type="button" className={smallBtn(delivery === "ne")} onClick={() => setDelivery("ne")}>
-                    Ne
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <div className={miniLabel}>Balení</div>
-                <div className={optionWrap}>
-                  <button type="button" className={smallBtn(packaging === "plast")} onClick={() => setPackaging("plast")}>
-                    Plast
-                  </button>
-                  <button
-                    type="button"
-                    className={smallBtn(packaging === "rekrabicka")}
-                    onClick={() => setPackaging("rekrabicka")}
-                  >
-                    Rekr
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="mt-3 grid gap-3">
-          {loadingItems ? (
-            <div className="rounded-[22px] border border-[#bde7c8] bg-white px-5 py-4 text-sm font-semibold text-gray-600">
-              Načítám dnešní menu…
-            </div>
-          ) : loadErr ? (
-            <div className="rounded-[22px] border border-[#bde7c8] bg-white px-5 py-4 text-sm font-semibold text-red-600">
-              {loadErr}
-            </div>
-          ) : items.length === 0 ? (
-            <div className="rounded-[22px] border border-[#bde7c8] bg-white px-5 py-4 text-sm font-semibold text-gray-600">
-              Pro dnešek zatím nejsou ve správě menu zadaná žádná jídla.
-            </div>
-          ) : (
-            items.map((it) => {
-              const q = qty[it.id] ?? 0;
-              const unit = specialPrice[it.id] ?? it.price;
-
-              return (
-                <div key={it.id} className={`${itemCard} ${q > 0 ? itemCardActive : ""}`}>
-                  <button
-                    type="button"
-                    className="w-full text-left"
-                    onClick={() => (q === 0 ? setToOne(it.id) : inc(it.id))}
-                  >
-                    <div className={itemName}>{it.name}</div>
-                  </button>
-
-                  <div className="mt-1 flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className={itemCategory}>{it.category}</div>
-                    </div>
-                    <div className={`${itemPrice} shrink-0`}>{czk(unit)}</div>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      {q === 0 ? (
-                        <button type="button" className={addFoodBtn} onClick={() => setToOne(it.id)}>
-                          Přidat
-                        </button>
-                      ) : (
-                        <div className={qtyWrap}>
-                          <button type="button" className={qtyBtn} onClick={() => dec(it.id)}>
-                            −
-                          </button>
-                          <div className={qtyNum}>{q}</div>
-                          <button type="button" className={qtyBtn} onClick={() => inc(it.id)}>
-                            +
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <button type="button" className={specText} onClick={() => openKeypadFor(it.id)}>
-                      {specialPrice[it.id] == null ? "Spec. cena" : `Spec: ${czk(specialPrice[it.id]!)}`}
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-
-      <div className={bottomFixed}>
-        <div className={bottomInner}>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <button type="button" className={btnCancel} onClick={resetOrder}>
-              Zpět / Zrušit
-            </button>
-            <button type="button" className={btnPay} onClick={() => setPaymentOpen(true)} disabled={total <= 0}>
-              Zaplatit • {czk(total)} • {totalCount} ks
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {editOpen && (
-        <>
-          <button type="button" className="fixed inset-0 z-40 bg-black/40" onClick={() => setEditOpen(false)} />
-          <div className="fixed inset-0 z-50 overflow-auto px-3 py-4 sm:grid sm:place-items-center">
-            <div className="mx-auto w-full max-w-[760px] rounded-[28px] bg-white p-4 sm:p-5 shadow-xl ring-1 ring-black/10">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-[20px] font-extrabold text-gray-900">Upravit jídla</div>
-                  <div className="mt-1 text-[13px] font-semibold text-gray-500">
-                    Úpravy platí pro dnešní pokladnu.
-                  </div>
-                </div>
-                <button type="button" className={modalBtn} onClick={() => setEditOpen(false)}>
-                  Zavřít
-                </button>
-              </div>
-
-              <div className="mt-4 max-h-[34vh] overflow-auto rounded-[22px] border border-[#bde7c8]">
-                <div className="divide-y divide-[#dff2e5]">
-                  {localItems.map((it) => (
-                    <div key={it.id} className="grid gap-2 px-3 py-3 md:grid-cols-[1fr_220px_120px_80px] md:items-center">
-                      <input
-                        value={it.name}
-                        onChange={(e) => renameLocalItem(it.id, e.target.value)}
-                        className="w-full rounded-2xl bg-white px-3 py-2 text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none focus:ring-2 focus:ring-[#a9e0bc]"
-                      />
-
-                      <div className="truncate text-xs font-semibold text-gray-500">{it.category}</div>
-
-                      <input
-                        value={String(it.price ?? 0)}
-                        onChange={(e) => changeLocalPrice(it.id, e.target.value)}
-                        inputMode="numeric"
-                        className="w-full rounded-2xl bg-white px-3 py-2 text-right text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none focus:ring-2 focus:ring-[#a9e0bc]"
-                      />
-
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => removeLocalItem(it.id)}
-                          className="rounded-full px-3 py-2 text-xs font-extrabold text-red-600 hover:underline"
-                        >
-                          Smazat
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-4 rounded-[22px] border border-[#bde7c8] bg-[#f5fbf7] p-3">
-                <div className="text-sm font-extrabold text-[#0b7c4d]">Přidat jídlo</div>
-
-                <div className="mt-3 relative">
-                  <input
-                    value={foodSearchQuery}
-                    onChange={(e) => {
-                      setFoodSearchQuery(e.target.value);
-                      setFoodSearchOpen(true);
-                    }}
-                    onFocus={() => setFoodSearchOpen(true)}
-                    placeholder="Název nebo číslo jídla"
-                    className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none focus:ring-2 focus:ring-[#a9e0bc]"
-                  />
-
-                  {foodSearchOpen && foodSearchQuery.trim() !== "" && (
-                    <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-[#bde7c8] bg-white shadow-lg">
-                      {filteredFoods.length === 0 ? (
-                        <div className="px-4 py-3 text-sm font-semibold text-gray-500">Nic nenalezeno.</div>
-                      ) : (
-                        filteredFoods.map((f) => (
-                          <button
-                            key={f.id}
-                            type="button"
-                            onClick={() => addFoodFromDatabase(f)}
-                            className="grid w-full grid-cols-[1fr_auto] gap-3 px-4 py-3 text-left hover:bg-[#f5fbf7]"
-                          >
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-extrabold text-gray-900">{f.nazev}</div>
-                              <div className="mt-0.5 text-xs font-semibold text-gray-500">
-                                #{f.legacy_id} • {f.kategorie ?? "Bez kategorie"}
-                              </div>
-                            </div>
-                            <div className="text-sm font-extrabold text-[#0b7c4d]">
-                              {czk(Number(f.cena ?? 0))}
-                            </div>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-[1.5fr_1fr_120px_auto]">
-                  <input
-                    value={manualFoodName}
-                    onChange={(e) => setManualFoodName(e.target.value)}
-                    placeholder="Název"
-                    className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none focus:ring-2 focus:ring-[#a9e0bc]"
-                  />
-
-                  <input
-                    value={manualFoodCategory}
-                    onChange={(e) => setManualFoodCategory(e.target.value)}
-                    placeholder="Kategorie"
-                    className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none focus:ring-2 focus:ring-[#a9e0bc]"
-                  />
-
-                  <input
-                    value={manualFoodPrice}
-                    onChange={(e) => setManualFoodPrice(e.target.value.replace(/[^\d]/g, ""))}
-                    placeholder="Cena"
-                    inputMode="numeric"
-                    className="w-full rounded-2xl bg-white px-4 py-3 text-right text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none focus:ring-2 focus:ring-[#a9e0bc]"
-                  />
-
-                  <button type="button" onClick={addManualFood} className={greenBtn}>
-                    Přidat ručně
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {paymentOpen && (
-        <>
-          <button type="button" className="fixed inset-0 z-40 bg-black/40" onClick={() => setPaymentOpen(false)} />
-          <div className="fixed inset-0 z-50 overflow-auto px-3 py-4 sm:grid sm:place-items-center">
-            <div className={modalCard}>
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-[20px] font-extrabold text-gray-900">Platba</div>
-                <button type="button" className={modalBtn} onClick={() => setPaymentOpen(false)}>
-                  Zavřít
-                </button>
-              </div>
-
-              <div className="mt-4 rounded-[22px] bg-[#eef8f1] p-5 ring-1 ring-[#bde7c8]">
-                <div className="text-xs font-bold text-gray-500">Celkem k úhradě</div>
-                <div className="mt-1 text-[30px] sm:text-[34px] font-extrabold text-[#0b7c4d]">{czk(total)}</div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <button type="button" className={payBig(paymentMethod === "cash")} onClick={() => setPaymentMethod("cash")}>
-                  Hotově
-                </button>
-                <button type="button" className={payBig(paymentMethod === "card")} onClick={() => setPaymentMethod("card")}>
-                  Kartou
-                </button>
-              </div>
-
-              <div className="mt-4 flex justify-center">
-                <button
-                  type="button"
-                  className={creditLink}
-                  onClick={() => {
-                    setPaymentMethod("credit");
-                    setCustomerPickerOpen(true);
-                  }}
-                >
-                  Kredit
-                </button>
-              </div>
-
-              {paymentMethod === "credit" && (
-                <div className="mt-3 rounded-[18px] border border-[#bde7c8] bg-white p-3">
-                  {!selectedCustomer ? (
-                    <div className="text-sm font-semibold text-gray-600">
-                      Není vybraný zákazník. Klikni na „Kredit“ a vyber zákazníka.
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="text-sm font-extrabold text-gray-900">
-                            {selectedCustomer.full_name ?? "Bez jména"} • kredit {czk(selectedCustomerCredit)}
-                          </div>
-
-                          <div className="mt-1 text-xs font-semibold text-gray-500">
-                            {creditEnough
-                              ? `Po zaplacení zbude ${czk(selectedCustomerCredit - total)}`
-                              : `Nedostatečný kredit • chybí ${czk(total - selectedCustomerCredit)}`}
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCreditTopupValue("");
-                            setCreditTopupOpen(true);
-                          }}
-                          className="shrink-0 text-xs font-extrabold text-[#0b7c4d] hover:underline underline-offset-4"
-                        >
-                          Dobít kredit
-                        </button>
-                      </div>
-
-                      {!creditEnough && (
-                        <div className="mt-2 text-xs font-extrabold text-red-600">
-                          Tímto kreditem nejde objednávku zaplatit.
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-
-              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <button type="button" className={btnCancel} onClick={() => setPaymentOpen(false)}>
-                  Zpět
-                </button>
-                <button type="button" className={btnPay} disabled={!canConfirmPayment} onClick={confirmPayment}>
-                  {savingOrder ? "Ukládám…" : "Potvrdit platbu"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {customerPickerOpen && (
-        <>
-          <button type="button" className="fixed inset-0 z-[60] bg-black/40" onClick={() => setCustomerPickerOpen(false)} />
-          <div className="fixed inset-0 z-[70] overflow-auto px-3 py-4 sm:grid sm:place-items-center">
-            <div className="mx-auto w-full max-w-[620px] rounded-[28px] bg-white p-4 sm:p-5 shadow-xl ring-1 ring-black/10">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-[20px] font-extrabold text-gray-900">Výběr zákazníka</div>
-                  <div className="mt-1 text-[13px] font-semibold text-gray-500">
-                    Vyhledej zákazníka pro platbu kreditem.
-                  </div>
-                </div>
-                <button type="button" className={modalBtn} onClick={() => setCustomerPickerOpen(false)}>
-                  Zavřít
-                </button>
-              </div>
-
-              <input
-                value={customerQuery}
-                onChange={(e) => setCustomerQuery(e.target.value)}
-                placeholder="Hledat jméno zákazníka…"
-                className="mt-4 w-full rounded-2xl bg-white px-4 py-3 text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none focus:ring-2 focus:ring-[#a9e0bc]"
-              />
-
-              <div className="mt-4 max-h-[44vh] overflow-auto rounded-[22px] border border-[#bde7c8]">
-                {customersLoading ? (
-                  <div className="px-4 py-6 text-sm font-semibold text-gray-600">Načítám zákazníky…</div>
-                ) : customers.length === 0 ? (
-                  <div className="px-4 py-6 text-sm font-semibold text-gray-600">Nikdo nenalezen.</div>
-                ) : (
-                  <div className="divide-y divide-[#dff2e5]">
-                    {customers.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCustomer(c);
-                          setPaymentMethod("credit");
-                          setCustomerPickerOpen(false);
-                        }}
-                        className="grid w-full grid-cols-[1fr_auto] gap-3 px-4 py-3 text-left hover:bg-[#f5fbf7]"
-                      >
-                        <div className="text-sm font-extrabold text-gray-900">{c.full_name ?? "Bez jména"}</div>
-                        <div className="text-sm font-extrabold text-[#0b7c4d]">{czk(Number(c.kredit ?? 0))}</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {creditTopupOpen && selectedCustomer && (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-[80] bg-black/40"
-            onClick={() => {
-              if (!creditTopupSaving) setCreditTopupOpen(false);
-            }}
-          />
-
-          <div className="fixed inset-0 z-[90] overflow-auto px-3 py-4 sm:grid sm:place-items-center">
-            <div className="mx-auto w-full max-w-[520px] rounded-[28px] bg-white p-4 sm:p-5 shadow-[0_22px_70px_rgba(0,0,0,0.2)] ring-1 ring-black/10">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-[20px] font-extrabold text-gray-900">Dobití kreditu</div>
-                  <div className="mt-1 text-[13px] font-semibold text-gray-500">
-                    Připiš kredit vybranému zákazníkovi.
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className={modalBtn}
-                  onClick={() => {
-                    if (!creditTopupSaving) setCreditTopupOpen(false);
-                  }}
-                >
-                  Zavřít
-                </button>
-              </div>
-
-              <div className="mt-4 rounded-[22px] border border-[#bde7c8] bg-[#eef8f1] p-4">
-                <div className="text-sm font-extrabold text-gray-900">
-                  {selectedCustomer.full_name ?? "Bez jména"}
-                </div>
-                <div className="mt-1 text-xs font-semibold text-gray-500">
-                  Aktuální kredit: {czk(Number(selectedCustomer.kredit ?? 0))}
-                </div>
-              </div>
-
-              <div className="mt-4 rounded-[22px] bg-[#f7f8f6] p-4 ring-1 ring-black/10">
-                <div className="text-[12px] font-bold text-gray-500">Částka k dobití</div>
-                <div className="mt-1 text-[28px] font-extrabold text-gray-900">
-                  {creditTopupValue ? `${creditTopupValue} Kč` : "—"}
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-3 gap-3">
-                {["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "←"].map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    className="h-14 rounded-[18px] bg-white text-[20px] font-extrabold text-gray-900 ring-1 ring-black/10 shadow-sm hover:bg-gray-50"
-                    onClick={() => topupKeypadPress(k)}
-                    disabled={creditTopupSaving}
-                  >
-                    {k}
-                  </button>
-                ))}
-              </div>
-
-              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  className={btnCancel}
-                  onClick={() => setCreditTopupOpen(false)}
-                  disabled={creditTopupSaving}
-                >
-                  Zpět
-                </button>
-
-                <button
-                  type="button"
-                  className={btnPay}
-                  onClick={confirmCreditTopup}
-                  disabled={creditTopupSaving || !creditTopupValue}
-                >
-                  {creditTopupSaving ? "Dobíjím…" : "Dobít kredit"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {keypadOpen && (
-        <>
-          <button type="button" className="fixed inset-0 z-40 bg-black/40" onClick={() => setKeypadOpen(false)} />
-          <div className="fixed inset-0 z-50 overflow-auto px-3 py-4 sm:grid sm:place-items-center">
-            <div className="mx-auto w-full max-w-[420px] rounded-[26px] bg-white p-4 sm:p-5 shadow-xl ring-1 ring-black/10">
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-[18px] font-extrabold text-gray-900">Speciální cena</div>
-                <button type="button" className={modalBtn} onClick={() => setKeypadOpen(false)}>
-                  Zavřít
-                </button>
-              </div>
-
-              <div className="mt-4 rounded-[18px] bg-[#f7f8f6] p-4 ring-1 ring-black/10">
-                <div className="text-[12px] font-bold text-gray-500">Zadaná cena</div>
-                <div className="mt-1 text-[28px] font-extrabold text-gray-900">
-                  {keypad.value ? `${keypad.value} Kč` : "—"}
-                </div>
-                <div className="mt-2 text-[12px] font-semibold text-gray-500">Prázdné = zrušit</div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-3 gap-3">
-                {["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "←"].map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    className="h-14 rounded-[18px] bg-white text-[20px] font-extrabold text-gray-900 ring-1 ring-black/10 shadow-sm hover:bg-gray-50"
-                    onClick={() => keypadPress(k)}
-                  >
-                    {k}
-                  </button>
-                ))}
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <button type="button" className={btnPay} onClick={keypadApply}>
-                  Potvrdit
-                </button>
-                <button type="button" className={btnCancel} onClick={() => setKeypadOpen(false)}>
-                  Zpět
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
+  return isMobile ? <MobileView {...viewProps} /> : <DesktopView {...viewProps} />;
 }
