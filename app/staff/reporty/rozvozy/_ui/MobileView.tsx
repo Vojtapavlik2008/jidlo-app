@@ -414,18 +414,18 @@ export default function MobileView({
             </div>
           ) : null}
 
-          <div
-            className={
-              fullscreenMap
-                ? "flex h-[100dvh] w-screen overflow-hidden"
-                : "flex h-[calc(100dvh-320px)] min-h-[320px] w-full overflow-hidden"
-            }
-          >
-            <div className="relative min-w-0 flex-1 bg-white">
-              <div ref={mapWrapRef} className="absolute inset-0" />
-            </div>
+         <div
+  className={
+    fullscreenMap
+      ? "flex h-[100dvh] w-screen overflow-hidden"
+      : "flex h-[420px] w-full overflow-hidden"
+  }
+>
+  <div className="relative min-w-0 flex-1 bg-[#eef6f0]">
+    <div ref={mapWrapRef} className="h-full w-full" />
+  </div>
 
-            <div className="w-[92px] shrink-0 overflow-y-auto border-l border-[#e3efe6] bg-[#fbfefb]">
+  <div className="w-[92px] shrink-0 overflow-y-auto border-l border-[#e3efe6] bg-[#fbfefb]">
               <div className="sticky top-0 z-10 border-b border-[#e3efe6] bg-[#fbfefb] px-2 py-2 text-center text-[11px] font-extrabold text-[#5e7568]">
                 Pořadí
               </div>
