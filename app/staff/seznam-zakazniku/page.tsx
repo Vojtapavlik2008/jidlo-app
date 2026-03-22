@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import DesktopView from "./DesktopView";
-import MobileView from "./MobileView";
+import DesktopView from "./_ui/DesktopView";
+import MobileView from "./_ui/MobileView";
 
 type ProfileRow = {
   id: string;
