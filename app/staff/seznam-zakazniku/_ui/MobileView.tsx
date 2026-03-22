@@ -53,7 +53,7 @@ type Props = {
   vsichniCount: number;
   msg: string | null;
   onBack: () => void;
-  onOpenHub: () => void;
+  onOpenHub?: () => void;
   onOpenTopUp: () => void;
   onOpenEdit: (row: ProfileRow) => void;
 };
@@ -84,7 +84,6 @@ export default function MobileView({
 
   return (
     <div className="pb-6">
-      {/* Horní řádek */}
       <div className="mb-3 flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-[24px] font-extrabold leading-none tracking-tight text-[#0b2149]">
@@ -111,7 +110,6 @@ export default function MobileView({
         </div>
       </div>
 
-      {/* Statistiky / počet */}
       <div className="mb-3 flex items-center justify-between gap-2">
         {loading ? (
           <span className="rounded-full border border-gray-200 bg-white px-3 py-2 text-[11px] font-bold text-gray-500">
@@ -124,7 +122,6 @@ export default function MobileView({
         )}
       </div>
 
-      {/* 3 buňky */}
       <div className="mb-3 grid grid-cols-3 gap-2">
         <button
           type="button"
@@ -187,7 +184,6 @@ export default function MobileView({
         </button>
       </div>
 
-      {/* Hledání + dobít kredit */}
       <div className="mb-4 flex items-center gap-2">
         <div className="relative min-w-0 flex-1">
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -235,9 +231,7 @@ export default function MobileView({
                 className="w-full rounded-[18px] border border-emerald-200 bg-white px-3 py-2.5 text-left shadow-sm transition active:scale-[0.995]"
               >
                 <div className="flex items-start justify-between gap-2">
-                  {/* Levá část */}
                   <div className="min-w-0 flex-1">
-                    {/* 1. řádek */}
                     <div className="flex items-start gap-2">
                       <div className="shrink-0 pt-[1px] text-[11px] font-extrabold text-gray-400">
                         ID {r.id}
@@ -248,18 +242,15 @@ export default function MobileView({
                       </div>
                     </div>
 
-                    {/* 2. řádek */}
                     <div className="mt-1 truncate text-[11px] font-medium text-gray-600">
                       {r.address || "—"}
                     </div>
 
-                    {/* 3. řádek */}
                     <div className="mt-0.5 truncate text-[11px] text-gray-500">
                       {[r.phone || "—", r.email || "—"].join(" • ")}
                     </div>
                   </div>
 
-                  {/* Pravá část */}
                   <div className="flex shrink-0 items-start gap-2">
                     <span
                       className={cls(
