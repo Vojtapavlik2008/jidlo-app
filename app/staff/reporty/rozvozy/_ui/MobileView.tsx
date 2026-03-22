@@ -422,7 +422,7 @@ export default function MobileView({
   }
 >
   <div className="relative min-w-0 flex-1 bg-[#eef6f0]">
-    <div ref={mapWrapRef} className="h-full w-full" />
+    <div ref={mapWrapRef} className="h-full w-full bg-red-200" />
   </div>
 
   <div className="w-[92px] shrink-0 overflow-y-auto border-l border-[#e3efe6] bg-[#fbfefb]">
