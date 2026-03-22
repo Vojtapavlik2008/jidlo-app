@@ -32,7 +32,28 @@ type Props = {
 
   outlineBtn: string;
   activeBtn: string;
+
+  onOpenHub?: () => void;
 };
+
+function IconSettings({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M12 8.75a3.25 3.25 0 1 0 0 6.5a3.25 3.25 0 0 0 0-6.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.9 1.9 0 0 1-1.35 3.25h-.15a1 1 0 0 0-.95.68l-.05.14a1.9 1.9 0 0 1-3.58 0l-.05-.14a1 1 0 0 0-.95-.68h-1.3a1 1 0 0 0-.95.68l-.05.14a1.9 1.9 0 0 1-3.58 0l-.05-.14a1 1 0 0 0-.95-.68h-.15A1.9 1.9 0 0 1 4.3 16.2l.1-.1a1 1 0 0 0 .2-1.1l-.08-.18a1 1 0 0 0-.9-.57H3.4a1.9 1.9 0 0 1 0-3.8h.12a1 1 0 0 0 .9-.57l.08-.18a1 1 0 0 0-.2-1.1l-.1-.1A1.9 1.9 0 0 1 5.65 5h.15a1 1 0 0 0 .95-.68l.05-.14a1.9 1.9 0 0 1 3.58 0l.05.14a1 1 0 0 0 .95.68h1.3a1 1 0 0 0 .95-.68l.05-.14a1.9 1.9 0 0 1 3.58 0l.05.14a1 1 0 0 0 .95.68h.15A1.9 1.9 0 0 1 19.7 7.8l-.1.1a1 1 0 0 0-.2 1.1l.08.18a1 1 0 0 0 .9.57h.12a1.9 1.9 0 0 1 0 3.8h-.12a1 1 0 0 0-.9.57L19.4 15Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export default function MobileView({
   loading,
@@ -56,11 +77,13 @@ export default function MobileView({
   focusOnMap,
   startInternalNavigation,
   clearRoute,
+  onOpenHub,
 }: Props) {
   const [fullscreenMap, setFullscreenMap] = useState(false);
   const [expandedRailId, setExpandedRailId] = useState<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [localOrder, setLocalOrder] = useState<string[]>([]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     setLocalOrder((prev) => {
@@ -76,6 +99,19 @@ export default function MobileView({
     const map = new Map(filteredOrders.map((o) => [o.id, o]));
     return localOrder.map((id) => map.get(id)).filter(Boolean) as OrderUi[];
   }, [filteredOrders, localOrder]);
+
+  useEffect(() => {
+    if (mobileTab === "mapa" || fullscreenMap) {
+      const t1 = setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
+      const t2 = setTimeout(() => window.dispatchEvent(new Event("resize")), 250);
+      const t3 = setTimeout(() => window.dispatchEvent(new Event("resize")), 600);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
+    }
+  }, [mobileTab, fullscreenMap]);
 
   function reorderList(sourceId: string, targetId: string) {
     if (sourceId === targetId) return;
@@ -108,6 +144,7 @@ export default function MobileView({
 
   const filterBtn = (key: FilterKey, label: string) => (
     <button
+      type="button"
       onClick={() => {
         clearRoute();
         setFilter(key);
@@ -130,21 +167,37 @@ export default function MobileView({
       {!fullscreenMap ? (
         <>
           <div className="rounded-[22px] border border-[#d7eadb] bg-white px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
-            <div className="flex items-start justify-between gap-3">
-              <div className="text-[28px] font-extrabold leading-none text-[#00a63e]">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 text-[28px] font-extrabold leading-none text-[#00a63e]">
                 Rozvozy
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileTab("mapa");
-                  setFullscreenMap(true);
-                }}
-                className="rounded-full border border-[#cfe5d5] bg-white px-4 py-2 text-sm font-bold text-[#103f20]"
-              >
-                Zvětšit obrazovku
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileTab("mapa");
+                    setFullscreenMap(true);
+                  }}
+                  className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-[13px] font-bold text-[#103f20]"
+                >
+                  Zvětšit obrazovku
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onOpenHub) {
+                      onOpenHub();
+                    } else {
+                      window.history.back();
+                    }
+                  }}
+                  className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-[13px] font-bold text-[#103f20]"
+                >
+                  Rozcestník
+                </button>
+              </div>
             </div>
           </div>
 
@@ -157,6 +210,7 @@ export default function MobileView({
 
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={() => setMobileTab("seznam")}
               className={`rounded-full px-4 py-2 text-sm font-bold ${
                 mobileTab === "seznam"
@@ -168,6 +222,7 @@ export default function MobileView({
             </button>
 
             <button
+              type="button"
               onClick={() => setMobileTab("mapa")}
               className={`rounded-full px-4 py-2 text-sm font-bold ${
                 mobileTab === "mapa"
@@ -182,13 +237,12 @@ export default function MobileView({
       ) : null}
 
       {!fullscreenMap && mobileTab === "seznam" ? (
-        <div className="rounded-[22px] border border-[#d7eadb] bg-white p-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
+        <div className="rounded-[22px] border border-[#d7eadb] bg-white px-3 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="text-[22px] font-extrabold text-[#103f20]">
-              Seznam objednávek
-            </div>
+            <div className="text-[20px] font-extrabold text-[#103f20]">Seznam objednávek</div>
 
             <button
+              type="button"
               onClick={loadOrders}
               className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-xs font-bold text-[#103f20]"
             >
@@ -210,105 +264,113 @@ export default function MobileView({
             ) : null}
 
             {!loading &&
-              orderedForMobile.map((order) => {
+              orderedForMobile.map((order, index) => {
                 const selected = selectedId === order.id;
 
                 return (
                   <div
                     key={order.id}
-                    className={`mb-3 rounded-[20px] border p-4 transition ${
-                      selected
-                        ? "border-[#a6dcb4] bg-[#f4fbf5]"
-                        : "border-[#e3efe6] bg-white"
+                    onClick={() => setSelectedId(order.id)}
+                    className={`py-3 ${
+                      index !== orderedForMobile.length - 1 ? "border-b border-[#e6efe8]" : ""
                     }`}
                   >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="text-[20px] font-extrabold text-[#103f20]">
-                        {order.full_name}
+                    <div
+                      className={`rounded-[18px] px-3 py-3 transition ${
+                        selected ? "bg-[#f4fbf5]" : "bg-white"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-[18px] font-extrabold leading-tight text-[#103f20]">
+                            {order.full_name}
+                          </div>
+                        </div>
+
+                        <select
+                          value={order.delivery_zone ?? ""}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) =>
+                            setZone(order.id, (e.target.value || null) as DeliveryZone)
+                          }
+                          className="shrink-0 rounded-full border border-[#cfe5d5] bg-white px-2 py-1 text-[11px] font-bold text-[#103f20]"
+                        >
+                          <option value="okruh1">Okruh 1</option>
+                          <option value="okruh2">Okruh 2</option>
+                          <option value="skolky">Školky</option>
+                        </select>
                       </div>
 
-                      <span
-                        className={`rounded-full px-2 py-1 text-[11px] font-bold ${zoneBadgeClass(
-                          order.delivery_zone
-                        )}`}
-                      >
-                        {zoneLabel(order.delivery_zone)}
-                      </span>
-                    </div>
+                      <div className="mt-1 text-[13px] leading-snug text-[#4f685d]">
+                        {order.address}
+                      </div>
 
-                    <div className="mt-2 text-sm text-[#4f685d]">{order.address}</div>
-                    <div className="mt-1 text-sm text-[#4f685d]">
-                      {order.phone || "bez telefonu"} • {formatPrice(order.total)}
-                    </div>
+                      <div className="mt-1 text-[13px] text-[#4f685d]">
+                        {order.phone || "bez telefonu"} • {formatPrice(order.total)}
+                      </div>
 
-                    <div className="mt-3">
-                      <select
-                        value={order.delivery_zone ?? ""}
-                        onChange={(e) =>
-                          setZone(order.id, (e.target.value || null) as DeliveryZone)
-                        }
-                        className="w-full rounded-xl border border-[#cfe5d5] bg-white px-3 py-2 text-sm font-bold text-[#103f20]"
-                      >
-                        <option value="okruh1">Okruh 1</option>
-                        <option value="okruh2">Okruh 2</option>
-                        <option value="skolky">Školky</option>
-                      </select>
-                    </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            smsCustomer(order);
+                          }}
+                          className="rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a]"
+                        >
+                          SMS
+                        </button>
 
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => smsCustomer(order)}
-                        className="rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a]"
-                      >
-                        SMS
-                      </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            callCustomer(order);
+                          }}
+                          className="rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a]"
+                        >
+                          Zavolat
+                        </button>
 
-                      <button
-                        onClick={() => callCustomer(order)}
-                        className="rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a]"
-                      >
-                        Zavolat
-                      </button>
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            await startInternalNavigation(order);
+                          }}
+                          className={`rounded-xl px-3 py-2 text-sm font-bold ${
+                            routingOrderId === order.id
+                              ? "border border-[#00a63e] bg-[#00a63e] text-white"
+                              : "border border-[#00a63e] bg-white text-[#0f6c2a]"
+                          }`}
+                        >
+                          Navigovat
+                        </button>
 
-                      <button
-                        onClick={() => openEdit(order)}
-                        className="rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a]"
-                      >
-                        Upravit
-                      </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEdit(order);
+                          }}
+                          className="rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a]"
+                        >
+                          Upravit
+                        </button>
+                      </div>
 
-                      <button
-                        onClick={async () => {
-                          await startInternalNavigation(order);
-                        }}
-                        className={`rounded-xl px-3 py-2 text-sm font-bold ${
-                          routingOrderId === order.id
-                            ? "border border-[#00a63e] bg-[#00a63e] text-white"
-                            : "border border-[#00a63e] bg-white text-[#0f6c2a]"
-                        }`}
-                      >
-                        Navigovat
-                      </button>
-                    </div>
-
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => {
-                          setSelectedId(order.id);
-                          focusOnMap(order);
-                          setFullscreenMap(true);
-                        }}
-                        className="rounded-xl border border-[#00a63e] bg-[#00a63e] px-3 py-2 text-sm font-bold text-white"
-                      >
-                        Otevřít v mapě
-                      </button>
-
-                      <button
-                        onClick={() => setConfirmDeliveredOrder(order)}
-                        className="rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a]"
-                      >
-                        Vyřízeno
-                      </button>
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDeliveredOrder(order);
+                          }}
+                          className="w-full rounded-xl border border-[#00a63e] bg-[#00a63e] px-3 py-2.5 text-sm font-bold text-white"
+                        >
+                          Vyřízeno
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -322,18 +384,35 @@ export default function MobileView({
           className={
             fullscreenMap
               ? "fixed inset-0 z-[9998] bg-[#f7faf7]"
-              : "rounded-[22px] border border-[#d7eadb] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.05)]"
+              : "overflow-hidden rounded-[22px] border border-[#d7eadb] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.05)]"
           }
         >
           {fullscreenMap ? (
-            <div className="absolute right-3 top-3 z-[10000]">
-              <button
-                type="button"
-                onClick={() => setFullscreenMap(false)}
-                className="rounded-full border border-[#cfe5d5] bg-white px-4 py-2 text-sm font-bold text-[#103f20] shadow"
-              >
-                Ukončit režim
-              </button>
+            <div className="absolute left-3 top-3 z-[10000]">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen((prev) => !prev)}
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-[#cfe5d5] bg-white text-[#103f20] shadow"
+                >
+                  <IconSettings className="h-5 w-5" />
+                </button>
+
+                {settingsOpen ? (
+                  <div className="absolute left-0 top-12 min-w-[190px] rounded-[16px] border border-[#d7eadb] bg-white p-2 shadow-[0_12px_30px_rgba(0,0,0,0.14)]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        setFullscreenMap(false);
+                      }}
+                      className="w-full rounded-xl px-3 py-2 text-left text-sm font-bold text-[#103f20] hover:bg-[#f4fbf5]"
+                    >
+                      Ukončit režim
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           ) : null}
 
@@ -341,7 +420,7 @@ export default function MobileView({
             <div
               className={
                 fullscreenMap
-                  ? "absolute left-3 top-3 z-[9999] max-w-[220px] rounded-[16px] border border-[#dff0e3] bg-[#f7fcf8] px-4 py-3 text-sm font-semibold text-[#103f20] shadow"
+                  ? "absolute right-3 top-3 z-[9999] max-w-[220px] rounded-[16px] border border-[#dff0e3] bg-[#f7fcf8] px-4 py-3 text-sm font-semibold text-[#103f20] shadow"
                   : "m-3 rounded-[16px] border border-[#dff0e3] bg-[#f7fcf8] px-4 py-3 text-sm font-semibold text-[#103f20]"
               }
             >
@@ -350,18 +429,12 @@ export default function MobileView({
             </div>
           ) : null}
 
-          <div
-            className={
-              fullscreenMap
-                ? "flex h-screen w-screen"
-                : "flex h-[62vh] min-h-[480px]"
-            }
-          >
-            <div className="relative min-w-0 flex-1 border-r border-[#e3efe6] bg-white">
-              <div ref={mapWrapRef} style={{ height: "100%", width: "100%" }} />
+          <div className={fullscreenMap ? "flex h-screen w-screen" : "flex h-[68vh] min-h-[520px]"}>
+            <div className="relative min-w-0 flex-1 bg-white">
+              <div ref={mapWrapRef} className="h-full w-full" />
             </div>
 
-            <div className="w-[92px] shrink-0 overflow-y-auto bg-[#fbfefb] border-l border-[#e3efe6]">
+            <div className="w-[92px] shrink-0 overflow-y-auto border-l border-[#e3efe6] bg-[#fbfefb]">
               <div className="sticky top-0 z-10 border-b border-[#e3efe6] bg-[#fbfefb] px-2 py-2 text-center text-[11px] font-extrabold text-[#5e7568]">
                 Pořadí
               </div>
@@ -448,9 +521,7 @@ export default function MobileView({
                 </span>
               </div>
 
-              <div className="mt-2 text-sm text-[#4f685d]">
-                {selectedFromOrdered.address}
-              </div>
+              <div className="mt-2 text-sm text-[#4f685d]">{selectedFromOrdered.address}</div>
 
               <div className="mt-1 text-sm text-[#4f685d]">
                 {selectedFromOrdered.phone || "bez telefonu"} •{" "}
@@ -459,6 +530,7 @@ export default function MobileView({
 
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button
+                  type="button"
                   onClick={() => smsCustomer(selectedFromOrdered)}
                   className="rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a]"
                 >
@@ -466,6 +538,7 @@ export default function MobileView({
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => callCustomer(selectedFromOrdered)}
                   className="rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a]"
                 >
@@ -473,6 +546,7 @@ export default function MobileView({
                 </button>
 
                 <button
+                  type="button"
                   onClick={async () => {
                     await startInternalNavigation(selectedFromOrdered);
                   }}
@@ -486,6 +560,7 @@ export default function MobileView({
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => openEdit(selectedFromOrdered)}
                   className="rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a]"
                 >
@@ -495,6 +570,7 @@ export default function MobileView({
 
               <div className="mt-3">
                 <button
+                  type="button"
                   onClick={() => setConfirmDeliveredOrder(selectedFromOrdered)}
                   className="w-full rounded-xl border border-[#00a63e] bg-[#00a63e] px-3 py-3 text-sm font-bold text-white"
                 >
