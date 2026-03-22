@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import DesktopView from "./_ui/DesktopView";
+import MobileView from "./_ui/MobileView";
 
-type DeliveryStatus = "waiting" | "on_route" | "delivered";
-type DeliveryZone = "okruh1" | "okruh2" | "skolky" | null;
-type FilterKey = "okruh1" | "okruh2" | "skolky" | "vsechny";
+export type DeliveryStatus = "waiting" | "on_route" | "delivered";
+export type DeliveryZone = "okruh1" | "okruh2" | "skolky" | null;
+export type FilterKey = "okruh1" | "okruh2" | "skolky" | "vsechny";
 
 type OrderRow = {
   id: string;
@@ -25,7 +27,7 @@ type OrderRow = {
   delivery_zone: string | null;
 };
 
-type OrderUi = {
+export type OrderUi = {
   id: string;
   created_at: string;
   full_name: string;
@@ -42,7 +44,7 @@ type OrderUi = {
   delivery_zone: DeliveryZone;
 };
 
-type RouteInfo = {
+export type RouteInfo = {
   distanceKm: number;
   durationMin: number;
 };
@@ -56,7 +58,7 @@ const JIRKA_BASE = {
 
 const RAILWAY_LAT_SPLIT = 50.1425;
 
-function formatPrice(value: number) {
+export function formatPrice(value: number) {
   return new Intl.NumberFormat("cs-CZ", {
     style: "currency",
     currency: "CZK",
@@ -65,7 +67,7 @@ function formatPrice(value: number) {
   }).format(value);
 }
 
-function formatDateTime(value: string | null) {
+export function formatDateTime(value: string | null) {
   if (!value) return "";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "";
@@ -86,14 +88,14 @@ function autoZoneFromLat(lat: number | null): DeliveryZone {
   return lat >= RAILWAY_LAT_SPLIT ? "okruh1" : "okruh2";
 }
 
-function zoneLabel(zone: DeliveryZone) {
+export function zoneLabel(zone: DeliveryZone) {
   if (zone === "okruh1") return "Okruh 1";
   if (zone === "okruh2") return "Okruh 2";
   if (zone === "skolky") return "Školky";
   return "Bez okruhu";
 }
 
-function zoneBadgeClass(zone: DeliveryZone) {
+export function zoneBadgeClass(zone: DeliveryZone) {
   if (zone === "okruh1") return "bg-[#e8f8ec] text-[#0f6c2a]";
   if (zone === "okruh2") return "bg-[#e8f1ff] text-[#0b4a8f]";
   if (zone === "skolky") return "bg-[#fff3e6] text-[#9a5800]";
@@ -101,9 +103,7 @@ function zoneBadgeClass(zone: DeliveryZone) {
 }
 
 async function geocodeAddress(address: string) {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=cz&q=${encodeURIComponent(
-    address
-  )}`;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=cz&q=${encodeURIComponent(address)}`;
 
   const res = await fetch(url, {
     headers: { Accept: "application/json" },
@@ -123,12 +123,7 @@ async function geocodeAddress(address: string) {
   return { lat, lng };
 }
 
-async function fetchDrivingRoute(
-  fromLng: number,
-  fromLat: number,
-  toLng: number,
-  toLat: number
-) {
+async function fetchDrivingRoute(fromLng: number, fromLat: number, toLng: number, toLat: number) {
   const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
 
   const res = await fetch(url);
@@ -138,9 +133,7 @@ async function fetchDrivingRoute(
   const route = json?.routes?.[0];
   if (!route?.geometry?.coordinates?.length) return null;
 
-  const points = route.geometry.coordinates.map(
-    (p: [number, number]) => [p[1], p[0]] as [number, number]
-  );
+  const points = route.geometry.coordinates.map((p: [number, number]) => [p[1], p[0]] as [number, number]);
 
   return {
     points,
@@ -299,15 +292,10 @@ export default function RozvozyPage() {
       const zone = autoZoneFromLat(order.lat);
       if (!zone) continue;
 
-      const { error } = await supabase
-        .from("orders")
-        .update({ delivery_zone: zone })
-        .eq("id", order.id);
+      const { error } = await supabase.from("orders").update({ delivery_zone: zone }).eq("id", order.id);
 
       if (!error) {
-        setOrders((prev) =>
-          prev.map((p) => (p.id === order.id ? { ...p, delivery_zone: zone } : p))
-        );
+        setOrders((prev) => prev.map((p) => (p.id === order.id ? { ...p, delivery_zone: zone } : p)));
       }
     }
   }
@@ -339,15 +327,10 @@ export default function RozvozyPage() {
   async function setZone(orderId: string, zone: DeliveryZone) {
     setBusyId(orderId);
 
-    const { error } = await supabase
-      .from("orders")
-      .update({ delivery_zone: zone })
-      .eq("id", orderId);
+    const { error } = await supabase.from("orders").update({ delivery_zone: zone }).eq("id", orderId);
 
     if (!error) {
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, delivery_zone: zone } : o))
-      );
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, delivery_zone: zone } : o)));
     }
 
     setBusyId(null);
@@ -368,9 +351,7 @@ export default function RozvozyPage() {
       driver_note: editForm.driver_note,
     };
 
-    const found = editForm.address.trim()
-      ? await geocodeAddress(editForm.address.trim())
-      : null;
+    const found = editForm.address.trim() ? await geocodeAddress(editForm.address.trim()) : null;
 
     if (found) {
       updatePayload.lat = found.lat;
@@ -380,10 +361,7 @@ export default function RozvozyPage() {
       }
     }
 
-    const { error } = await supabase
-      .from("orders")
-      .update(updatePayload)
-      .eq("id", editOrder.id);
+    const { error } = await supabase.from("orders").update(updatePayload).eq("id", editOrder.id);
 
     if (!error) {
       await loadOrders();
@@ -439,9 +417,7 @@ export default function RozvozyPage() {
   function smsCustomer(order: OrderUi) {
     if (!order.phone) return;
     const text = "Dobrý den, za chvíli jsme u Vás. Jiřka";
-    window.location.href = `sms:${normalizePhone(order.phone)}?body=${encodeURIComponent(
-      text
-    )}`;
+    window.location.href = `sms:${normalizePhone(order.phone)}?body=${encodeURIComponent(text)}`;
   }
 
   function focusOnMap(order: OrderUi) {
@@ -463,12 +439,7 @@ export default function RozvozyPage() {
     setSelectedId(order.id);
     setMobileTab("mapa");
 
-    const route = await fetchDrivingRoute(
-      JIRKA_BASE.lng,
-      JIRKA_BASE.lat,
-      order.lng,
-      order.lat
-    );
+    const route = await fetchDrivingRoute(JIRKA_BASE.lng, JIRKA_BASE.lat, order.lng, order.lat);
 
     if (!routeLayerRef.current || !leafletRef.current || !mapRef.current) return;
 
@@ -619,9 +590,7 @@ export default function RozvozyPage() {
               ? `<div style="margin-top:5px;font-size:13px;font-weight:700;color:#103f20">${order.phone}</div>`
               : ""
           }
-          <div style="margin-top:6px;font-size:12px;color:#556d62">${zoneLabel(
-            order.delivery_zone
-          )}</div>
+          <div style="margin-top:6px;font-size:12px;color:#556d62">${zoneLabel(order.delivery_zone)}</div>
         </div>`
       );
 
@@ -645,21 +614,33 @@ export default function RozvozyPage() {
   const activeBtn =
     "rounded-xl border border-[#00a63e] bg-[#00a63e] px-3 py-2 text-sm font-bold text-white transition hover:brightness-95";
 
-  const filterBtn = (key: FilterKey, label: string) => (
-    <button
-      onClick={() => {
-        clearRoute();
-        setFilter(key);
-      }}
-      className={`rounded-full px-4 py-2 text-sm font-bold transition ${
-        filter === key
-          ? "border border-[#00a63e] bg-[#00a63e] text-white"
-          : "border border-[#cfe5d5] bg-white text-[#103f20] hover:bg-[#f6fbf7]"
-      }`}
-    >
-      {label}
-    </button>
-  );
+  const sharedProps = {
+    loading,
+    busyId,
+    errorMsg,
+    selectedId,
+    setSelectedId,
+    mobileTab,
+    setMobileTab,
+    filter,
+    setFilter,
+    filteredOrders,
+    selectedOrder,
+    routeInfo,
+    routingOrderId,
+    mapWrapRef,
+    loadOrders,
+    setZone,
+    openEdit,
+    setConfirmDeliveredOrder,
+    callCustomer,
+    smsCustomer,
+    focusOnMap,
+    startInternalNavigation,
+    clearRoute,
+    outlineBtn,
+    activeBtn,
+  };
 
   return (
     <div className="min-h-screen bg-[#f7faf7] text-[#123b1f]">
@@ -669,15 +650,6 @@ export default function RozvozyPage() {
             <div className="flex items-center gap-4">
               <div className="text-[28px] font-extrabold leading-none text-[#00a63e]">
                 Rozvozy
-              </div>
-
-              <div className="hidden h-7 w-px bg-[#dfeee3] xl:block" />
-
-              <div className="flex flex-wrap gap-2">
-                {filterBtn("okruh1", "Okruh 1")}
-                {filterBtn("okruh2", "Okruh 2")}
-                {filterBtn("skolky", "Školky")}
-                {filterBtn("vsechny", "Všechny")}
               </div>
             </div>
 
@@ -699,267 +671,12 @@ export default function RozvozyPage() {
           </div>
         </div>
 
-        <div className="mb-3 flex gap-2 md:hidden">
-          <button
-            onClick={() => setMobileTab("seznam")}
-            className={`rounded-full px-4 py-2 text-sm font-bold ${
-              mobileTab === "seznam"
-                ? "border border-[#00a63e] bg-[#00a63e] text-white"
-                : "border border-[#cfe5d5] bg-white text-[#103f20]"
-            }`}
-          >
-            Seznam
-          </button>
-          <button
-            onClick={() => setMobileTab("mapa")}
-            className={`rounded-full px-4 py-2 text-sm font-bold ${
-              mobileTab === "mapa"
-                ? "border border-[#00a63e] bg-[#00a63e] text-white"
-                : "border border-[#cfe5d5] bg-white text-[#103f20]"
-            }`}
-          >
-            Mapa
-          </button>
+        <div className="hidden md:block">
+          <DesktopView {...sharedProps} />
         </div>
 
-        {errorMsg ? (
-          <div className="mb-4 rounded-[20px] border border-[#ffd6d6] bg-[#fff5f5] p-4 text-[#9f1d1d]">
-            {errorMsg}
-          </div>
-        ) : null}
-
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[0.92fr_1.28fr]">
-          <div className={mobileTab !== "seznam" ? "hidden md:block" : ""}>
-            <div className="rounded-[24px] border border-[#d7eadb] bg-white p-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="text-[24px] font-extrabold text-[#103f20]">
-                  Seznam objednávek
-                </div>
-                <button
-                  onClick={loadOrders}
-                  className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-xs font-bold text-[#103f20]"
-                >
-                  Obnovit
-                </button>
-              </div>
-
-              <div className="max-h-[78vh] overflow-y-auto">
-                {loading ? (
-                  <div className="rounded-[18px] border border-[#e3efe6] bg-[#fbfefb] p-4 text-[#5e7568]">
-                    Načítám rozvozy...
-                  </div>
-                ) : null}
-
-                {!loading && filteredOrders.length === 0 ? (
-                  <div className="rounded-[18px] border border-[#e3efe6] bg-[#fbfefb] p-4 text-[#5e7568]">
-                    V tomto filtru teď nejsou žádné objednávky.
-                  </div>
-                ) : null}
-
-                {!loading &&
-                  filteredOrders.map((order) => {
-                    const selected = selectedId === order.id;
-
-                    return (
-                      <div
-                        key={order.id}
-                        onClick={() => {
-                          clearRoute();
-                          setSelectedId(order.id);
-                          setMobileTab("mapa");
-                        }}
-                        className={`mb-3 rounded-[20px] border p-4 transition ${
-                          selected
-                            ? "border-[#a6dcb4] bg-[#f4fbf5]"
-                            : "border-[#e3efe6] bg-white hover:bg-[#fafdfb]"
-                        }`}
-                      >
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="text-[22px] font-extrabold text-[#103f20]">
-                            {order.full_name}
-                          </div>
-
-                          <select
-                            value={order.delivery_zone ?? ""}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) =>
-                              setZone(
-                                order.id,
-                                (e.target.value || null) as DeliveryZone
-                              )
-                            }
-                            className="rounded-full border border-[#cfe5d5] bg-white px-3 py-1 text-sm font-bold text-[#103f20]"
-                          >
-                            <option value="okruh1">Okruh 1</option>
-                            <option value="okruh2">Okruh 2</option>
-                            <option value="skolky">Školky</option>
-                          </select>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openEdit(order);
-                            }}
-                            className="text-sm font-semibold text-[#5e7568] underline underline-offset-2"
-                          >
-                            Upravit
-                          </button>
-                        </div>
-
-                        <div className="mt-2 text-sm text-[#4f685d]">
-                          {order.address}{" "}
-                          <span className="text-[#aab7af]">|</span> {order.phone || "bez telefonu"}{" "}
-                          <span className="text-[#aab7af]">|</span> {formatPrice(order.total)}
-                        </div>
-
-                        <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              smsCustomer(order);
-                            }}
-                            className={outlineBtn}
-                          >
-                            SMS
-                          </button>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              callCustomer(order);
-                            }}
-                            className={outlineBtn}
-                          >
-                            Zavolat
-                          </button>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              focusOnMap(order);
-                            }}
-                            className={!routingOrderId || routingOrderId !== order.id ? activeBtn : outlineBtn}
-                          >
-                            Mapa
-                          </button>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startInternalNavigation(order);
-                            }}
-                            className={routingOrderId === order.id ? activeBtn : outlineBtn}
-                          >
-                            Navigovat
-                          </button>
-                        </div>
-
-                        <div className="mt-3 flex justify-center">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setConfirmDeliveredOrder(order);
-                            }}
-                            className={outlineBtn}
-                          >
-                            Vyřízeno
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          </div>
-
-          <div className={mobileTab !== "mapa" ? "hidden md:block" : ""}>
-            <div className="rounded-[24px] border border-[#d7eadb] bg-white p-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
-              <div className="mb-2 flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-[24px] font-extrabold text-[#103f20]">Mapa</div>
-                  <div className="text-sm text-[#5e7568]">
-                    Body objednávek a interní navigace v okně
-                  </div>
-                </div>
-
-                {routingOrderId ? (
-                  <button
-                    onClick={clearRoute}
-                    className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-xs font-bold text-[#103f20]"
-                  >
-                    Zavřít navigaci
-                  </button>
-                ) : null}
-              </div>
-
-              {routeInfo ? (
-                <div className="mb-3 rounded-[16px] border border-[#dff0e3] bg-[#f7fcf8] px-4 py-3 text-sm font-semibold text-[#103f20]">
-                  Trasa: {routeInfo.distanceKm.toFixed(1)} km • přibližně{" "}
-                  {Math.max(1, Math.round(routeInfo.durationMin))} min
-                </div>
-              ) : null}
-
-              <div className="overflow-hidden rounded-[20px] border border-[#e3efe6]">
-                <div
-                  ref={mapWrapRef}
-                  style={{ height: "76vh", minHeight: 430, width: "100%" }}
-                />
-              </div>
-
-              {selectedOrder ? (
-                <div className="mt-3 rounded-[18px] border border-[#e3efe6] bg-[#fbfefb] p-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="text-[22px] font-extrabold text-[#103f20]">
-                      {selectedOrder.full_name}
-                    </div>
-                    <span
-                      className={`rounded-full px-2 py-1 text-[11px] font-bold ${zoneBadgeClass(
-                        selectedOrder.delivery_zone
-                      )}`}
-                    >
-                      {zoneLabel(selectedOrder.delivery_zone)}
-                    </span>
-                  </div>
-
-                  <div className="mt-2 text-sm text-[#4f685d]">
-                    {selectedOrder.address}{" "}
-                    <span className="text-[#aab7af]">|</span> {selectedOrder.phone || "bez telefonu"}{" "}
-                    <span className="text-[#aab7af]">|</span> {formatPrice(selectedOrder.total)}
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
-                    <button
-                      onClick={() => smsCustomer(selectedOrder)}
-                      className={outlineBtn}
-                    >
-                      SMS
-                    </button>
-
-                    <button
-                      onClick={() => callCustomer(selectedOrder)}
-                      className={outlineBtn}
-                    >
-                      Zavolat
-                    </button>
-
-                    <button
-                      onClick={() => focusOnMap(selectedOrder)}
-                      className={!routingOrderId || routingOrderId !== selectedOrder.id ? activeBtn : outlineBtn}
-                    >
-                      Mapa
-                    </button>
-
-                    <button
-                      onClick={() => startInternalNavigation(selectedOrder)}
-                      className={routingOrderId === selectedOrder.id ? activeBtn : outlineBtn}
-                    >
-                      Navigovat
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </div>
+        <div className="md:hidden">
+          <MobileView {...sharedProps} />
         </div>
       </div>
 
@@ -986,66 +703,46 @@ export default function RozvozyPage() {
 
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-bold text-[#103f20]">
-                  Jméno
-                </label>
+                <label className="mb-1 block text-sm font-bold text-[#103f20]">Jméno</label>
                 <input
                   value={editForm.full_name}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({ ...prev, full_name: e.target.value }))
-                  }
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, full_name: e.target.value }))}
                   className="h-11 w-full rounded-xl border border-[#d6e8da] px-3 text-sm outline-none focus:border-[#9acbab]"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-bold text-[#103f20]">
-                  Telefon
-                </label>
+                <label className="mb-1 block text-sm font-bold text-[#103f20]">Telefon</label>
                 <input
                   value={editForm.phone}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({ ...prev, phone: e.target.value }))
-                  }
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))}
                   className="h-11 w-full rounded-xl border border-[#d6e8da] px-3 text-sm outline-none focus:border-[#9acbab]"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-bold text-[#103f20]">
-                  Cena
-                </label>
+                <label className="mb-1 block text-sm font-bold text-[#103f20]">Cena</label>
                 <input
                   value={editForm.total}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({ ...prev, total: e.target.value }))
-                  }
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, total: e.target.value }))}
                   className="h-11 w-full rounded-xl border border-[#d6e8da] px-3 text-sm outline-none focus:border-[#9acbab]"
                 />
               </div>
 
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-bold text-[#103f20]">
-                  Adresa
-                </label>
+                <label className="mb-1 block text-sm font-bold text-[#103f20]">Adresa</label>
                 <input
                   value={editForm.address}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({ ...prev, address: e.target.value }))
-                  }
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, address: e.target.value }))}
                   className="h-11 w-full rounded-xl border border-[#d6e8da] px-3 text-sm outline-none focus:border-[#9acbab]"
                 />
               </div>
 
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-bold text-[#103f20]">
-                  Poznámka
-                </label>
+                <label className="mb-1 block text-sm font-bold text-[#103f20]">Poznámka</label>
                 <textarea
                   value={editForm.driver_note}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({ ...prev, driver_note: e.target.value }))
-                  }
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, driver_note: e.target.value }))}
                   className="min-h-[110px] w-full rounded-xl border border-[#d6e8da] px-3 py-3 text-sm outline-none focus:border-[#9acbab]"
                 />
               </div>
