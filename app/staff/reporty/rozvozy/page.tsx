@@ -210,7 +210,6 @@ export default function RozvozyPage() {
 
       if (error) {
         setErrorMsg("Nepodařilo se načíst rozvozové objednávky.");
-        setLoading(false);
         return;
       }
 
@@ -361,7 +360,6 @@ export default function RozvozyPage() {
 
   async function setZone(orderId: string, zone: DeliveryZone) {
     setBusyId(orderId);
-
     try {
       const { error } = await supabase
         .from("orders")
@@ -543,59 +541,53 @@ export default function RozvozyPage() {
   function clearRoute() {
     setRoutingOrderId(null);
     setRouteInfo(null);
-
     if (routeLayerRef.current) {
       routeLayerRef.current.clearLayers();
     }
   }
 
-useEffect(() => {
-  if (!leafletReady) return;
-  if (!mapWrapRef.current) return;
+  useEffect(() => {
+    if (!leafletReady) return;
+    if (!mapWrapRef.current) return;
 
-  const L = leafletRef.current;
-  if (!L) return;
+    const L = leafletRef.current;
+    if (!L) return;
 
-  if (!mapRef.current) {
-    const map = L.map(mapWrapRef.current, {
-      zoomControl: true,
-      attributionControl: true,
-    }).setView([JIRKA_BASE.lat, JIRKA_BASE.lng], 13);
+    if (!mapRef.current) {
+      const map = L.map(mapWrapRef.current, {
+        zoomControl: true,
+        attributionControl: true,
+      }).setView([JIRKA_BASE.lat, JIRKA_BASE.lng], 13);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap",
-    }).addTo(map);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap",
+      }).addTo(map);
 
-    markersLayerRef.current = L.layerGroup().addTo(map);
-    routeLayerRef.current = L.layerGroup().addTo(map);
-    mapRef.current = map;
-  }
+      markersLayerRef.current = L.layerGroup().addTo(map);
+      routeLayerRef.current = L.layerGroup().addTo(map);
+      mapRef.current = map;
+    }
 
-  const timers = [50, 150, 300, 700, 1200].map((delay) =>
-    window.setTimeout(() => {
-      mapRef.current?.invalidateSize();
-    }, delay)
-  );
+    const timers = [50, 150, 300, 700, 1200].map((delay) =>
+      window.setTimeout(() => {
+        mapRef.current?.invalidateSize();
+      }, delay)
+    );
 
-  return () => {
-    timers.forEach((t) => clearTimeout(t));
-  };
-}, [leafletReady]);
+    return () => {
+      timers.forEach((t) => clearTimeout(t));
+    };
+  }, [leafletReady]);
 
-useEffect(() => {
-  if (!mapRef.current) return;
-  if (mobileTab !== "mapa") return;
+  useEffect(() => {
+    if (!mapRef.current) return;
+    if (mobileTab !== "mapa") return;
 
-  const timers = [50, 150, 300, 700, 1200].map((delay) =>
-    window.setTimeout(() => {
-      mapRef.current?.invalidateSize();
-    }, delay)
-  );
-
-  return () => {
-    timers.forEach((t) => clearTimeout(t));
-  };
-}, [mobileTab]);
+    const timers = [50, 150, 300, 700, 1200].map((delay) =>
+      window.setTimeout(() => {
+        mapRef.current?.invalidateSize();
+      }, delay)
+    );
 
     return () => {
       timers.forEach((t) => clearTimeout(t));
