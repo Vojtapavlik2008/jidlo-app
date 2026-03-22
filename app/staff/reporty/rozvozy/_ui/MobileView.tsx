@@ -91,25 +91,25 @@ export default function MobileView({
     });
   }, [filteredOrders]);
 
+  useEffect(() => {
+    if (mobileTab !== "mapa" && !fullscreenMap) return;
+
+    const timers = [50, 150, 300, 600].map((delay) =>
+      window.setTimeout(() => {
+        window.dispatchEvent(new Event("resize"));
+      }, delay)
+    );
+
+    return () => {
+      timers.forEach((t) => clearTimeout(t));
+    };
+  }, [mobileTab, fullscreenMap]);
+
   const orderedForMobile = useMemo(() => {
     if (!localOrder.length) return filteredOrders;
     const map = new Map(filteredOrders.map((o) => [o.id, o]));
     return localOrder.map((id) => map.get(id)).filter(Boolean) as OrderUi[];
   }, [filteredOrders, localOrder]);
-
-  useEffect(() => {
-    if (mobileTab === "mapa" || fullscreenMap) {
-      const timers = [60, 180, 350, 700].map((delay) =>
-        window.setTimeout(() => {
-          window.dispatchEvent(new Event("resize"));
-        }, delay)
-      );
-
-      return () => {
-        timers.forEach((t) => clearTimeout(t));
-      };
-    }
-  }, [mobileTab, fullscreenMap]);
 
   function reorderList(sourceId: string, targetId: string) {
     if (sourceId === targetId) return;
@@ -415,15 +415,15 @@ export default function MobileView({
           ) : null}
 
           <div
-  className={
-    fullscreenMap
-      ? "flex h-[100dvh] w-screen overflow-hidden"
-      : "flex h-[calc(100dvh-320px)] min-h-[320px] w-full overflow-hidden"
-  }
->
-  <div className="relative min-w-0 flex-1 bg-white">
-    <div ref={mapWrapRef} className="absolute inset-0" />
-  </div>
+            className={
+              fullscreenMap
+                ? "flex h-[100dvh] w-screen overflow-hidden"
+                : "flex h-[calc(100dvh-320px)] min-h-[320px] w-full overflow-hidden"
+            }
+          >
+            <div className="relative min-w-0 flex-1 bg-white">
+              <div ref={mapWrapRef} className="absolute inset-0" />
+            </div>
 
             <div className="w-[92px] shrink-0 overflow-y-auto border-l border-[#e3efe6] bg-[#fbfefb]">
               <div className="sticky top-0 z-10 border-b border-[#e3efe6] bg-[#fbfefb] px-2 py-2 text-center text-[11px] font-extrabold text-[#5e7568]">
