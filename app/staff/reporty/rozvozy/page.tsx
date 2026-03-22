@@ -52,7 +52,7 @@ export type RouteInfo = {
 
 const JIRKA_BASE = {
   name: "Jiřka",
-  address: "Havlíčkova 72/1, 29001 Poděbrady",
+  address: "Havlíčkova 72/3, 29001 Poděbrady",
   lat: 50.14277,
   lng: 15.11838,
 };
