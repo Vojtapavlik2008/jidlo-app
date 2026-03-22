@@ -187,6 +187,7 @@ export default function RozvozyPage() {
   const geocodingIdsRef = useRef<Set<string>>(new Set());
 
   const mapWrapRef = useRef<HTMLDivElement | null>(null);
+  const mapHostRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
   const leafletRef = useRef<any>(null);
   const markersLayerRef = useRef<any>(null);
@@ -553,7 +554,23 @@ export default function RozvozyPage() {
     const L = leafletRef.current;
     if (!L) return;
 
-    if (!mapRef.current) {
+    const shouldShowMap =
+      typeof window !== "undefined" &&
+      (window.innerWidth >= 768 || mobileTab === "mapa");
+
+    if (!shouldShowMap) return;
+
+    if (mapHostRef.current !== mapWrapRef.current) {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+      markersLayerRef.current = null;
+      routeLayerRef.current = null;
+      mapHostRef.current = mapWrapRef.current;
+    }
+
+    if (!mapRef.current && mapWrapRef.current) {
       const map = L.map(mapWrapRef.current, {
         zoomControl: true,
         attributionControl: true,
@@ -568,7 +585,7 @@ export default function RozvozyPage() {
       mapRef.current = map;
     }
 
-    const timers = [50, 150, 300, 700, 1200].map((delay) =>
+    const timers = [0, 100, 250, 500, 900, 1400].map((delay) =>
       window.setTimeout(() => {
         mapRef.current?.invalidateSize();
       }, delay)
@@ -577,7 +594,7 @@ export default function RozvozyPage() {
     return () => {
       timers.forEach((t) => clearTimeout(t));
     };
-  }, [leafletReady]);
+  }, [leafletReady, mobileTab]);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -606,11 +623,18 @@ export default function RozvozyPage() {
     observer.observe(mapWrapRef.current);
     resizeObserverRef.current = observer;
 
+    const timers = [50, 150, 300, 700].map((delay) =>
+      window.setTimeout(() => {
+        mapRef.current?.invalidateSize();
+      }, delay)
+    );
+
     return () => {
+      timers.forEach((t) => clearTimeout(t));
       observer.disconnect();
       resizeObserverRef.current = null;
     };
-  }, [mobileTab, leafletReady]);
+  }, [mobileTab, leafletReady, filteredOrders.length]);
 
   useEffect(() => {
     const onResize = () => {
