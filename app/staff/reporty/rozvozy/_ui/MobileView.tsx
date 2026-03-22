@@ -32,8 +32,6 @@ type Props = {
 
   outlineBtn: string;
   activeBtn: string;
-
-  onOpenHub?: () => void;
 };
 
 function IconSettings({ className = "" }: { className?: string }) {
@@ -77,7 +75,6 @@ export default function MobileView({
   focusOnMap,
   startInternalNavigation,
   clearRoute,
-  onOpenHub,
 }: Props) {
   const [fullscreenMap, setFullscreenMap] = useState(false);
   const [expandedRailId, setExpandedRailId] = useState<string | null>(null);
@@ -102,13 +99,14 @@ export default function MobileView({
 
   useEffect(() => {
     if (mobileTab === "mapa" || fullscreenMap) {
-      const t1 = setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
-      const t2 = setTimeout(() => window.dispatchEvent(new Event("resize")), 250);
-      const t3 = setTimeout(() => window.dispatchEvent(new Event("resize")), 600);
+      const timers = [60, 180, 350, 700].map((delay) =>
+        window.setTimeout(() => {
+          window.dispatchEvent(new Event("resize"));
+        }, delay)
+      );
+
       return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-        clearTimeout(t3);
+        timers.forEach((t) => clearTimeout(t));
       };
     }
   }, [mobileTab, fullscreenMap]);
@@ -120,24 +118,11 @@ export default function MobileView({
       const next = [...prev];
       const from = next.indexOf(sourceId);
       const to = next.indexOf(targetId);
+
       if (from === -1 || to === -1) return prev;
 
       const [moved] = next.splice(from, 1);
       next.splice(to, 0, moved);
-      return next;
-    });
-  }
-
-  function moveItem(id: string, dir: "up" | "down") {
-    setLocalOrder((prev) => {
-      const idx = prev.indexOf(id);
-      if (idx === -1) return prev;
-
-      const next = [...prev];
-      const swap = dir === "up" ? idx - 1 : idx + 1;
-      if (swap < 0 || swap >= next.length) return prev;
-
-      [next[idx], next[swap]] = [next[swap], next[idx]];
       return next;
     });
   }
@@ -162,6 +147,8 @@ export default function MobileView({
   const selectedFromOrdered =
     orderedForMobile.find((o) => o.id === selectedId) ?? selectedOrder ?? null;
 
+  const rightPanelWidth = 92;
+
   return (
     <div className="space-y-3">
       {!fullscreenMap ? (
@@ -181,17 +168,13 @@ export default function MobileView({
                   }}
                   className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-[13px] font-bold text-[#103f20]"
                 >
-                  Zvětšit obrazovku
+                  Zvětšit
                 </button>
 
                 <button
                   type="button"
                   onClick={() => {
-                    if (onOpenHub) {
-                      onOpenHub();
-                    } else {
-                      window.history.back();
-                    }
+                    window.location.href = "/staff";
                   }}
                   className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-[13px] font-bold text-[#103f20]"
                 >
@@ -239,7 +222,9 @@ export default function MobileView({
       {!fullscreenMap && mobileTab === "seznam" ? (
         <div className="rounded-[22px] border border-[#d7eadb] bg-white px-3 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="text-[20px] font-extrabold text-[#103f20]">Seznam objednávek</div>
+            <div className="text-[20px] font-extrabold text-[#103f20]">
+              Seznam objednávek
+            </div>
 
             <button
               type="button"
@@ -429,9 +414,15 @@ export default function MobileView({
             </div>
           ) : null}
 
-          <div className={fullscreenMap ? "flex h-screen w-screen" : "flex h-[68vh] min-h-[520px]"}>
+          <div
+            className={
+              fullscreenMap
+                ? "flex h-[100dvh] w-screen"
+                : "flex h-[62dvh] min-h-[460px] w-full"
+            }
+          >
             <div className="relative min-w-0 flex-1 bg-white">
-              <div ref={mapWrapRef} className="h-full w-full" />
+              <div ref={mapWrapRef} className="h-full w-full min-h-[460px]" />
             </div>
 
             <div className="w-[92px] shrink-0 overflow-y-auto border-l border-[#e3efe6] bg-[#fbfefb]">
@@ -440,7 +431,7 @@ export default function MobileView({
               </div>
 
               <div className="p-2">
-                {orderedForMobile.slice(0, 15).map((order, index) => {
+                {orderedForMobile.slice(0, 25).map((order, index) => {
                   const expanded = expandedRailId === order.id;
                   const selected = selectedId === order.id;
 
@@ -450,6 +441,7 @@ export default function MobileView({
                         type="button"
                         draggable
                         onDragStart={() => setDraggedId(order.id)}
+                        onDragEnd={() => setDraggedId(null)}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={() => {
                           if (draggedId) reorderList(draggedId, order.id);
@@ -464,27 +456,11 @@ export default function MobileView({
                           selected
                             ? "border-[#00a63e] bg-[#00a63e] text-white"
                             : "border-[#cfe5d5] bg-white text-[#103f20]"
-                        }`}
+                        } ${draggedId === order.id ? "opacity-60" : ""}`}
+                        title="Podrž a přetáhni pro změnu pořadí"
                       >
-                        {order.delivery_order ?? index + 1}
+                        {index + 1}
                       </button>
-
-                      <div className="mt-1 grid grid-cols-2 gap-1">
-                        <button
-                          type="button"
-                          onClick={() => moveItem(order.id, "up")}
-                          className="rounded-[10px] border border-[#cfe5d5] bg-white px-1 py-1 text-[10px] font-bold text-[#103f20]"
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveItem(order.id, "down")}
-                          className="rounded-[10px] border border-[#cfe5d5] bg-white px-1 py-1 text-[10px] font-bold text-[#103f20]"
-                        >
-                          ↓
-                        </button>
-                      </div>
 
                       {expanded ? (
                         <div className="mt-2 rounded-[14px] border border-[#d7eadb] bg-white p-2 text-[11px] shadow-sm">
@@ -503,9 +479,10 @@ export default function MobileView({
             <div
               className={
                 fullscreenMap
-                  ? "absolute bottom-0 left-0 right-[92px] z-[9999] border-t border-[#d7eadb] bg-white/95 p-4 backdrop-blur shadow-[0_-10px_30px_rgba(0,0,0,0.16)]"
+                  ? "absolute bottom-0 left-0 z-[9999] border-t border-[#d7eadb] bg-white/95 p-4 backdrop-blur shadow-[0_-10px_30px_rgba(0,0,0,0.16)]"
                   : "sticky bottom-0 z-20 border-t border-[#d7eadb] bg-white p-4 shadow-[0_-10px_30px_rgba(0,0,0,0.16)]"
               }
+              style={fullscreenMap ? { right: `${rightPanelWidth}px` } : undefined}
             >
               <div className="flex flex-wrap items-center gap-2">
                 <div className="text-[20px] font-extrabold text-[#103f20]">
