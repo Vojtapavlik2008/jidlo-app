@@ -504,11 +504,13 @@ export default function RozvozyPage() {
   }
 
   useEffect(() => {
-    if (!leafletReady || !mapWrapRef.current || mapRef.current) return;
+  if (!leafletReady) return;
+  if (!mapWrapRef.current) return;
 
-    const L = leafletRef.current;
-    if (!L) return;
+  const L = leafletRef.current;
+  if (!L) return;
 
+  if (!mapRef.current) {
     const map = L.map(mapWrapRef.current, {
       zoomControl: true,
       attributionControl: true,
@@ -521,12 +523,21 @@ export default function RozvozyPage() {
     markersLayerRef.current = L.layerGroup().addTo(map);
     routeLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
+  }
 
-    return () => {
-      map.remove();
-      mapRef.current = null;
-    };
-  }, [leafletReady]);
+  const t1 = setTimeout(() => {
+    mapRef.current?.invalidateSize();
+  }, 50);
+
+  const t2 = setTimeout(() => {
+    mapRef.current?.invalidateSize();
+  }, 250);
+
+  return () => {
+    clearTimeout(t1);
+    clearTimeout(t2);
+  };
+}, [leafletReady, mobileTab]);
 
   useEffect(() => {
     if (!leafletReady || !mapRef.current || !markersLayerRef.current) return;
