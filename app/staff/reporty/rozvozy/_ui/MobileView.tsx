@@ -364,14 +364,15 @@ export default function MobileView({
         </div>
       ) : null}
 
-      {(fullscreenMap || mobileTab === "mapa") ? (
-        <div
-          className={
-            fullscreenMap
-              ? "fixed inset-0 z-[9998] bg-[#f7faf7]"
-              : "overflow-hidden rounded-[22px] border border-[#d7eadb] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.05)]"
-          }
-        >
+      <div
+  className={
+    fullscreenMap
+      ? "fixed inset-0 z-[9998] bg-[#f7faf7]"
+      : mobileTab === "mapa"
+      ? "overflow-hidden rounded-[22px] border border-[#d7eadb] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.05)]"
+      : "hidden"
+  }
+>
           {fullscreenMap ? (
             <div className="absolute left-3 top-3 z-[10000]">
               <div className="relative">
