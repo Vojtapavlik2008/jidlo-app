@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import DesktopView from "./_ui/DesktopView";
+import MobileView from "./_ui/MobileView";
 
 type CustomerType = "zakaznik" | "fakturovany";
 
@@ -562,12 +564,44 @@ export default function ObjednavkaZJidelnickuPage() {
         }
       : null;
 
+  const sharedProps = {
+    customerType,
+    setCustomerType,
+    profileSearch,
+    setProfileSearch,
+    invoiceSearch,
+    setInvoiceSearch,
+    selectedProfile,
+    setSelectedProfile,
+    selectedInvoiceCustomer,
+    setSelectedInvoiceCustomer,
+    filteredProfiles,
+    filteredInvoiceCustomers,
+    setCreateMode,
+    setShowCreateCustomer,
+    menuDays,
+    activeDay,
+    setActiveDay,
+    weekOffset,
+    setWeekOffset,
+    menuLoading,
+    menuError,
+    activeItems,
+    cartQty,
+    addToCart,
+    subFromCart,
+    cartCount,
+    cartTotal,
+    saveMsg,
+    setShowSummary,
+  };
+
   return (
-    <div className="min-h-screen bg-[#f7f8f6]">
-      <div className="mx-auto w-full max-w-[1320px] px-6 py-5">
+    <div className="min-h-screen bg-[#f7f8f6] pb-[92px] md:pb-[96px]">
+      <div className="mx-auto w-full max-w-[1320px] px-4 py-4 md:px-6 md:py-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-[34px] font-extrabold tracking-tight text-[#0b2149]">
+            <h1 className="text-[28px] md:text-[34px] font-extrabold tracking-tight text-[#0b2149]">
               Objednávka z jídelníčku
             </h1>
             <div className="mt-1 text-[13px] font-semibold text-gray-500">
@@ -577,7 +611,7 @@ export default function ObjednavkaZJidelnickuPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-3">
             <Link
               href="/staff"
               className="rounded-[18px] bg-[#08a35c] px-5 py-3 text-[15px] font-extrabold text-white hover:brightness-95"
@@ -587,257 +621,36 @@ export default function ObjednavkaZJidelnickuPage() {
           </div>
         </div>
 
-        <div className="mt-5 rounded-[26px] border border-[#bde7c8] bg-white p-4 shadow-[0_12px_32px_rgba(27,54,39,0.05)]">
-          <div className="grid gap-2 md:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => setCustomerType("zakaznik")}
-              className={cls(
-                "rounded-[16px] border px-5 py-2.5 text-left transition",
-                customerType === "zakaznik"
-                  ? "border-[#08a35c] bg-[#08a35c] text-white"
-                  : "border-[#dff2e5] bg-white text-[#0b7c4d] hover:bg-[#f5fbf7]"
-              )}
-            >
-              <div className="text-[16px] font-extrabold">Zákazník</div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCustomerType("fakturovany")}
-              className={cls(
-                "rounded-[16px] border px-5 py-2.5 text-left transition",
-                customerType === "fakturovany"
-                  ? "border-[#08a35c] bg-[#08a35c] text-white"
-                  : "border-[#dff2e5] bg-white text-[#0b7c4d] hover:bg-[#f5fbf7]"
-              )}
-            >
-              <div className="text-[16px] font-extrabold">Fakturovaný zákazník</div>
-            </button>
-          </div>
-
-          <div className="mt-3 flex gap-2">
-            <div className="relative flex-1">
-              {customerType === "zakaznik" ? (
-                <>
-                  <input
-                    value={
-                      selectedProfile
-                        ? `${selectedProfile.full_name ?? ""} • kredit ${czk(Number(selectedProfile.kredit ?? 0))}`
-                        : profileSearch
-                    }
-                    onChange={(e) => {
-                      setSelectedProfile(null);
-                      setProfileSearch(e.target.value);
-                    }}
-                    placeholder="Vyhledej zákazníka"
-                    className="w-full rounded-full border border-[#bde7c8] bg-white px-4 py-2.5 text-[15px] font-semibold text-[#182033] outline-none focus:border-[#08a35c]"
-                  />
-
-                  {filteredProfiles.length > 0 && profileSearch.trim() && !selectedProfile ? (
-                    <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 rounded-[18px] border border-[#dff2e5] bg-white p-2 shadow-lg">
-                      <div className="grid gap-2">
-                        {filteredProfiles.map((c) => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedProfile(c);
-                              setProfileSearch("");
-                            }}
-                            className="rounded-[14px] border border-[#dff2e5] bg-[#f5fbf7] px-4 py-2.5 text-left hover:bg-[#ecf8f0]"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="text-[15px] font-extrabold text-[#182033]">
-                                {c.full_name || "Bez jména"}
-                              </div>
-                              <div className="text-[14px] font-extrabold text-[#0b7c4d]">
-                                {czk(Number(c.kredit ?? 0))}
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <input
-                    value={selectedInvoiceCustomer ? selectedInvoiceCustomer.name : invoiceSearch}
-                    onChange={(e) => {
-                      setSelectedInvoiceCustomer(null);
-                      setInvoiceSearch(e.target.value);
-                    }}
-                    placeholder="Vyhledej fakturovaného zákazníka"
-                    className="w-full rounded-full border border-[#bde7c8] bg-white px-4 py-2.5 text-[15px] font-semibold text-[#182033] outline-none focus:border-[#08a35c]"
-                  />
-
-                  {filteredInvoiceCustomers.length > 0 && invoiceSearch.trim() && !selectedInvoiceCustomer ? (
-                    <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 rounded-[18px] border border-[#dff2e5] bg-white p-2 shadow-lg">
-                      <div className="grid gap-2">
-                        {filteredInvoiceCustomers.map((c) => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedInvoiceCustomer(c);
-                              setInvoiceSearch("");
-                            }}
-                            className="rounded-[14px] border border-[#dff2e5] bg-[#f5fbf7] px-4 py-2.5 text-left hover:bg-[#ecf8f0]"
-                          >
-                            <div className="text-[15px] font-extrabold text-[#182033]">{c.name}</div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setCreateMode(customerType === "zakaznik" ? "profile" : "invoice");
-                setShowCreateCustomer(true);
-                setCreateCustomerMsg(null);
-              }}
-              className="inline-flex h-[46px] w-[46px] items-center justify-center rounded-[16px] border border-[#78d3a0] bg-white text-[24px] font-extrabold text-[#0b7c4d] hover:bg-[#f5fbf7]"
-            >
-              +
-            </button>
-          </div>
+        <div className="mt-5 hidden md:block">
+          <DesktopView {...sharedProps} />
         </div>
 
-        <div className="mt-5 rounded-[26px] border border-[#bde7c8] bg-white p-4 shadow-[0_12px_32px_rgba(27,54,39,0.05)]">
-          <div className="flex flex-wrap items-center gap-2">
-            {menuDays.map((day) => (
-              <button
-                key={day.key}
-                type="button"
-                onClick={() => setActiveDay(day.key)}
-                className={cls(
-                  "rounded-[14px] border px-4 py-2 text-[14px] font-extrabold transition",
-                  activeDay === day.key
-                    ? "border-[#08a35c] bg-[#08a35c] text-white"
-                    : "border-[#dff2e5] bg-white text-[#0b7c4d] hover:bg-[#f5fbf7]"
-                )}
-              >
-                {day.label}
-              </button>
-            ))}
+        <div className="mt-5 md:hidden">
+          <MobileView {...sharedProps} />
+        </div>
+      </div>
 
-            <button
-              type="button"
-              onClick={() => setWeekOffset((prev) => (prev === 0 ? 1 : 0))}
-              className="ml-auto rounded-[14px] border border-[#dff2e5] bg-white px-5 py-2 text-[16px] font-extrabold text-[#0b7c4d] hover:bg-[#f5fbf7]"
-            >
-              {weekOffset === 0 ? "Příští týden →" : "Aktuální týden ←"}
-            </button>
-          </div>
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#dff2e5] bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-[1320px] items-center gap-3 px-4 py-4 md:px-6">
+          <Link
+            href="/staff"
+            className="rounded-full border border-[#dff2e5] bg-white px-5 py-3 text-[15px] md:px-6 md:text-[16px] font-extrabold text-[#182033]"
+          >
+            Zpět
+          </Link>
 
-          <div className="mt-3">
-            {menuLoading ? (
-              <div className="text-sm font-semibold text-gray-600">Načítám menu…</div>
-            ) : menuError ? (
-              <div className="text-sm font-semibold text-red-600">{menuError}</div>
-            ) : activeItems.length === 0 ? (
-              <div className="text-sm font-semibold text-gray-500">Na tento den není v menu nic zadané.</div>
-            ) : (
-              <div className="mt-2 max-h-[430px] overflow-y-auto pr-1">
-                <div className="grid gap-2.5">
-                  {activeItems.map((item) => {
-                    const qty = cartQty(item.foodId, item.dayKey);
-
-                    return (
-                      <div
-                        key={item.id}
-                        className={cls(
-                          "rounded-[20px] border px-4 py-3",
-                          qty > 0 ? "border-[#95d6af] bg-[#eef8f1]" : "border-[#dff2e5] bg-white"
-                        )}
-                      >
-                        <div className="grid items-center gap-3 md:grid-cols-[minmax(0,1.8fr)_220px_140px_150px]">
-                          <div className="min-w-0">
-                            <div className="truncate text-[15px] font-extrabold text-[#0b2149]">
-                              {item.name}
-                            </div>
-                          </div>
-
-                          <div className="truncate text-[13px] font-extrabold text-[#0b7c4d]">
-                            {item.subtitle || "—"}
-                          </div>
-
-                          <div className="text-right text-[17px] font-extrabold text-[#0b7c4d]">
-                            {czk(item.price)}
-                          </div>
-
-                          <div className="flex items-center justify-end gap-2">
-                            {qty <= 0 ? (
-                              <button
-                                type="button"
-                                onClick={() => addToCart(item)}
-                                className="rounded-full border border-[#78d3a0] bg-white px-5 py-2 text-[14px] font-extrabold text-[#0b7c4d] hover:bg-[#f5fbf7]"
-                              >
-                                Přidat
-                              </button>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => subFromCart(item)}
-                                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#78d3a0] bg-white text-[22px] font-extrabold text-[#0b7c4d]"
-                                >
-                                  −
-                                </button>
-                                <div className="min-w-[24px] text-center text-[20px] font-extrabold text-[#0b2149]">
-                                  {qty}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => addToCart(item)}
-                                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#78d3a0] bg-white text-[22px] font-extrabold text-[#0b7c4d]"
-                                >
-                                  +
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+          <button
+            type="button"
+            onClick={() => setShowSummary(true)}
+            className={cls(
+              "ml-auto rounded-full px-5 py-3 text-[15px] md:px-6 md:text-[16px] font-extrabold transition",
+              cartCount > 0
+                ? "bg-[#08a35c] text-white"
+                : "border border-[#dff2e5] bg-white text-[#182033]"
             )}
-          </div>
-        </div>
-
-        {saveMsg ? <div className="mt-4 text-sm font-semibold text-[#0b7c4d]">{saveMsg}</div> : null}
-
-        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#dff2e5] bg-white/95 backdrop-blur">
-          <div className="mx-auto flex max-w-[1320px] items-center gap-3 px-6 py-4">
-            <Link
-              href="/staff"
-              className="rounded-full border border-[#dff2e5] bg-white px-6 py-3 text-[16px] font-extrabold text-[#182033]"
-            >
-              Zpět
-            </Link>
-
-            <button
-              type="button"
-              onClick={() => setShowSummary(true)}
-              className={cls(
-                "ml-auto rounded-full px-6 py-3 text-[16px] font-extrabold transition",
-                cartCount > 0
-                  ? "bg-[#08a35c] text-white"
-                  : "border border-[#dff2e5] bg-white text-[#182033]"
-              )}
-            >
-              Objednávka • {cartCount} ks • {czk(cartTotal)}
-            </button>
-          </div>
+          >
+            Objednávka • {cartCount} ks • {czk(cartTotal)}
+          </button>
         </div>
       </div>
 
@@ -846,7 +659,7 @@ export default function ObjednavkaZJidelnickuPage() {
           <div className="w-full max-w-[560px] rounded-[28px] border border-[#dff2e5] bg-white p-5 shadow-2xl">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-[24px] font-extrabold text-[#0b2149]">
+                <div className="text-[22px] md:text-[24px] font-extrabold text-[#0b2149]">
                   {createMode === "invoice" ? "Nový fakturovaný zákazník" : "Nový zákazník"}
                 </div>
                 <div className="mt-1 text-[14px] font-semibold text-gray-500">
@@ -983,10 +796,10 @@ export default function ObjednavkaZJidelnickuPage() {
 
       {showSummary ? (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-[930px] rounded-[28px] border border-[#dff2e5] bg-white p-5 shadow-2xl">
+          <div className="w-full max-w-[930px] rounded-[28px] border border-[#dff2e5] bg-white p-4 md:p-5 shadow-2xl">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-[24px] font-extrabold text-[#0b2149]">Objednávka</div>
+                <div className="text-[22px] md:text-[24px] font-extrabold text-[#0b2149]">Objednávka</div>
                 <div className="mt-1 text-[14px] font-semibold text-gray-500">
                   Jednoduchý souhrn objednávky
                 </div>
@@ -1002,7 +815,7 @@ export default function ObjednavkaZJidelnickuPage() {
             </div>
 
             <div className="mt-5 rounded-[18px] border border-[#dff2e5] bg-[#f5fbf7] px-4 py-4">
-              <div className="flex items-start justify-between gap-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-5">
                 <div className="min-w-0">
                   <div className="text-[14px] font-bold text-gray-500">Zákazník</div>
                   <div className="mt-1 text-[18px] font-extrabold text-[#182033]">
@@ -1051,13 +864,13 @@ export default function ObjednavkaZJidelnickuPage() {
                   cart.map((item) => (
                     <div
                       key={item.id}
-                      className="grid grid-cols-[minmax(0,1.8fr)_110px_70px_120px_130px] items-center gap-3 rounded-[18px] border border-[#dff2e5] bg-white px-4 py-3"
+                      className="grid grid-cols-1 gap-2 rounded-[18px] border border-[#dff2e5] bg-white px-4 py-3 md:grid-cols-[minmax(0,1.8fr)_110px_70px_120px_130px] md:items-center md:gap-3"
                     >
                       <div className="truncate text-[15px] font-extrabold text-[#182033]">{item.name}</div>
                       <div className="text-[14px] font-semibold text-gray-500">{dayLabelShort(item.dayKey)}</div>
                       <div className="text-[15px] font-semibold text-[#182033]">{item.qty} ks</div>
                       <div className="text-[14px] font-semibold text-gray-500">{czk(item.price)}</div>
-                      <div className="text-right text-[15px] font-extrabold text-[#0b7c4d]">
+                      <div className="text-left md:text-right text-[15px] font-extrabold text-[#0b7c4d]">
                         {czk(item.qty * item.price)}
                       </div>
                     </div>
@@ -1066,7 +879,7 @@ export default function ObjednavkaZJidelnickuPage() {
               </div>
             </div>
 
-            <div className="mt-5 flex items-center justify-between gap-3">
+            <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="rounded-[18px] border border-[#bde7c8] bg-[#f5fbf7] px-5 py-3 text-[16px] font-extrabold text-[#0b7c4d]">
                 Celkem: {czk(cartTotal)} • {cartCount} ks
               </div>
