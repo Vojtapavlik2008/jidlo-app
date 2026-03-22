@@ -104,26 +104,30 @@ export function zoneBadgeClass(zone: DeliveryZone) {
 }
 
 async function geocodeAddress(address: string) {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=cz&q=${encodeURIComponent(
-    address
-  )}`;
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=cz&q=${encodeURIComponent(
+      address
+    )}`;
 
-  const res = await fetch(url, {
-    headers: { Accept: "application/json" },
-  });
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+    });
 
-  if (!res.ok) return null;
+    if (!res.ok) return null;
 
-  const json = await res.json();
-  if (!Array.isArray(json) || !json[0]) return null;
+    const json = await res.json();
+    if (!Array.isArray(json) || !json[0]) return null;
 
-  const first = json[0];
-  const lat = Number(first.lat);
-  const lng = Number(first.lon);
+    const first = json[0];
+    const lat = Number(first.lat);
+    const lng = Number(first.lon);
 
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
-  return { lat, lng };
+    return { lat, lng };
+  } catch {
+    return null;
+  }
 }
 
 async function fetchDrivingRoute(
@@ -132,24 +136,28 @@ async function fetchDrivingRoute(
   toLng: number,
   toLat: number
 ) {
-  const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
 
-  const res = await fetch(url);
-  if (!res.ok) return null;
+    const res = await fetch(url);
+    if (!res.ok) return null;
 
-  const json = await res.json();
-  const route = json?.routes?.[0];
-  if (!route?.geometry?.coordinates?.length) return null;
+    const json = await res.json();
+    const route = json?.routes?.[0];
+    if (!route?.geometry?.coordinates?.length) return null;
 
-  const points = route.geometry.coordinates.map(
-    (p: [number, number]) => [p[1], p[0]] as [number, number]
-  );
+    const points = route.geometry.coordinates.map(
+      (p: [number, number]) => [p[1], p[0]] as [number, number]
+    );
 
-  return {
-    points,
-    distanceKm: route.distance / 1000,
-    durationMin: route.duration / 60,
-  };
+    return {
+      points,
+      distanceKm: route.distance / 1000,
+      durationMin: route.duration / 60,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export default function RozvozyPage() {
@@ -186,51 +194,56 @@ export default function RozvozyPage() {
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   async function loadOrders() {
-    setLoading(true);
-    setErrorMsg("");
+    try {
+      setLoading(true);
+      setErrorMsg("");
 
-    const { data, error } = await supabase
-      .from("orders")
-      .select(
-        "id, created_at, full_name, phone, address, total, delivery_mode, delivery_status, delivery_order, lat, lng, driver_note, delivered_at, delivery_zone"
-      )
-      .eq("delivery_mode", "ano")
-      .neq("delivery_status", "delivered")
-      .order("delivery_order", { ascending: true })
-      .order("created_at", { ascending: true });
+      const { data, error } = await supabase
+        .from("orders")
+        .select(
+          "id, created_at, full_name, phone, address, total, delivery_mode, delivery_status, delivery_order, lat, lng, driver_note, delivered_at, delivery_zone"
+        )
+        .eq("delivery_mode", "ano")
+        .neq("delivery_status", "delivered")
+        .order("delivery_order", { ascending: true })
+        .order("created_at", { ascending: true });
 
-    if (error) {
+      if (error) {
+        setErrorMsg("Nepodařilo se načíst rozvozové objednávky.");
+        setLoading(false);
+        return;
+      }
+
+      const rows = (data ?? []) as OrderRow[];
+
+      const mapped: OrderUi[] = rows.map((row) => {
+        const autoZone = autoZoneFromLat(row.lat ?? null);
+
+        return {
+          id: row.id,
+          created_at: row.created_at,
+          full_name: row.full_name?.trim() || "Bez jména",
+          phone: row.phone?.trim() || "",
+          address: row.address?.trim() || "",
+          total: Number(row.total ?? 0),
+          delivery_mode: row.delivery_mode ?? "",
+          delivery_status: (row.delivery_status as DeliveryStatus) || "waiting",
+          delivery_order: row.delivery_order ?? null,
+          lat: row.lat ?? null,
+          lng: row.lng ?? null,
+          driver_note: row.driver_note ?? "",
+          delivered_at: row.delivered_at ?? null,
+          delivery_zone: (row.delivery_zone as DeliveryZone) || autoZone || null,
+        };
+      });
+
+      setOrders(mapped);
+      setSelectedId((prev) => prev ?? mapped[0]?.id ?? null);
+    } catch {
       setErrorMsg("Nepodařilo se načíst rozvozové objednávky.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const rows = (data ?? []) as OrderRow[];
-
-    const mapped: OrderUi[] = rows.map((row) => {
-      const autoZone = autoZoneFromLat(row.lat ?? null);
-
-      return {
-        id: row.id,
-        created_at: row.created_at,
-        full_name: row.full_name?.trim() || "Bez jména",
-        phone: row.phone?.trim() || "",
-        address: row.address?.trim() || "",
-        total: Number(row.total ?? 0),
-        delivery_mode: row.delivery_mode ?? "",
-        delivery_status: (row.delivery_status as DeliveryStatus) || "waiting",
-        delivery_order: row.delivery_order ?? null,
-        lat: row.lat ?? null,
-        lng: row.lng ?? null,
-        driver_note: row.driver_note ?? "",
-        delivered_at: row.delivered_at ?? null,
-        delivery_zone: (row.delivery_zone as DeliveryZone) || autoZone || null,
-      };
-    });
-
-    setOrders(mapped);
-    setSelectedId((prev) => prev ?? mapped[0]?.id ?? null);
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -241,10 +254,14 @@ export default function RozvozyPage() {
     let cancelled = false;
 
     async function initLeaflet() {
-      const L = await import("leaflet");
-      if (cancelled) return;
-      leafletRef.current = L;
-      setLeafletReady(true);
+      try {
+        const L = await import("leaflet");
+        if (cancelled) return;
+        leafletRef.current = L;
+        setLeafletReady(true);
+      } catch {
+        setErrorMsg("Nepodařilo se načíst mapu.");
+      }
     }
 
     initLeaflet();
@@ -345,18 +362,20 @@ export default function RozvozyPage() {
   async function setZone(orderId: string, zone: DeliveryZone) {
     setBusyId(orderId);
 
-    const { error } = await supabase
-      .from("orders")
-      .update({ delivery_zone: zone })
-      .eq("id", orderId);
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ delivery_zone: zone })
+        .eq("id", orderId);
 
-    if (!error) {
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, delivery_zone: zone } : o))
-      );
+      if (!error) {
+        setOrders((prev) =>
+          prev.map((o) => (o.id === orderId ? { ...o, delivery_zone: zone } : o))
+        );
+      }
+    } finally {
+      setBusyId(null);
     }
-
-    setBusyId(null);
   }
 
   async function saveEdit() {
@@ -364,39 +383,41 @@ export default function RozvozyPage() {
 
     setBusyId(editOrder.id);
 
-    const totalValue = Number(editForm.total || 0);
+    try {
+      const totalValue = Number(editForm.total || 0);
 
-    const updatePayload: Record<string, any> = {
-      full_name: editForm.full_name.trim(),
-      phone: editForm.phone.trim(),
-      address: editForm.address.trim(),
-      total: Number.isFinite(totalValue) ? totalValue : 0,
-      driver_note: editForm.driver_note,
-    };
+      const updatePayload: Record<string, any> = {
+        full_name: editForm.full_name.trim(),
+        phone: editForm.phone.trim(),
+        address: editForm.address.trim(),
+        total: Number.isFinite(totalValue) ? totalValue : 0,
+        driver_note: editForm.driver_note,
+      };
 
-    const found = editForm.address.trim()
-      ? await geocodeAddress(editForm.address.trim())
-      : null;
+      const found = editForm.address.trim()
+        ? await geocodeAddress(editForm.address.trim())
+        : null;
 
-    if (found) {
-      updatePayload.lat = found.lat;
-      updatePayload.lng = found.lng;
-      if (!editOrder.delivery_zone || editOrder.delivery_zone !== "skolky") {
-        updatePayload.delivery_zone = autoZoneFromLat(found.lat);
+      if (found) {
+        updatePayload.lat = found.lat;
+        updatePayload.lng = found.lng;
+        if (!editOrder.delivery_zone || editOrder.delivery_zone !== "skolky") {
+          updatePayload.delivery_zone = autoZoneFromLat(found.lat);
+        }
       }
+
+      const { error } = await supabase
+        .from("orders")
+        .update(updatePayload)
+        .eq("id", editOrder.id);
+
+      if (!error) {
+        await loadOrders();
+        setEditOrder(null);
+      }
+    } finally {
+      setBusyId(null);
     }
-
-    const { error } = await supabase
-      .from("orders")
-      .update(updatePayload)
-      .eq("id", editOrder.id);
-
-    if (!error) {
-      await loadOrders();
-      setEditOrder(null);
-    }
-
-    setBusyId(null);
   }
 
   function openEdit(order: OrderUi) {
@@ -413,28 +434,30 @@ export default function RozvozyPage() {
   async function markDelivered(orderId: string) {
     setBusyId(orderId);
 
-    const deliveredAt = new Date().toISOString();
+    try {
+      const deliveredAt = new Date().toISOString();
 
-    const { error } = await supabase
-      .from("orders")
-      .update({
-        delivery_status: "delivered",
-        delivered_at: deliveredAt,
-      })
-      .eq("id", orderId);
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          delivery_status: "delivered",
+          delivered_at: deliveredAt,
+        })
+        .eq("id", orderId);
 
-    if (!error) {
-      setOrders((prev) => prev.filter((o) => o.id !== orderId));
-      setSelectedId((prev) => {
-        if (prev !== orderId) return prev;
-        const next = filteredOrders.find((o) => o.id !== orderId);
-        return next?.id ?? null;
-      });
-      setConfirmDeliveredOrder(null);
-      clearRoute();
+      if (!error) {
+        setOrders((prev) => prev.filter((o) => o.id !== orderId));
+        setSelectedId((prev) => {
+          if (prev !== orderId) return prev;
+          const next = filteredOrders.find((o) => o.id !== orderId);
+          return next?.id ?? null;
+        });
+        setConfirmDeliveredOrder(null);
+        clearRoute();
+      }
+    } finally {
+      setBusyId(null);
     }
-
-    setBusyId(null);
   }
 
   function callCustomer(order: OrderUi) {
@@ -454,7 +477,7 @@ export default function RozvozyPage() {
     const map = mapRef.current;
     if (!map) return;
 
-    [0, 80, 180, 350, 700].forEach((delay) => {
+    [0, 80, 180, 350, 700, 1200].forEach((delay) => {
       window.setTimeout(() => {
         map.invalidateSize();
       }, delay);
@@ -526,41 +549,40 @@ export default function RozvozyPage() {
     }
   }
 
-useEffect(() => {
-  if (!leafletReady) return;
-  if (!mapWrapRef.current) return;
+  useEffect(() => {
+    if (!leafletReady) return;
+    if (!mapWrapRef.current) return;
 
-  const L = leafletRef.current;
-  if (!L) return;
+    const L = leafletRef.current;
+    if (!L) return;
 
-  const el = mapWrapRef.current;
+    const el = mapWrapRef.current;
 
-  if (!mapRef.current) {
-    const map = L.map(el, {
-      zoomControl: true,
-      attributionControl: true,
-    }).setView([JIRKA_BASE.lat, JIRKA_BASE.lng], 13);
+    if (!mapRef.current) {
+      const map = L.map(el, {
+        zoomControl: true,
+        attributionControl: true,
+      }).setView([JIRKA_BASE.lat, JIRKA_BASE.lng], 13);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap",
-    }).addTo(map);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap",
+      }).addTo(map);
 
-    markersLayerRef.current = L.layerGroup().addTo(map);
-    routeLayerRef.current = L.layerGroup().addTo(map);
-    mapRef.current = map;
-  }
+      markersLayerRef.current = L.layerGroup().addTo(map);
+      routeLayerRef.current = L.layerGroup().addTo(map);
+      mapRef.current = map;
+    }
 
-  const timers = [50, 150, 300, 700, 1200].map((delay) =>
-    window.setTimeout(() => {
-      mapRef.current?.invalidateSize();
-    }, delay)
-  );
+    const timers = [50, 150, 300, 700, 1200].map((delay) =>
+      window.setTimeout(() => {
+        mapRef.current?.invalidateSize();
+      }, delay)
+    );
 
-  return () => {
-    timers.forEach((t) => clearTimeout(t));
-  };
-}, [leafletReady, mobileTab, filteredOrders.length]);
-
+    return () => {
+      timers.forEach((t) => clearTimeout(t));
+    };
+  }, [leafletReady, mobileTab, filteredOrders.length]);
 
   useEffect(() => {
     if (!mapRef.current) return;
