@@ -1,4 +1,4 @@
-"se client";
+"use client";
 
 import "leaflet/dist/leaflet.css";
 import Link from "next/link";
