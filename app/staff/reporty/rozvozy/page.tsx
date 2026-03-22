@@ -540,6 +540,23 @@ export default function RozvozyPage() {
 }, [leafletReady, mobileTab]);
 
   useEffect(() => {
+  if (mobileTab !== "mapa") return;
+
+  const t1 = setTimeout(() => {
+    mapRef.current?.invalidateSize();
+  }, 60);
+
+  const t2 = setTimeout(() => {
+    mapRef.current?.invalidateSize();
+  }, 300);
+
+  return () => {
+    clearTimeout(t1);
+    clearTimeout(t2);
+  };
+}, [mobileTab, filteredOrders.length, selectedId]);
+
+  useEffect(() => {
     if (!leafletReady || !mapRef.current || !markersLayerRef.current) return;
 
     const L = leafletRef.current;
