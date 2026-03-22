@@ -28,23 +28,39 @@ function monthLabel(d: Date) {
 function Tile({
   children,
   onClick,
-  blue = false,
+  href,
+  variant = "green",
+  compact = false,
 }: {
   children: ReactNode;
   onClick?: () => void;
-  blue?: boolean;
+  href?: string;
+  variant?: "green" | "blue" | "red";
+  compact?: boolean;
 }) {
+  const styles =
+    variant === "blue"
+      ? "border-[#4f77d9] bg-[#5f87ea] text-white"
+      : variant === "red"
+      ? "border-[#d83a3a] bg-[#e54848] text-white"
+      : "border-[#08a35c] bg-[#08a35c] text-white";
+
+  const baseClass = cls(
+    "w-full rounded-[20px] border text-left font-extrabold shadow-sm transition active:scale-[0.99]",
+    compact ? "px-4 py-4 text-[15px]" : "px-5 py-5 text-[16px]",
+    styles
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={baseClass}>
+        {children}
+      </Link>
+    );
+  }
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cls(
-        "w-full rounded-[22px] border px-5 py-5 text-left text-[16px] font-extrabold shadow-sm transition",
-        blue
-          ? "border-[#4f77d9] bg-[#5f87ea] text-white"
-          : "border-[#08a35c] bg-[#08a35c] text-white"
-      )}
-    >
+    <button type="button" onClick={onClick} className={baseClass}>
       {children}
     </button>
   );
@@ -172,40 +188,94 @@ export default function MobileView(props: Props) {
   } = props;
 
   return (
-    <div className="space-y-5">
+    <div className={cls("space-y-5", view === "home" && "min-h-[calc(100dvh-120px)]")}>
       {view === "home" ? (
-        <>
+        <div className="flex min-h-[calc(100dvh-120px)] flex-col">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h1 className="text-[28px] font-extrabold tracking-tight text-[#0b2149]">Reporty a administrace</h1>
-              <div className="mt-1 text-[13px] font-semibold text-gray-500">Přehled a správa systému</div>
+              <h1 className="text-[28px] font-extrabold tracking-tight text-[#0b2149]">Reporty</h1>
             </div>
 
-            <Link
-              href="/staff"
-              className="rounded-[16px] bg-[#08a35c] px-4 py-3 text-[14px] font-extrabold text-white"
-            >
-              Zpět
-            </Link>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => window.history.back()}
+                className="rounded-[14px] border border-[#cfd7e6] bg-white px-3 py-2.5 text-[13px] font-extrabold text-[#0b2149]"
+              >
+                Zpět
+              </button>
+
+              <Link
+                href="/staff"
+                className="rounded-[14px] bg-[#08a35c] px-3 py-2.5 text-[13px] font-extrabold text-white"
+              >
+                Rozcestník
+              </Link>
+            </div>
           </div>
 
-          <div className="grid gap-3">
-            <Tile onClick={() => { setSummaryRange("lastMonth"); setView("summary"); }}>Minulý měsíc</Tile>
-            <Tile onClick={() => { setSummaryRange("thisMonth"); setView("summary"); }}>Tento měsíc</Tile>
-            <Tile onClick={() => { setSummaryRange("yesterday"); setView("summary"); }}>Včera</Tile>
-            <Tile onClick={() => { setSummaryRange("today"); setView("summary"); }}>Dnes</Tile>
-            <Tile onClick={() => setView("invoiceCustomers")}>Fakturovaní zákazníci</Tile>
-            <Tile onClick={() => setView("dailyReport")}>Denní report</Tile>
-            <Tile blue onClick={() => setView("settingsHome")}>Nastavení</Tile>
-          </div>
+          <div className="mt-4 flex flex-1 flex-col gap-3">
+            <Tile href="/staff/reporty/rozvozy" variant="red" compact>
+              Rozvozy
+            </Tile>
 
-          <Link
-            href="/staff/reporty/rozvozy"
-            className="block rounded-[22px] border border-[#08a35c] bg-[#08a35c] px-5 py-5 text-left text-[16px] font-extrabold text-white shadow-sm"
-          >
-            Rozvozy
-          </Link>
-        </>
+            <div className="grid grid-cols-2 gap-3">
+              <Tile
+                compact
+                onClick={() => {
+                  setSummaryRange("lastMonth");
+                  setView("summary");
+                }}
+              >
+                Minulý měsíc
+              </Tile>
+
+              <Tile
+                compact
+                onClick={() => {
+                  setSummaryRange("thisMonth");
+                  setView("summary");
+                }}
+              >
+                Tento měsíc
+              </Tile>
+
+              <Tile
+                compact
+                onClick={() => {
+                  setSummaryRange("yesterday");
+                  setView("summary");
+                }}
+              >
+                Včera
+              </Tile>
+
+              <Tile
+                compact
+                onClick={() => {
+                  setSummaryRange("today");
+                  setView("summary");
+                }}
+              >
+                Dnes
+              </Tile>
+
+              <Tile compact onClick={() => setView("invoiceCustomers")}>
+                Fakturovaní zákazníci
+              </Tile>
+
+              <Tile compact onClick={() => setView("dailyReport")}>
+                Denní report
+              </Tile>
+            </div>
+
+            <div className="mt-auto pt-1">
+              <Tile variant="blue" compact onClick={() => setView("settingsHome")}>
+                Nastavení
+              </Tile>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {view === "settingsHome" ? (
@@ -635,7 +705,7 @@ function MobileHeader({
           href="/staff"
           className="rounded-[16px] bg-[#08a35c] px-4 py-3 text-[14px] font-extrabold text-white"
         >
-          Domů
+          Rozcestník
         </Link>
       </div>
     </div>
