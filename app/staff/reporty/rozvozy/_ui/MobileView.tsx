@@ -352,16 +352,17 @@ export default function MobileView({
                             setConfirmDeliveredOrder(order);
                           }}
                           className="w-full rounded-xl border border-[#00a63e] bg-[#00a63e] px-3 py-3 text-sm font-bold text-white"
-                >
-                  Vyřízeno
-                </button>
-              </div>
-            </div>
-          ) : null}
-      </div>
-    </div>
-  );
-}
+                        >
+                          Vyřízeno
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      ) : null}
 
       <div
         className={
