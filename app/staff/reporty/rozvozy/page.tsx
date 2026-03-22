@@ -209,6 +209,7 @@ export default function RozvozyPage() {
 
     const mapped: OrderUi[] = rows.map((row) => {
       const autoZone = autoZoneFromLat(row.lat ?? null);
+
       return {
         id: row.id,
         created_at: row.created_at,
@@ -264,6 +265,7 @@ export default function RozvozyPage() {
     for (const order of needCoords) {
       try {
         geocodingIdsRef.current.add(order.id);
+
         const found = await geocodeAddress(order.address);
         if (!found) continue;
 
@@ -452,26 +454,12 @@ export default function RozvozyPage() {
     const map = mapRef.current;
     if (!map) return;
 
-    const delays = [0, 80, 200, 400, 700];
-    delays.forEach((delay) => {
+    [0, 80, 180, 350, 700].forEach((delay) => {
       window.setTimeout(() => {
         map.invalidateSize();
       }, delay);
     });
   }
-
-  useEffect(() => {
-  if (!mapRef.current) return;
-  if (mobileTab !== "mapa") return;
-
-  const timers = [50, 150, 300, 700, 1200].map((delay) =>
-    window.setTimeout(() => {
-      mapRef.current?.invalidateSize();
-    }, delay)
-  );
-
-  return () => timers.forEach(clearTimeout);
-}, [mobileTab]);
 
   function focusOnMap(order: OrderUi) {
     clearRoute();
@@ -532,6 +520,7 @@ export default function RozvozyPage() {
   function clearRoute() {
     setRoutingOrderId(null);
     setRouteInfo(null);
+
     if (routeLayerRef.current) {
       routeLayerRef.current.clearLayers();
     }
@@ -560,13 +549,25 @@ export default function RozvozyPage() {
     }
 
     forceMapResize();
-
-    return () => {};
   }, [leafletReady, mobileTab]);
 
   useEffect(() => {
-    if (!mapWrapRef.current) return;
     if (!mapRef.current) return;
+    if (mobileTab !== "mapa") return;
+
+    const timers = [50, 150, 300, 700, 1200].map((delay) =>
+      window.setTimeout(() => {
+        mapRef.current?.invalidateSize();
+      }, delay)
+    );
+
+    return () => {
+      timers.forEach((t) => clearTimeout(t));
+    };
+  }, [mobileTab]);
+
+  useEffect(() => {
+    if (!mapWrapRef.current || !mapRef.current) return;
 
     resizeObserverRef.current?.disconnect();
 
@@ -675,9 +676,18 @@ export default function RozvozyPage() {
         className: "",
         html: `
           <div style="
-            width:34px;height:34px;border-radius:999px;background:${bg};color:#fff;
-            border:${border};display:flex;align-items:center;justify-content:center;
-            font-weight:800;font-size:13px;box-shadow:0 8px 18px rgba(0,0,0,.18);
+            width:34px;
+            height:34px;
+            border-radius:999px;
+            background:${bg};
+            color:#fff;
+            border:${border};
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-weight:800;
+            font-size:13px;
+            box-shadow:0 8px 18px rgba(0,0,0,.18);
           ">${order.delivery_order ?? idx + 1}</div>
         `,
         iconSize: [34, 34],
