@@ -52,7 +52,7 @@ export type RouteInfo = {
 
 const JIRKA_BASE = {
   name: "Jiřka",
-  address: "Havlíčkova 72/3, 29001 Poděbrady",
+  address: "Havlíčkova 72/1, 29001 Poděbrady",
   lat: 50.14277,
   lng: 15.11838,
 };
@@ -183,6 +183,7 @@ export default function RozvozyPage() {
   const leafletRef = useRef<any>(null);
   const markersLayerRef = useRef<any>(null);
   const routeLayerRef = useRef<any>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   async function loadOrders() {
     setLoading(true);
@@ -447,16 +448,32 @@ export default function RozvozyPage() {
     )}`;
   }
 
+  function forceMapResize() {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const delays = [0, 80, 200, 400, 700];
+    delays.forEach((delay) => {
+      window.setTimeout(() => {
+        map.invalidateSize();
+      }, delay);
+    });
+  }
+
   function focusOnMap(order: OrderUi) {
     clearRoute();
     setSelectedId(order.id);
     setMobileTab("mapa");
 
-    if (mapRef.current && order.lat != null && order.lng != null) {
-      mapRef.current.flyTo([order.lat, order.lng], 16, {
-        duration: 0.6,
-      });
-    }
+    window.setTimeout(() => {
+      forceMapResize();
+
+      if (mapRef.current && order.lat != null && order.lng != null) {
+        mapRef.current.flyTo([order.lat, order.lng], 16, {
+          duration: 0.6,
+        });
+      }
+    }, 120);
   }
 
   async function startInternalNavigation(order: OrderUi) {
@@ -465,6 +482,10 @@ export default function RozvozyPage() {
     setRoutingOrderId(order.id);
     setSelectedId(order.id);
     setMobileTab("mapa");
+
+    window.setTimeout(() => {
+      forceMapResize();
+    }, 120);
 
     const route = await fetchDrivingRoute(
       JIRKA_BASE.lng,
@@ -504,57 +525,69 @@ export default function RozvozyPage() {
   }
 
   useEffect(() => {
-  if (!leafletReady) return;
-  if (!mapWrapRef.current) return;
+    if (!leafletReady) return;
+    if (!mapWrapRef.current) return;
 
-  const L = leafletRef.current;
-  if (!L) return;
+    const L = leafletRef.current;
+    if (!L) return;
 
-  if (!mapRef.current) {
-    const map = L.map(mapWrapRef.current, {
-      zoomControl: true,
-      attributionControl: true,
-    }).setView([JIRKA_BASE.lat, JIRKA_BASE.lng], 13);
+    if (!mapRef.current) {
+      const map = L.map(mapWrapRef.current, {
+        zoomControl: true,
+        attributionControl: true,
+      }).setView([JIRKA_BASE.lat, JIRKA_BASE.lng], 13);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap",
-    }).addTo(map);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap",
+      }).addTo(map);
 
-    markersLayerRef.current = L.layerGroup().addTo(map);
-    routeLayerRef.current = L.layerGroup().addTo(map);
-    mapRef.current = map;
-  }
+      markersLayerRef.current = L.layerGroup().addTo(map);
+      routeLayerRef.current = L.layerGroup().addTo(map);
+      mapRef.current = map;
+    }
 
-  const t1 = setTimeout(() => {
-    mapRef.current?.invalidateSize();
-  }, 50);
+    forceMapResize();
 
-  const t2 = setTimeout(() => {
-    mapRef.current?.invalidateSize();
-  }, 250);
-
-  return () => {
-    clearTimeout(t1);
-    clearTimeout(t2);
-  };
-}, [leafletReady, mobileTab]);
+    return () => {};
+  }, [leafletReady, mobileTab]);
 
   useEffect(() => {
-  if (mobileTab !== "mapa") return;
+    if (!mapWrapRef.current) return;
+    if (!mapRef.current) return;
 
-  const t1 = setTimeout(() => {
-    mapRef.current?.invalidateSize();
-  }, 60);
+    resizeObserverRef.current?.disconnect();
 
-  const t2 = setTimeout(() => {
-    mapRef.current?.invalidateSize();
-  }, 300);
+    const observer = new ResizeObserver(() => {
+      mapRef.current?.invalidateSize();
+    });
 
-  return () => {
-    clearTimeout(t1);
-    clearTimeout(t2);
-  };
-}, [mobileTab, filteredOrders.length, selectedId]);
+    observer.observe(mapWrapRef.current);
+    resizeObserverRef.current = observer;
+
+    return () => {
+      observer.disconnect();
+      resizeObserverRef.current = null;
+    };
+  }, [mobileTab, leafletReady]);
+
+  useEffect(() => {
+    const onResize = () => {
+      mapRef.current?.invalidateSize();
+    };
+
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (mobileTab !== "mapa") return;
+    forceMapResize();
+  }, [mobileTab, filteredOrders.length, selectedId]);
 
   useEffect(() => {
     if (!leafletReady || !mapRef.current || !markersLayerRef.current) return;
@@ -669,6 +702,8 @@ export default function RozvozyPage() {
       const bounds = L.latLngBounds(points);
       map.fitBounds(bounds, { padding: [28, 28] });
     }
+
+    forceMapResize();
   }, [leafletReady, filteredOrders, selectedId]);
 
   const outlineBtn =
