@@ -460,6 +460,19 @@ export default function RozvozyPage() {
     });
   }
 
+  useEffect(() => {
+  if (!mapRef.current) return;
+  if (mobileTab !== "mapa") return;
+
+  const timers = [50, 150, 300, 700, 1200].map((delay) =>
+    window.setTimeout(() => {
+      mapRef.current?.invalidateSize();
+    }, delay)
+  );
+
+  return () => timers.forEach(clearTimeout);
+}, [mobileTab]);
+
   function focusOnMap(order: OrderUi) {
     clearRoute();
     setSelectedId(order.id);
