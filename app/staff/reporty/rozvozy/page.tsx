@@ -103,7 +103,9 @@ export function zoneBadgeClass(zone: DeliveryZone) {
 }
 
 async function geocodeAddress(address: string) {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=cz&q=${encodeURIComponent(address)}`;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=cz&q=${encodeURIComponent(
+    address
+  )}`;
 
   const res = await fetch(url, {
     headers: { Accept: "application/json" },
@@ -123,7 +125,12 @@ async function geocodeAddress(address: string) {
   return { lat, lng };
 }
 
-async function fetchDrivingRoute(fromLng: number, fromLat: number, toLng: number, toLat: number) {
+async function fetchDrivingRoute(
+  fromLng: number,
+  fromLat: number,
+  toLng: number,
+  toLat: number
+) {
   const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
 
   const res = await fetch(url);
@@ -133,7 +140,9 @@ async function fetchDrivingRoute(fromLng: number, fromLat: number, toLng: number
   const route = json?.routes?.[0];
   if (!route?.geometry?.coordinates?.length) return null;
 
-  const points = route.geometry.coordinates.map((p: [number, number]) => [p[1], p[0]] as [number, number]);
+  const points = route.geometry.coordinates.map(
+    (p: [number, number]) => [p[1], p[0]] as [number, number]
+  );
 
   return {
     points,
@@ -292,10 +301,15 @@ export default function RozvozyPage() {
       const zone = autoZoneFromLat(order.lat);
       if (!zone) continue;
 
-      const { error } = await supabase.from("orders").update({ delivery_zone: zone }).eq("id", order.id);
+      const { error } = await supabase
+        .from("orders")
+        .update({ delivery_zone: zone })
+        .eq("id", order.id);
 
       if (!error) {
-        setOrders((prev) => prev.map((p) => (p.id === order.id ? { ...p, delivery_zone: zone } : p)));
+        setOrders((prev) =>
+          prev.map((p) => (p.id === order.id ? { ...p, delivery_zone: zone } : p))
+        );
       }
     }
   }
@@ -327,10 +341,15 @@ export default function RozvozyPage() {
   async function setZone(orderId: string, zone: DeliveryZone) {
     setBusyId(orderId);
 
-    const { error } = await supabase.from("orders").update({ delivery_zone: zone }).eq("id", orderId);
+    const { error } = await supabase
+      .from("orders")
+      .update({ delivery_zone: zone })
+      .eq("id", orderId);
 
     if (!error) {
-      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, delivery_zone: zone } : o)));
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, delivery_zone: zone } : o))
+      );
     }
 
     setBusyId(null);
@@ -351,7 +370,9 @@ export default function RozvozyPage() {
       driver_note: editForm.driver_note,
     };
 
-    const found = editForm.address.trim() ? await geocodeAddress(editForm.address.trim()) : null;
+    const found = editForm.address.trim()
+      ? await geocodeAddress(editForm.address.trim())
+      : null;
 
     if (found) {
       updatePayload.lat = found.lat;
@@ -361,7 +382,10 @@ export default function RozvozyPage() {
       }
     }
 
-    const { error } = await supabase.from("orders").update(updatePayload).eq("id", editOrder.id);
+    const { error } = await supabase
+      .from("orders")
+      .update(updatePayload)
+      .eq("id", editOrder.id);
 
     if (!error) {
       await loadOrders();
@@ -417,7 +441,9 @@ export default function RozvozyPage() {
   function smsCustomer(order: OrderUi) {
     if (!order.phone) return;
     const text = "Dobrý den, za chvíli jsme u Vás. Jiřka";
-    window.location.href = `sms:${normalizePhone(order.phone)}?body=${encodeURIComponent(text)}`;
+    window.location.href = `sms:${normalizePhone(order.phone)}?body=${encodeURIComponent(
+      text
+    )}`;
   }
 
   function focusOnMap(order: OrderUi) {
@@ -439,7 +465,12 @@ export default function RozvozyPage() {
     setSelectedId(order.id);
     setMobileTab("mapa");
 
-    const route = await fetchDrivingRoute(JIRKA_BASE.lng, JIRKA_BASE.lat, order.lng, order.lat);
+    const route = await fetchDrivingRoute(
+      JIRKA_BASE.lng,
+      JIRKA_BASE.lat,
+      order.lng,
+      order.lat
+    );
 
     if (!routeLayerRef.current || !leafletRef.current || !mapRef.current) return;
 
@@ -590,7 +621,9 @@ export default function RozvozyPage() {
               ? `<div style="margin-top:5px;font-size:13px;font-weight:700;color:#103f20">${order.phone}</div>`
               : ""
           }
-          <div style="margin-top:6px;font-size:12px;color:#556d62">${zoneLabel(order.delivery_zone)}</div>
+          <div style="margin-top:6px;font-size:12px;color:#556d62">${zoneLabel(
+            order.delivery_zone
+          )}</div>
         </div>`
       );
 
@@ -645,33 +678,33 @@ export default function RozvozyPage() {
   return (
     <div className="min-h-screen bg-[#f7faf7] text-[#123b1f]">
       <div className="mx-auto max-w-[1600px] px-3 py-3 md:px-5 md:py-5">
-        <div className="mb-4 rounded-[22px] border border-[#d7eadb] bg-white px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="text-[28px] font-extrabold leading-none text-[#00a63e]">
-                Rozvozy
+        <div className="hidden md:block">
+          <div className="mb-4 rounded-[22px] border border-[#d7eadb] bg-white px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="text-[28px] font-extrabold leading-none text-[#00a63e]">
+                  Rozvozy
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/staff/reporty"
+                  className="rounded-full border border-[#cfe5d5] bg-white px-4 py-2 text-sm font-bold text-[#103f20]"
+                >
+                  Zpět
+                </Link>
+
+                <Link
+                  href="/staff"
+                  className="rounded-full border border-[#cfe5d5] bg-white px-4 py-2 text-sm font-bold text-[#103f20]"
+                >
+                  Rozcestník
+                </Link>
               </div>
             </div>
-
-            <div className="flex items-center gap-2">
-              <Link
-                href="/staff/reporty"
-                className="rounded-full border border-[#cfe5d5] bg-white px-4 py-2 text-sm font-bold text-[#103f20]"
-              >
-                Zpět
-              </Link>
-
-              <Link
-                href="/staff"
-                className="rounded-full border border-[#cfe5d5] bg-white px-4 py-2 text-sm font-bold text-[#103f20]"
-              >
-                Rozcestník
-              </Link>
-            </div>
           </div>
-        </div>
 
-        <div className="hidden md:block">
           <DesktopView {...sharedProps} />
         </div>
 
@@ -703,46 +736,66 @@ export default function RozvozyPage() {
 
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-bold text-[#103f20]">Jméno</label>
+                <label className="mb-1 block text-sm font-bold text-[#103f20]">
+                  Jméno
+                </label>
                 <input
                   value={editForm.full_name}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, full_name: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, full_name: e.target.value }))
+                  }
                   className="h-11 w-full rounded-xl border border-[#d6e8da] px-3 text-sm outline-none focus:border-[#9acbab]"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-bold text-[#103f20]">Telefon</label>
+                <label className="mb-1 block text-sm font-bold text-[#103f20]">
+                  Telefon
+                </label>
                 <input
                   value={editForm.phone}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, phone: e.target.value }))
+                  }
                   className="h-11 w-full rounded-xl border border-[#d6e8da] px-3 text-sm outline-none focus:border-[#9acbab]"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-bold text-[#103f20]">Cena</label>
+                <label className="mb-1 block text-sm font-bold text-[#103f20]">
+                  Cena
+                </label>
                 <input
                   value={editForm.total}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, total: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, total: e.target.value }))
+                  }
                   className="h-11 w-full rounded-xl border border-[#d6e8da] px-3 text-sm outline-none focus:border-[#9acbab]"
                 />
               </div>
 
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-bold text-[#103f20]">Adresa</label>
+                <label className="mb-1 block text-sm font-bold text-[#103f20]">
+                  Adresa
+                </label>
                 <input
                   value={editForm.address}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, address: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, address: e.target.value }))
+                  }
                   className="h-11 w-full rounded-xl border border-[#d6e8da] px-3 text-sm outline-none focus:border-[#9acbab]"
                 />
               </div>
 
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-bold text-[#103f20]">Poznámka</label>
+                <label className="mb-1 block text-sm font-bold text-[#103f20]">
+                  Poznámka
+                </label>
                 <textarea
                   value={editForm.driver_note}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, driver_note: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, driver_note: e.target.value }))
+                  }
                   className="min-h-[110px] w-full rounded-xl border border-[#d6e8da] px-3 py-3 text-sm outline-none focus:border-[#9acbab]"
                 />
               </div>
