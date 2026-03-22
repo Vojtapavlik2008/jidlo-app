@@ -526,15 +526,17 @@ export default function RozvozyPage() {
     }
   }
 
- useEffect(() => {
+useEffect(() => {
   if (!leafletReady) return;
   if (!mapWrapRef.current) return;
 
   const L = leafletRef.current;
   if (!L) return;
 
+  const el = mapWrapRef.current;
+
   if (!mapRef.current) {
-    const map = L.map(mapWrapRef.current, {
+    const map = L.map(el, {
       zoomControl: true,
       attributionControl: true,
     }).setView([JIRKA_BASE.lat, JIRKA_BASE.lng], 13);
@@ -548,12 +550,17 @@ export default function RozvozyPage() {
     mapRef.current = map;
   }
 
-  forceMapResize();
+  const timers = [50, 150, 300, 700, 1200].map((delay) =>
+    window.setTimeout(() => {
+      mapRef.current?.invalidateSize();
+    }, delay)
+  );
 
-  window.setTimeout(() => {
-    mapRef.current?.invalidateSize();
-  }, 300);
-}, [leafletReady, mobileTab]);
+  return () => {
+    timers.forEach((t) => clearTimeout(t));
+  };
+}, [leafletReady, mobileTab, filteredOrders.length]);
+
 
   useEffect(() => {
     if (!mapRef.current) return;
