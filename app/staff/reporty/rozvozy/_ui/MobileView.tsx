@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState, type RefObject } from "react";
-import type { DeliveryZone, FilterKey, OrderUi, RouteInfo } from "../page";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import type {
+  CurrentPosition,
+  DeliveryZone,
+  FilterKey,
+  OrderUi,
+  RouteInfo,
+} from "../page";
 import { formatPrice, zoneBadgeClass, zoneLabel } from "../page";
 
 type Props = {
@@ -30,22 +36,113 @@ type Props = {
   startInternalNavigation: (order: OrderUi) => Promise<void>;
   clearRoute: () => void;
 
+  currentPosition: CurrentPosition | null;
+  locationAllowed: boolean | null;
+  locationBusy: boolean;
+  requestCurrentPosition: (center?: boolean) => void;
+  focusMyLocation: () => void;
+
   outlineBtn: string;
   activeBtn: string;
 };
 
-function IconSettings({ className = "" }: { className?: string }) {
+type SheetState = "peek" | "mid" | "full";
+
+function IconChevronLeft({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
       <path
-        d="M12 8.75a3.25 3.25 0 1 0 0 6.5a3.25 3.25 0 0 0 0-6.5Z"
+        d="M15 5l-7 7l7 7"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconChevronRight({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M9 5l7 7l-7 7"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconChevronUp({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M5 15l7-7l7 7"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconChevronDown({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M5 9l7 7l7-7"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconGrip({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M8 7h8M8 12h8M8 17h8"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function IconLocation({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M12 21s6-5.4 6-11a6 6 0 1 0-12 0c0 5.6 6 11 6 11Z"
+        stroke="currentColor"
+        strokeWidth="1.9"
+      />
+      <circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.9" />
+    </svg>
+  );
+}
+
+function IconRefresh({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M20 11a8 8 0 0 0-14.9-3M4 13a8 8 0 0 0 14.9 3"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
       />
       <path
-        d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.9 1.9 0 0 1-1.35 3.25h-.15a1 1 0 0 0-.95.68l-.05.14a1.9 1.9 0 0 1-3.58 0l-.05-.14a1 1 0 0 0-.95-.68h-1.3a1 1 0 0 0-.95.68l-.05.14a1.9 1.9 0 0 1-3.58 0l-.05-.14a1 1 0 0 0-.95-.68h-.15A1.9 1.9 0 0 1 4.3 16.2l.1-.1a1 1 0 0 0 .2-1.1l-.08-.18a1 1 0 0 0-.9-.57H3.4a1.9 1.9 0 0 1 0-3.8h.12a1 1 0 0 0 .9-.57l.08-.18a1 1 0 0 0-.2-1.1l-.1-.1A1.9 1.9 0 0 1 5.65 5h.15a1 1 0 0 0 .95-.68l.05-.14a1.9 1.9 0 0 1 3.58 0l.05.14a1 1 0 0 0 .95.68h1.3a1 1 0 0 0 .95-.68l.05-.14a1.9 1.9 0 0 1 3.58 0l.05.14a1 1 0 0 0 .95.68h.15A1.9 1.9 0 0 1 19.7 7.8l-.1.1a1 1 0 0 0-.2 1.1l.08.18a1 1 0 0 0 .9.57h.12a1.9 1.9 0 0 1 0 3.8h-.12a1 1 0 0 0-.9.57L19.4 15Z"
+        d="M17 3v5h-5M7 21v-5h5"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.9"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -55,9 +152,10 @@ function IconSettings({ className = "" }: { className?: string }) {
 
 export default function MobileView({
   loading,
+  busyId,
+  errorMsg,
   selectedId,
   setSelectedId,
-  mobileTab,
   setMobileTab,
   filter,
   setFilter,
@@ -75,12 +173,25 @@ export default function MobileView({
   focusOnMap,
   startInternalNavigation,
   clearRoute,
+  currentPosition,
+  locationAllowed,
+  locationBusy,
+  requestCurrentPosition,
+  focusMyLocation,
 }: Props) {
   const [fullscreenMap, setFullscreenMap] = useState(false);
-  const [expandedRailId, setExpandedRailId] = useState<string | null>(null);
+  const [railOpen, setRailOpen] = useState(false);
+  const [railEditMode, setRailEditMode] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [localOrder, setLocalOrder] = useState<string[]>([]);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sheetState, setSheetState] = useState<SheetState>("peek");
+
+  const sheetStartYRef = useRef<number | null>(null);
+  const sheetDeltaRef = useRef(0);
+
+  useEffect(() => {
+    setMobileTab("mapa");
+  }, [setMobileTab]);
 
   useEffect(() => {
     setLocalOrder((prev) => {
@@ -92,9 +203,7 @@ export default function MobileView({
   }, [filteredOrders]);
 
   useEffect(() => {
-    if (mobileTab !== "mapa" && !fullscreenMap) return;
-
-    const timers = [50, 150, 300, 600].map((delay) =>
+    const timers = [60, 160, 300, 650, 1100].map((delay) =>
       window.setTimeout(() => {
         window.dispatchEvent(new Event("resize"));
       }, delay)
@@ -103,13 +212,22 @@ export default function MobileView({
     return () => {
       timers.forEach((t) => clearTimeout(t));
     };
-  }, [mobileTab, fullscreenMap]);
+  }, [fullscreenMap, railOpen, sheetState, filteredOrders.length, selectedId]);
 
   const orderedForMobile = useMemo(() => {
     if (!localOrder.length) return filteredOrders;
     const map = new Map(filteredOrders.map((o) => [o.id, o]));
     return localOrder.map((id) => map.get(id)).filter(Boolean) as OrderUi[];
   }, [filteredOrders, localOrder]);
+
+  const selectedFromOrdered =
+    orderedForMobile.find((o) => o.id === selectedId) ?? selectedOrder ?? orderedForMobile[0] ?? null;
+
+  useEffect(() => {
+    if (!selectedId && orderedForMobile[0]) {
+      setSelectedId(orderedForMobile[0].id);
+    }
+  }, [orderedForMobile, selectedId, setSelectedId]);
 
   function reorderList(sourceId: string, targetId: string) {
     if (sourceId === targetId) return;
@@ -127,6 +245,54 @@ export default function MobileView({
     });
   }
 
+  function cycleSheetUp() {
+    setSheetState((prev) => {
+      if (prev === "peek") return "mid";
+      if (prev === "mid") return "full";
+      return "full";
+    });
+  }
+
+  function cycleSheetDown() {
+    setSheetState((prev) => {
+      if (prev === "full") return "mid";
+      if (prev === "mid") return "peek";
+      return "peek";
+    });
+  }
+
+  function onSheetTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+    sheetStartYRef.current = e.touches[0].clientY;
+    sheetDeltaRef.current = 0;
+  }
+
+  function onSheetTouchMove(e: React.TouchEvent<HTMLDivElement>) {
+    if (sheetStartYRef.current == null) return;
+    sheetDeltaRef.current = e.touches[0].clientY - sheetStartYRef.current;
+  }
+
+  function onSheetTouchEnd() {
+    const delta = sheetDeltaRef.current;
+
+    if (delta < -45) {
+      cycleSheetUp();
+    } else if (delta > 45) {
+      cycleSheetDown();
+    }
+
+    sheetStartYRef.current = null;
+    sheetDeltaRef.current = 0;
+  }
+
+  const sheetHeightClass =
+    sheetState === "peek"
+      ? "h-[118px]"
+      : sheetState === "mid"
+      ? "h-[34dvh]"
+      : "h-[82dvh]";
+
+  const railWidth = railOpen ? 108 : 28;
+
   const filterBtn = (key: FilterKey, label: string) => (
     <button
       type="button"
@@ -134,7 +300,7 @@ export default function MobileView({
         clearRoute();
         setFilter(key);
       }}
-      className={`rounded-full px-4 py-2 text-sm font-bold whitespace-nowrap transition ${
+      className={`rounded-full px-3 py-2 text-[13px] font-bold whitespace-nowrap transition ${
         filter === key
           ? "border border-[#00a63e] bg-[#00a63e] text-white"
           : "border border-[#cfe5d5] bg-white text-[#103f20]"
@@ -144,163 +310,266 @@ export default function MobileView({
     </button>
   );
 
-  const selectedFromOrdered =
-    orderedForMobile.find((o) => o.id === selectedId) ?? selectedOrder ?? null;
-
-  const rightPanelWidth = 92;
+  const mapHeightStyle = fullscreenMap
+    ? { height: "100dvh" }
+    : { height: "calc(100dvh - 160px)" };
 
   return (
     <div className="space-y-3">
-      {!fullscreenMap ? (
-        <>
-          <div className="rounded-[22px] border border-[#d7eadb] bg-white px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 text-[28px] font-extrabold leading-none text-[#00a63e]">
+      <div className="rounded-[22px] border border-[#d7eadb] bg-white px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 text-[28px] font-extrabold leading-none text-[#00a63e]">
+            Rozvozy
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFullscreenMap(true)}
+              className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-[13px] font-bold text-[#103f20]"
+            >
+              Zvětšit
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = "/staff";
+              }}
+              className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-[13px] font-bold text-[#103f20]"
+            >
+              Rozcestník
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {filterBtn("okruh1", "Okruh 1")}
+        {filterBtn("okruh2", "Okruh 2")}
+        {filterBtn("skolky", "Školky")}
+        {filterBtn("vsechny", "Všechny")}
+      </div>
+
+      <div
+        className={
+          fullscreenMap
+            ? "fixed inset-0 z-[9998] bg-[#f7faf7]"
+            : "overflow-hidden rounded-[22px] border border-[#d7eadb] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.05)]"
+        }
+      >
+        <div className="relative w-full overflow-hidden" style={mapHeightStyle}>
+          {fullscreenMap ? (
+            <div className="absolute left-3 top-3 right-3 z-[10000] flex items-center justify-between gap-2">
+              <div className="rounded-full border border-[#d7eadb] bg-white/95 px-4 py-2 text-[18px] font-extrabold text-[#00a63e] shadow backdrop-blur">
                 Rozvozy
               </div>
 
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setMobileTab("mapa");
-                    setFullscreenMap(true);
-                  }}
-                  className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-[13px] font-bold text-[#103f20]"
+                  onClick={focusMyLocation}
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-[#cfe5d5] bg-white text-[#103f20] shadow"
+                  title="Moje poloha"
                 >
-                  Zvětšit
+                  <IconLocation className="h-5 w-5" />
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    window.location.href = "/staff";
-                  }}
-                  className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-[13px] font-bold text-[#103f20]"
+                  onClick={() => setFullscreenMap(false)}
+                  className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-[13px] font-bold text-[#103f20] shadow"
                 >
-                  Rozcestník
+                  Ukončit
                 </button>
               </div>
             </div>
-          </div>
+          ) : null}
 
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {filterBtn("okruh1", "Okruh 1")}
-            {filterBtn("okruh2", "Okruh 2")}
-            {filterBtn("skolky", "Školky")}
-            {filterBtn("vsechny", "Všechny")}
-          </div>
+          <div ref={mapWrapRef} className="h-full w-full" />
 
-          <div className="flex gap-2">
+          <div className="absolute bottom-[132px] left-3 z-[9999] flex flex-col gap-2">
             <button
               type="button"
-              onClick={() => setMobileTab("seznam")}
-              className={`rounded-full px-4 py-2 text-sm font-bold ${
-                mobileTab === "seznam"
-                  ? "border border-[#00a63e] bg-[#00a63e] text-white"
-                  : "border border-[#cfe5d5] bg-white text-[#103f20]"
-              }`}
+              onClick={focusMyLocation}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-[#cfe5d5] bg-white text-[#103f20] shadow"
+              title="Moje poloha"
             >
-              Seznam
+              <IconLocation className="h-5 w-5" />
             </button>
-
-            <button
-              type="button"
-              onClick={() => setMobileTab("mapa")}
-              className={`rounded-full px-4 py-2 text-sm font-bold ${
-                mobileTab === "mapa"
-                  ? "border border-[#00a63e] bg-[#00a63e] text-white"
-                  : "border border-[#cfe5d5] bg-white text-[#103f20]"
-              }`}
-            >
-              Mapa
-            </button>
-          </div>
-        </>
-      ) : null}
-
-      {!fullscreenMap && mobileTab === "seznam" ? (
-        <div className="rounded-[22px] border border-[#d7eadb] bg-white px-3 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="text-[20px] font-extrabold text-[#103f20]">
-              Seznam objednávek
-            </div>
 
             <button
               type="button"
               onClick={loadOrders}
-              className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-xs font-bold text-[#103f20]"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-[#cfe5d5] bg-white text-[#103f20] shadow"
+              title="Obnovit"
             >
-              Obnovit
+              <IconRefresh className="h-5 w-5" />
             </button>
           </div>
 
-          <div className="max-h-[72vh] overflow-y-auto">
-            {loading ? (
-              <div className="rounded-[18px] border border-[#e3efe6] bg-[#fbfefb] p-4 text-[#5e7568]">
-                Načítám rozvozy...
-              </div>
-            ) : null}
+          {routeInfo ? (
+            <div
+              className="absolute left-3 top-[78px] z-[9999] max-w-[240px] rounded-[16px] border border-[#dff0e3] bg-[#f7fcf8]/95 px-4 py-3 text-sm font-semibold text-[#103f20] shadow backdrop-blur"
+            >
+              Trasa: {routeInfo.distanceKm.toFixed(1)} km • přibližně{" "}
+              {Math.max(1, Math.round(routeInfo.durationMin))} min
+            </div>
+          ) : null}
 
-            {!loading && orderedForMobile.length === 0 ? (
-              <div className="rounded-[18px] border border-[#e3efe6] bg-[#fbfefb] p-4 text-[#5e7568]">
-                V tomto filtru teď nejsou žádné objednávky.
-              </div>
-            ) : null}
+          {errorMsg ? (
+            <div className="absolute left-3 right-3 top-[78px] z-[9999] rounded-[16px] border border-[#ffd4d4] bg-white/95 px-4 py-3 text-sm font-semibold text-[#9f2222] shadow backdrop-blur">
+              {errorMsg}
+            </div>
+          ) : null}
 
-            {!loading &&
-              orderedForMobile.map((order, index) => {
-                const selected = selectedId === order.id;
+          <div
+            className="absolute right-0 top-0 bottom-0 z-[9999] flex"
+            style={{ width: railWidth }}
+          >
+            <div className="flex w-7 items-center justify-center border-l border-[#d7eadb] bg-white/92 backdrop-blur">
+              <button
+                type="button"
+                onClick={() => setRailOpen((prev) => !prev)}
+                className="flex h-12 w-6 items-center justify-center rounded-full border border-[#d7eadb] bg-white text-[#103f20] shadow"
+                title={railOpen ? "Sbalit pořadí" : "Rozbalit pořadí"}
+              >
+                {railOpen ? (
+                  <IconChevronRight className="h-4 w-4" />
+                ) : (
+                  <IconChevronLeft className="h-4 w-4" />
+                )}
+              </button>
+            </div>
 
-                return (
-                  <div
-                    key={order.id}
-                    onClick={() => setSelectedId(order.id)}
-                    className={`py-3 ${
-                      index !== orderedForMobile.length - 1 ? "border-b border-[#e6efe8]" : ""
+            {railOpen ? (
+              <div className="w-[81px] overflow-y-auto border-l border-[#e3efe6] bg-[#fbfefb]/95 backdrop-blur">
+                <div className="sticky top-0 z-10 border-b border-[#e3efe6] bg-[#fbfefb]/95 px-2 py-2">
+                  <button
+                    type="button"
+                    onClick={() => setRailEditMode((prev) => !prev)}
+                    className={`w-full rounded-xl px-2 py-2 text-[11px] font-extrabold ${
+                      railEditMode
+                        ? "border border-[#00a63e] bg-[#00a63e] text-white"
+                        : "border border-[#cfe5d5] bg-white text-[#103f20]"
                     }`}
                   >
-                    <div
-                      className={`rounded-[18px] px-3 py-3 transition ${
-                        selected ? "bg-[#f4fbf5]" : "bg-white"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="truncate text-[18px] font-extrabold leading-tight text-[#103f20]">
-                            {order.full_name}
-                          </div>
-                        </div>
+                    {railEditMode ? "Hotovo" : "Upravit"}
+                  </button>
+                </div>
 
-                        <select
-                          value={order.delivery_zone ?? ""}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) =>
-                            setZone(order.id, (e.target.value || null) as DeliveryZone)
+                <div className="p-2">
+                  {orderedForMobile.slice(0, 40).map((order, index) => {
+                    const selected = selectedId === order.id;
+
+                    return (
+                      <div key={order.id} className="mb-2">
+                        <button
+                          type="button"
+                          draggable={railEditMode}
+                          onDragStart={() => setDraggedId(order.id)}
+                          onDragEnd={() => setDraggedId(null)}
+                          onDragOver={(e) => {
+                            if (railEditMode) e.preventDefault();
+                          }}
+                          onDrop={() => {
+                            if (railEditMode && draggedId) {
+                              reorderList(draggedId, order.id);
+                            }
+                            setDraggedId(null);
+                          }}
+                          onClick={() => {
+                            setSelectedId(order.id);
+                            focusOnMap(order);
+                          }}
+                          className={`flex w-full items-center justify-center gap-1 rounded-[16px] border px-2 py-3 text-sm font-extrabold transition ${
+                            selected
+                              ? "border-[#00a63e] bg-[#00a63e] text-white"
+                              : "border-[#cfe5d5] bg-white text-[#103f20]"
+                          } ${draggedId === order.id ? "opacity-60" : ""}`}
+                          title={
+                            railEditMode
+                              ? "Podrž a přetáhni pro změnu pořadí"
+                              : order.full_name
                           }
-                          className="shrink-0 rounded-full border border-[#cfe5d5] bg-white px-2 py-1 text-[11px] font-bold text-[#103f20]"
                         >
-                          <option value="okruh1">Okruh 1</option>
-                          <option value="okruh2">Okruh 2</option>
-                          <option value="skolky">Školky</option>
-                        </select>
+                          <span>{index + 1}</span>
+                          {railEditMode ? <IconGrip className="h-3.5 w-3.5" /> : null}
+                        </button>
                       </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
 
+          <div
+            className={`absolute bottom-0 left-0 z-[9999] rounded-t-[28px] border-t border-[#d7eadb] bg-white/97 shadow-[0_-16px_40px_rgba(0,0,0,0.18)] backdrop-blur transition-all duration-300 ${sheetHeightClass}`}
+            style={{ right: `${railWidth}px` }}
+            onTouchStart={onSheetTouchStart}
+            onTouchMove={onSheetTouchMove}
+            onTouchEnd={onSheetTouchEnd}
+          >
+            <div className="px-3 pt-2">
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={cycleSheetDown}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#d7eadb] bg-white text-[#103f20]"
+                >
+                  <IconChevronDown className="h-4 w-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={cycleSheetUp}
+                  className="flex min-w-[92px] items-center justify-center gap-2 rounded-full border border-[#d7eadb] bg-[#f8fbf8] px-3 py-1.5 text-[12px] font-extrabold text-[#103f20]"
+                >
+                  <span className="h-1.5 w-10 rounded-full bg-[#cfe5d5]" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={cycleSheetUp}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-[#d7eadb] bg-white text-[#103f20]"
+                >
+                  <IconChevronUp className="h-4 w-4" />
+                </button>
+              </div>
+
+              {selectedFromOrdered ? (
+                <div className="mt-3 rounded-[20px] border border-[#e3efe6] bg-[#fbfefb] px-3 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-[19px] font-extrabold text-[#103f20]">
+                        {selectedFromOrdered.full_name}
+                      </div>
                       <div className="mt-1 text-[13px] leading-snug text-[#4f685d]">
-                        {order.address}
+                        {selectedFromOrdered.address}
                       </div>
+                    </div>
 
-                      <div className="mt-1 text-[13px] text-[#4f685d]">
-                        {order.phone || "bez telefonu"} • {formatPrice(order.total)}
-                      </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${zoneBadgeClass(
+                        selectedFromOrdered.delivery_zone
+                      )}`}
+                    >
+                      {zoneLabel(selectedFromOrdered.delivery_zone)}
+                    </span>
+                  </div>
 
+                  <div className="mt-2 text-[13px] text-[#4f685d]">
+                    {selectedFromOrdered.phone || "bez telefonu"} •{" "}
+                    {formatPrice(selectedFromOrdered.total)}
+                  </div>
+
+                  {sheetState !== "peek" ? (
+                    <>
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            smsCustomer(order);
-                          }}
+                          onClick={() => smsCustomer(selectedFromOrdered)}
                           className="rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a]"
                         >
                           SMS
@@ -308,10 +577,7 @@ export default function MobileView({
 
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            callCustomer(order);
-                          }}
+                          onClick={() => callCustomer(selectedFromOrdered)}
                           className="rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a]"
                         >
                           Zavolat
@@ -319,12 +585,11 @@ export default function MobileView({
 
                         <button
                           type="button"
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            await startInternalNavigation(order);
+                          onClick={async () => {
+                            await startInternalNavigation(selectedFromOrdered);
                           }}
                           className={`rounded-xl px-3 py-2 text-sm font-bold ${
-                            routingOrderId === order.id
+                            routingOrderId === selectedFromOrdered.id
                               ? "border border-[#00a63e] bg-[#00a63e] text-white"
                               : "border border-[#00a63e] bg-white text-[#0f6c2a]"
                           }`}
@@ -334,229 +599,129 @@ export default function MobileView({
 
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEdit(order);
-                          }}
+                          onClick={() => openEdit(selectedFromOrdered)}
                           className="rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a]"
                         >
                           Upravit
                         </button>
                       </div>
 
-                      <div className="mt-2">
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <select
+                          value={selectedFromOrdered.delivery_zone ?? ""}
+                          onChange={(e) =>
+                            setZone(
+                              selectedFromOrdered.id,
+                              (e.target.value || null) as DeliveryZone
+                            )
+                          }
+                          className="rounded-xl border border-[#d6e8da] bg-white px-3 py-2 text-sm font-bold text-[#103f20] outline-none"
+                        >
+                          <option value="okruh1">Okruh 1</option>
+                          <option value="okruh2">Okruh 2</option>
+                          <option value="skolky">Školky</option>
+                        </select>
+
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setConfirmDeliveredOrder(order);
-                          }}
-                          className="w-full rounded-xl border border-[#00a63e] bg-[#00a63e] px-3 py-3 text-sm font-bold text-white"
+                          onClick={() => setConfirmDeliveredOrder(selectedFromOrdered)}
+                          disabled={busyId === selectedFromOrdered.id}
+                          className="rounded-xl border border-[#00a63e] bg-[#00a63e] px-3 py-2 text-sm font-bold text-white disabled:opacity-60"
                         >
                           Vyřízeno
                         </button>
                       </div>
+                    </>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="mt-3 rounded-[20px] border border-[#e3efe6] bg-[#fbfefb] px-3 py-4 text-sm text-[#5e7568]">
+                  {loading ? "Načítám rozvozy..." : "Žádná rozvozová objednávka."}
+                </div>
+              )}
+
+              {sheetState !== "peek" ? (
+                <div className="mt-3 max-h-[calc(100%-150px)] overflow-y-auto pb-5">
+                  {locationAllowed === false ? (
+                    <div className="mb-3 rounded-[16px] border border-[#ffe2b4] bg-[#fff8ee] px-3 py-3 text-[13px] text-[#8b5a00]">
+                      Nepovolil jsi polohu. Trasa se pak počítá z Jiřky, ne z tvojí aktuální pozice.
                     </div>
+                  ) : null}
+
+                  <div className="mb-3 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => requestCurrentPosition(true)}
+                      className="rounded-full border border-[#cfe5d5] bg-white px-3 py-2 text-[12px] font-bold text-[#103f20]"
+                    >
+                      {locationBusy ? "Zjišťuji polohu..." : "Aktualizovat polohu"}
+                    </button>
+
+                    {currentPosition ? (
+                      <div className="text-[12px] text-[#5e7568]">
+                        Poloha nalezena
+                      </div>
+                    ) : null}
                   </div>
-                );
-              })}
-          </div>
-        </div>
-      ) : null}
 
-      <div
-        className={
-          fullscreenMap
-            ? "fixed inset-0 z-[9998] bg-[#f7faf7]"
-            : mobileTab === "mapa"
-            ? "overflow-hidden rounded-[22px] border border-[#d7eadb] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.05)]"
-            : "hidden"
-        }
-      >
-        {fullscreenMap ? (
-          <div className="absolute left-3 top-3 z-[10000]">
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setSettingsOpen((prev) => !prev)}
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-[#cfe5d5] bg-white text-[#103f20] shadow"
-              >
-                <IconSettings className="h-5 w-5" />
-              </button>
+                  {orderedForMobile.length === 0 && !loading ? (
+                    <div className="rounded-[18px] border border-[#e3efe6] bg-[#fbfefb] p-4 text-[#5e7568]">
+                      V tomto filtru teď nejsou žádné objednávky.
+                    </div>
+                  ) : null}
 
-              {settingsOpen ? (
-                <div className="absolute left-0 top-12 min-w-[190px] rounded-[16px] border border-[#d7eadb] bg-white p-2 shadow-[0_12px_30px_rgba(0,0,0,0.14)]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSettingsOpen(false);
-                      setFullscreenMap(false);
-                    }}
-                    className="w-full rounded-xl px-3 py-2 text-left text-sm font-bold text-[#103f20] hover:bg-[#f4fbf5]"
-                  >
-                    Ukončit režim
-                  </button>
+                  {orderedForMobile.map((order, index) => {
+                    const selected = selectedId === order.id;
+
+                    return (
+                      <div
+                        key={order.id}
+                        onClick={() => {
+                          setSelectedId(order.id);
+                          focusOnMap(order);
+                        }}
+                        className={`mb-2 rounded-[18px] border px-3 py-3 transition ${
+                          selected
+                            ? "border-[#00a63e] bg-[#f4fbf5]"
+                            : "border-[#e3efe6] bg-white"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-7 min-w-7 items-center justify-center rounded-full bg-[#103f20] px-2 text-[12px] font-extrabold text-white">
+                                {index + 1}
+                              </div>
+                              <div className="truncate text-[16px] font-extrabold text-[#103f20]">
+                                {order.full_name}
+                              </div>
+                            </div>
+
+                            <div className="mt-1 text-[13px] leading-snug text-[#4f685d]">
+                              {order.address}
+                            </div>
+
+                            <div className="mt-1 text-[13px] text-[#4f685d]">
+                              {order.phone || "bez telefonu"} • {formatPrice(order.total)}
+                            </div>
+                          </div>
+
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${zoneBadgeClass(
+                              order.delivery_zone
+                            )}`}
+                          >
+                            {zoneLabel(order.delivery_zone)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : null}
             </div>
           </div>
-        ) : null}
-
-        {routeInfo ? (
-          <div
-            className={
-              fullscreenMap
-                ? "absolute right-3 top-3 z-[9999] max-w-[220px] rounded-[16px] border border-[#dff0e3] bg-[#f7fcf8] px-4 py-3 text-sm font-semibold text-[#103f20] shadow"
-                : "m-3 rounded-[16px] border border-[#dff0e3] bg-[#f7fcf8] px-4 py-3 text-sm font-semibold text-[#103f20]"
-            }
-          >
-            Trasa: {routeInfo.distanceKm.toFixed(1)} km • přibližně{" "}
-            {Math.max(1, Math.round(routeInfo.durationMin))} min
-          </div>
-        ) : null}
-
-        <div
-          className={
-            fullscreenMap
-              ? "flex h-[100dvh] w-screen overflow-hidden"
-              : "flex h-[420px] w-full overflow-hidden"
-          }
-        >
-          <div className="relative min-w-0 flex-1 bg-white">
-            <div ref={mapWrapRef} className="h-[420px] w-full md:h-full" />
-          </div>
-
-          <div className="w-[92px] shrink-0 overflow-y-auto border-l border-[#e3efe6] bg-[#fbfefb]">
-            <div className="sticky top-0 z-10 border-b border-[#e3efe6] bg-[#fbfefb] px-2 py-2 text-center text-[11px] font-extrabold text-[#5e7568]">
-              Pořadí
-            </div>
-
-            <div className="p-2">
-              {orderedForMobile.slice(0, 25).map((order, index) => {
-                const expanded = expandedRailId === order.id;
-                const selected = selectedId === order.id;
-
-                return (
-                  <div key={order.id} className="mb-2">
-                    <button
-                      type="button"
-                      draggable
-                      onDragStart={() => setDraggedId(order.id)}
-                      onDragEnd={() => setDraggedId(null)}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={() => {
-                        if (draggedId) reorderList(draggedId, order.id);
-                        setDraggedId(null);
-                      }}
-                      onClick={() => {
-                        setSelectedId(order.id);
-                        focusOnMap(order);
-                        setExpandedRailId((prev) => (prev === order.id ? null : order.id));
-                      }}
-                      className={`flex w-full items-center justify-center rounded-[16px] border px-2 py-3 text-sm font-extrabold transition ${
-                        selected
-                          ? "border-[#00a63e] bg-[#00a63e] text-white"
-                          : "border-[#cfe5d5] bg-white text-[#103f20]"
-                      } ${draggedId === order.id ? "opacity-60" : ""}`}
-                      title="Podrž a přetáhni pro změnu pořadí"
-                    >
-                      {index + 1}
-                    </button>
-
-                    {expanded ? (
-                      <div className="mt-2 rounded-[14px] border border-[#d7eadb] bg-white p-2 text-[11px] shadow-sm">
-                        <div className="font-extrabold text-[#103f20]">{order.full_name}</div>
-                        <div className="mt-1 leading-snug text-[#5e7568]">{order.address}</div>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
-
-        {selectedFromOrdered ? (
-          <div
-            className={
-              fullscreenMap
-                ? "absolute bottom-0 left-0 z-[9999] border-t border-[#d7eadb] bg-white/95 p-4 backdrop-blur shadow-[0_-10px_30px_rgba(0,0,0,0.16)]"
-                : "sticky bottom-0 z-20 border-t border-[#d7eadb] bg-white p-4 shadow-[0_-10px_30px_rgba(0,0,0,0.16)]"
-            }
-            style={fullscreenMap ? { right: `${rightPanelWidth}px` } : undefined}
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="text-[20px] font-extrabold text-[#103f20]">
-                {selectedFromOrdered.full_name}
-              </div>
-
-              <span
-                className={`rounded-full px-2 py-1 text-[11px] font-bold ${zoneBadgeClass(
-                  selectedFromOrdered.delivery_zone
-                )}`}
-              >
-                {zoneLabel(selectedFromOrdered.delivery_zone)}
-              </span>
-            </div>
-
-            <div className="mt-2 text-sm text-[#4f685d]">{selectedFromOrdered.address}</div>
-
-            <div className="mt-1 text-sm text-[#4f685d]">
-              {selectedFromOrdered.phone || "bez telefonu"} •{" "}
-              {formatPrice(selectedFromOrdered.total)}
-            </div>
-
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => smsCustomer(selectedFromOrdered)}
-                className="rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a]"
-              >
-                SMS
-              </button>
-
-              <button
-                type="button"
-                onClick={() => callCustomer(selectedFromOrdered)}
-                className="rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a]"
-              >
-                Zavolat
-              </button>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  await startInternalNavigation(selectedFromOrdered);
-                }}
-                className={`rounded-xl px-3 py-2 text-sm font-bold ${
-                  routingOrderId === selectedFromOrdered.id
-                    ? "border border-[#00a63e] bg-[#00a63e] text-white"
-                    : "border border-[#00a63e] bg-white text-[#0f6c2a]"
-                }`}
-              >
-                Navigovat
-              </button>
-
-              <button
-                type="button"
-                onClick={() => openEdit(selectedFromOrdered)}
-                className="rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a]"
-              >
-                Upravit
-              </button>
-            </div>
-
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={() => setConfirmDeliveredOrder(selectedFromOrdered)}
-                className="w-full rounded-xl border border-[#00a63e] bg-[#00a63e] px-3 py-3 text-sm font-bold text-white"
-              >
-                Vyřízeno
-              </button>
-            </div>
-          </div>
-        ) : null}
       </div>
     </div>
   );
