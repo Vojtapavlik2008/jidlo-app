@@ -50,6 +50,12 @@ export type RouteInfo = {
   durationMin: number;
 };
 
+export type CurrentPosition = {
+  lat: number;
+  lng: number;
+  accuracy?: number | null;
+};
+
 const JIRKA_BASE = {
   name: "Jiřka",
   address: "Havlíčkova 72/1, 29001 Poděbrady",
@@ -166,7 +172,7 @@ export default function RozvozyPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [mobileTab, setMobileTab] = useState<"seznam" | "mapa">("seznam");
+  const [mobileTab, setMobileTab] = useState<"seznam" | "mapa">("mapa");
   const [filter, setFilter] = useState<FilterKey>("vsechny");
   const [leafletReady, setLeafletReady] = useState(false);
 
@@ -184,6 +190,10 @@ export default function RozvozyPage() {
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
   const [routingOrderId, setRoutingOrderId] = useState<string | null>(null);
 
+  const [currentPosition, setCurrentPosition] = useState<CurrentPosition | null>(null);
+  const [locationAllowed, setLocationAllowed] = useState<boolean | null>(null);
+  const [locationBusy, setLocationBusy] = useState(false);
+
   const geocodingIdsRef = useRef<Set<string>>(new Set());
 
   const mapWrapRef = useRef<HTMLDivElement | null>(null);
@@ -193,6 +203,7 @@ export default function RozvozyPage() {
   const markersLayerRef = useRef<any>(null);
   const routeLayerRef = useRef<any>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const geoWatchIdRef = useRef<number | null>(null);
 
   async function loadOrders() {
     try {
@@ -268,6 +279,75 @@ export default function RozvozyPage() {
 
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  function requestCurrentPosition(center = false) {
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      setLocationAllowed(false);
+      return;
+    }
+
+    setLocationBusy(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const next = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+        };
+
+        setCurrentPosition(next);
+        setLocationAllowed(true);
+        setLocationBusy(false);
+
+        if (center && mapRef.current) {
+          mapRef.current.flyTo([next.lat, next.lng], 16, { duration: 0.6 });
+        }
+      },
+      () => {
+        setLocationAllowed(false);
+        setLocationBusy(false);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 10000,
+        timeout: 10000,
+      }
+    );
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !navigator.geolocation) return;
+
+    requestCurrentPosition(false);
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        setCurrentPosition({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+        });
+        setLocationAllowed(true);
+      },
+      () => {
+        setLocationAllowed(false);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 7000,
+        timeout: 15000,
+      }
+    );
+
+    geoWatchIdRef.current = watchId;
+
+    return () => {
+      if (geoWatchIdRef.current != null) {
+        navigator.geolocation.clearWatch(geoWatchIdRef.current);
+      }
     };
   }, []);
 
@@ -510,9 +590,13 @@ export default function RozvozyPage() {
       forceMapResize();
     }, 120);
 
+    const startPoint = currentPosition
+      ? { lat: currentPosition.lat, lng: currentPosition.lng }
+      : { lat: JIRKA_BASE.lat, lng: JIRKA_BASE.lng };
+
     const route = await fetchDrivingRoute(
-      JIRKA_BASE.lng,
-      JIRKA_BASE.lat,
+      startPoint.lng,
+      startPoint.lat,
       order.lng,
       order.lat
     );
@@ -526,7 +610,7 @@ export default function RozvozyPage() {
       const poly = L.polyline(route.points, {
         color: "#16a34a",
         weight: 6,
-        opacity: 0.9,
+        opacity: 0.92,
       }).addTo(routeLayerRef.current);
 
       mapRef.current.fitBounds(poly.getBounds(), { padding: [30, 30] });
@@ -544,6 +628,19 @@ export default function RozvozyPage() {
     setRouteInfo(null);
     if (routeLayerRef.current) {
       routeLayerRef.current.clearLayers();
+    }
+  }
+
+  function focusMyLocation() {
+    if (!currentPosition) {
+      requestCurrentPosition(true);
+      return;
+    }
+
+    if (mapRef.current) {
+      mapRef.current.flyTo([currentPosition.lat, currentPosition.lng], 16, {
+        duration: 0.6,
+      });
     }
   }
 
@@ -709,6 +806,30 @@ export default function RozvozyPage() {
 
     points.push([JIRKA_BASE.lat, JIRKA_BASE.lng]);
 
+    if (currentPosition) {
+      const myPosIcon = L.divIcon({
+        className: "",
+        html: `
+          <div style="
+            width:22px;
+            height:22px;
+            border-radius:999px;
+            background:#2563eb;
+            border:4px solid white;
+            box-shadow:0 6px 14px rgba(37,99,235,.35);
+          "></div>
+        `,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+      });
+
+      L.marker([currentPosition.lat, currentPosition.lng], { icon: myPosIcon })
+        .addTo(markersLayer)
+        .bindPopup(`<div style="font-weight:800;color:#103f20">Moje poloha</div>`);
+
+      points.push([currentPosition.lat, currentPosition.lng]);
+    }
+
     filteredOrders.forEach((order, idx) => {
       if (order.lat == null || order.lng == null) return;
 
@@ -779,7 +900,7 @@ export default function RozvozyPage() {
     }
 
     forceMapResize();
-  }, [leafletReady, filteredOrders, selectedId]);
+  }, [leafletReady, filteredOrders, selectedId, currentPosition]);
 
   const outlineBtn =
     "rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a] transition hover:bg-[#f4fbf5]";
@@ -810,6 +931,11 @@ export default function RozvozyPage() {
     focusOnMap,
     startInternalNavigation,
     clearRoute,
+    currentPosition,
+    locationAllowed,
+    locationBusy,
+    requestCurrentPosition,
+    focusMyLocation,
     outlineBtn,
     activeBtn,
   };
