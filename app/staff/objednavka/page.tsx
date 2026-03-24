@@ -8,7 +8,7 @@ import MobileView from "./_ui/MobileView";
 
 type Mode = "tady" | "sebou";
 type DeliveryChoice = "ano" | "ne";
-type PackagingChoice = "plast" | "rekrabicka";
+type PackagingChoice = "plast" | "rekrabicka" | "jidlonosic";
 type PaymentMethod = "cash" | "card" | "credit";
 
 type TodayItem = {
@@ -58,6 +58,7 @@ type CheckoutLine = EditableItem & {
 type DayOverrides = {
   nameById: Record<string, string>;
   priceById: Record<string, number>;
+  categoryById: Record<string, string>;
   manualItems: EditableItem[];
 };
 
@@ -116,21 +117,22 @@ function dayOverridesKey(dayIso: string) {
 
 function loadDayOverrides(dayIso: string): DayOverrides {
   if (typeof window === "undefined") {
-    return { nameById: {}, priceById: {}, manualItems: [] };
+    return { nameById: {}, priceById: {}, categoryById: {}, manualItems: [] };
   }
 
   try {
     const raw = window.localStorage.getItem(dayOverridesKey(dayIso));
-    if (!raw) return { nameById: {}, priceById: {}, manualItems: [] };
+    if (!raw) return { nameById: {}, priceById: {}, categoryById: {}, manualItems: [] };
 
     const parsed = JSON.parse(raw);
     return {
       nameById: parsed?.nameById ?? {},
       priceById: parsed?.priceById ?? {},
+      categoryById: parsed?.categoryById ?? {},
       manualItems: parsed?.manualItems ?? [],
     };
   } catch {
-    return { nameById: {}, priceById: {}, manualItems: [] };
+    return { nameById: {}, priceById: {}, categoryById: {}, manualItems: [] };
   }
 }
 
@@ -144,6 +146,7 @@ function applyOverrides(items: TodayItem[], overrides: DayOverrides): EditableIt
     ...it,
     name: overrides.nameById[it.id] ?? it.name,
     price: overrides.priceById[it.id] ?? it.price,
+    category: overrides.categoryById[it.id] ?? it.category,
   }));
 }
 
@@ -238,6 +241,7 @@ export type PokladnaViewProps = {
   localItems: EditableItem[];
   renameLocalItem: (id: string, name: string) => void;
   changeLocalPrice: (id: string, raw: string) => void;
+  changeLocalCategory: (id: string, value: string) => void;
   removeLocalItem: (id: string) => void | Promise<void>;
 
   foodSearchQuery: string;
@@ -275,13 +279,13 @@ export type PokladnaViewProps = {
   customersLoading: boolean;
   setSelectedCustomer: (v: CustomerRow | null) => void;
 
-creditTopupOpen: boolean;
-setCreditTopupOpen: (v: boolean) => void;
-creditTopupValue: string;
-setCreditTopupValue: (v: string) => void;
-creditTopupSaving: boolean;
-topupKeypadPress: (ch: string) => void;
-confirmCreditTopup: () => void | Promise<void>;
+  creditTopupOpen: boolean;
+  setCreditTopupOpen: (v: boolean) => void;
+  creditTopupValue: string;
+  setCreditTopupValue: (v: string) => void;
+  creditTopupSaving: boolean;
+  topupKeypadPress: (ch: string) => void;
+  confirmCreditTopup: () => void | Promise<void>;
 
   keypadOpen: boolean;
   setKeypadOpen: (v: boolean) => void;
@@ -380,10 +384,12 @@ export default function PokladnaPage() {
   useEffect(() => {
     const nameById: Record<string, string> = {};
     const priceById: Record<string, number> = {};
+    const categoryById: Record<string, string> = {};
 
     for (const item of localItems) {
       nameById[item.id] = item.name;
       priceById[item.id] = item.price;
+      categoryById[item.id] = item.category;
     }
 
     const manualItems = localItems.filter(
@@ -393,6 +399,7 @@ export default function PokladnaPage() {
     saveDayOverrides(todayISO, {
       nameById,
       priceById,
+      categoryById,
       manualItems,
     });
   }, [localItems, todayISO]);
@@ -585,6 +592,7 @@ export default function PokladnaPage() {
 
   function renameLocalItem(id: string, name: string) {
     setLocalItems((prev) => prev.map((x) => (x.id === id ? { ...x, name } : x)));
+    setBaseItems((prev) => prev.map((x) => (x.id === id ? { ...x, name } : x)));
   }
 
   function changeLocalPrice(id: string, raw: string) {
@@ -594,6 +602,14 @@ export default function PokladnaPage() {
     setLocalItems((prev) =>
       prev.map((x) => (x.id === id ? { ...x, price: Number.isFinite(num) ? num : 0 } : x))
     );
+    setBaseItems((prev) =>
+      prev.map((x) => (x.id === id ? { ...x, price: Number.isFinite(num) ? num : 0 } : x))
+    );
+  }
+
+  function changeLocalCategory(id: string, value: string) {
+    setLocalItems((prev) => prev.map((x) => (x.id === id ? { ...x, category: value } : x)));
+    setBaseItems((prev) => prev.map((x) => (x.id === id ? { ...x, category: value } : x)));
   }
 
   async function removeLocalItem(id: string) {
@@ -822,6 +838,7 @@ export default function PokladnaPage() {
     localItems,
     renameLocalItem,
     changeLocalPrice,
+    changeLocalCategory,
     removeLocalItem,
 
     foodSearchQuery,
@@ -859,13 +876,13 @@ export default function PokladnaPage() {
     customersLoading,
     setSelectedCustomer,
 
-creditTopupOpen,
-setCreditTopupOpen,
-creditTopupValue,
-setCreditTopupValue,
-creditTopupSaving,
-topupKeypadPress,
-confirmCreditTopup,
+    creditTopupOpen,
+    setCreditTopupOpen,
+    creditTopupValue,
+    setCreditTopupValue,
+    creditTopupSaving,
+    topupKeypadPress,
+    confirmCreditTopup,
 
     keypadOpen,
     setKeypadOpen,
