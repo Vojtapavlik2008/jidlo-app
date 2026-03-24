@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   type FoodEditRow,
   type ViewProps,
   czDateTime,
   pillBase,
-  prettyPackaging,
   prettyPayment,
   statusPill,
 } from "../page";
@@ -44,32 +43,11 @@ function IconPrinter({ className = "" }: { className?: string }) {
   );
 }
 
-function IconRefresh({ className = "" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M21 12a9 9 0 1 1-2.64-6.36" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M21 3v6h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 function IconX({ className = "" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       <path d="M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconTrash({ className = "" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M8 6V4h8v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M6 6l1 16h10l1-16" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M10 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -101,12 +79,10 @@ function isIsoDate(v: unknown): v is string {
 
 function normalizeMaybeDateString(v: unknown): string | null {
   if (typeof v !== "string" || !v.trim()) return null;
-
   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v.slice(0, 10);
 
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return null;
-
   return toIsoLocal(d);
 }
 
@@ -149,14 +125,21 @@ function prettyDeliveryCompact(v: string | null | undefined) {
   return v === "pickup" ? "Osobní odběr" : "Doručení";
 }
 
+function formatIsoToCzShort(iso: string | null | undefined) {
+  if (!iso) return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return iso;
+
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return formatCzShortDate(d);
+}
+
 function paymentPillClass(v: string | null | undefined) {
   const key = (v ?? "").toLowerCase();
-
   if (key.includes("credit")) return "bg-emerald-50 text-emerald-800 ring-emerald-200";
   if (key.includes("cash")) return "bg-amber-50 text-amber-800 ring-amber-200";
   if (key.includes("invoice")) return "bg-sky-50 text-sky-800 ring-sky-200";
   if (key.includes("card") || key.includes("online")) return "bg-green-50 text-green-800 ring-green-200";
-
   return "bg-gray-50 text-gray-700 ring-gray-200";
 }
 
@@ -288,15 +271,23 @@ export default function MobileView({
 }: ViewProps) {
   const [waitingOpen, setWaitingOpen] = useState(false);
 
-  const today = useMemo(() => new Date(), []);
-  const todayIso = useMemo(() => toIsoLocal(today), [today]);
-  const todayLabel = useMemo(() => formatCzShortDate(today), [today]);
+  const now = useMemo(() => new Date(), []);
+  const todayIso = useMemo(() => toIsoLocal(now), [now]);
+  const todayLabel = useMemo(() => formatCzShortDate(now), [now]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      load(false);
+    }, 10000);
+
+    return () => window.clearInterval(id);
+  }, [load]);
 
   const page = "max-w-md mx-auto px-3 py-4 pb-8";
-  const topBtn =
-    "inline-flex items-center justify-center rounded-2xl border border-green-200 bg-white px-3 py-2 text-[12px] font-extrabold text-green-900 shadow-sm hover:bg-green-50";
   const smallHeaderBtn =
     "inline-flex items-center justify-center rounded-2xl border border-green-200 bg-white px-3 py-2 text-[12px] font-extrabold text-gray-800 shadow-sm hover:bg-green-50";
+  const waitingBtn =
+    "inline-flex items-center justify-center rounded-2xl border border-gray-300 bg-gray-100 px-3 py-2 text-[12px] font-extrabold text-gray-700 shadow-sm hover:bg-gray-200";
   const greenDateBtn =
     "inline-flex items-center justify-center rounded-2xl bg-green-600 px-3 py-2 text-[12px] font-extrabold text-white shadow-[0_10px_24px_rgba(22,101,52,0.20)]";
   const card =
@@ -314,8 +305,8 @@ export default function MobileView({
     "inline-flex min-w-[22px] items-center justify-center rounded-full bg-green-700 px-2 h-[22px] text-[11px] font-extrabold text-white";
   const filterBtn = (active: boolean) =>
     [
-      "rounded-2xl px-3 py-3 text-[13px] font-extrabold transition w-full",
-      "inline-flex items-center justify-center gap-2",
+      "rounded-2xl px-3 py-3 text-[13px] font-extrabold transition w-full min-h-[72px]",
+      "inline-flex items-center justify-center gap-2 text-center",
       active
         ? "bg-green-600 text-white shadow-[0_14px_30px_rgba(22,101,52,0.18)]"
         : "bg-green-50/60 text-green-900 ring-1 ring-green-200 hover:bg-green-50 hover:ring-green-300",
@@ -333,7 +324,8 @@ export default function MobileView({
   const waitingOrders = useMemo(() => {
     return filteredOrders.filter((o: any) => {
       const orderDay = extractOrderDay(o);
-      return !!orderDay && orderDay !== todayIso;
+      if (!orderDay) return false;
+      return orderDay > todayIso;
     });
   }, [filteredOrders, todayIso]);
 
@@ -342,21 +334,16 @@ export default function MobileView({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="text-[25px] font-bold tracking-tight text-gray-900">Online objednávka</div>
+            <div className="text-[21px] font-bold tracking-tight text-gray-900 sm:text-[23px]">
+              Online objednávka
+            </div>
             <div className={greenDateBtn}>{todayLabel}</div>
           </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setWaitingOpen(true)}
-            className="inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-extrabold text-amber-800"
-          >
-            <span>Čekající</span>
-            <span className="inline-flex min-w-[22px] items-center justify-center rounded-full bg-amber-600 px-2 h-[22px] text-[11px] text-white">
-              {waitingOrders.length}
-            </span>
+          <button type="button" onClick={() => setWaitingOpen(true)} className={waitingBtn}>
+            Čekající
           </button>
 
           <Link href="/staff" className={smallHeaderBtn}>
@@ -365,29 +352,21 @@ export default function MobileView({
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <div className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Aktuální den</div>
-
-        <button type="button" onClick={() => load(true)} className={topBtn} title="Obnovit">
-          <IconRefresh className="h-4 w-4" />
-        </button>
-      </div>
-
       <div className="mt-4 rounded-3xl bg-white p-3 shadow-[0_10px_28px_rgba(0,0,0,0.04)] ring-1 ring-black/10">
         <div className="grid grid-cols-3 gap-2">
           <button type="button" className={filterBtn(filter === "delivery")} onClick={() => setFilter("delivery")}>
             <span>Doručení</span>
-            <span className={countBadge}>{deliveryCount}</span>
+            <span className={countBadge}>{deliveryCount ?? 0}</span>
           </button>
 
           <button type="button" className={filterBtn(filter === "pickup")} onClick={() => setFilter("pickup")}>
             <span>Osobní odběr</span>
-            <span className={countBadge}>{pickupCount}</span>
+            <span className={countBadge}>{pickupCount ?? 0}</span>
           </button>
 
           <button type="button" className={filterBtn(filter === "all")} onClick={() => setFilter("all")}>
             <span>Všechny</span>
-            <span className={countBadge}>{allCount}</span>
+            <span className={countBadge}>{allCount ?? 0}</span>
           </button>
         </div>
       </div>
@@ -497,11 +476,11 @@ export default function MobileView({
           <div className="fixed inset-x-3 top-8 bottom-8 z-[75] overflow-hidden rounded-3xl bg-white shadow-[0_34px_110px_rgba(0,0,0,0.28)] ring-1 ring-black/10">
             <div className="h-full overflow-auto p-4">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="flex items-center gap-2 flex-wrap">
                   <div className="text-xl font-extrabold text-gray-900">Čekající objednávky</div>
-                  <div className="mt-1 text-sm font-semibold text-gray-600">
-                    Sem spadají objednávky na jiný den než {todayLabel}
-                  </div>
+                  <span className="inline-flex min-w-[24px] items-center justify-center rounded-full bg-gray-700 px-2 h-[24px] text-[11px] font-extrabold text-white">
+                    {waitingOrders.length}
+                  </span>
                 </div>
 
                 <button
@@ -515,7 +494,7 @@ export default function MobileView({
               </div>
 
               {waitingOrders.length === 0 ? (
-                <div className="mt-5 rounded-3xl border border-dashed border-amber-200 bg-amber-50/50 p-5 text-center text-sm font-semibold text-gray-600">
+                <div className="mt-5 rounded-3xl border border-dashed border-gray-300 bg-gray-50 p-5 text-center text-sm font-semibold text-gray-600">
                   Žádné čekající objednávky.
                 </div>
               ) : (
@@ -527,7 +506,7 @@ export default function MobileView({
                     return (
                       <div
                         key={o.id}
-                        className="rounded-[24px] border border-amber-200 bg-white p-3.5 shadow-sm"
+                        className="rounded-[24px] border border-gray-200 bg-white p-3.5 shadow-sm"
                         onClick={() => {
                           setWaitingOpen(false);
                           openModal(o);
@@ -538,8 +517,12 @@ export default function MobileView({
                             <div className="flex flex-wrap items-center gap-2">
                               <div className="truncate text-[17px] font-extrabold text-gray-900">{o.full_name || "—"}</div>
 
-                              <span className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-[12px] font-extrabold text-amber-800 ring-1 ring-amber-200">
-                                {orderDay || "jiný den"}
+                              <span className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-[12px] font-extrabold text-gray-700 ring-1 ring-gray-200">
+                                {formatIsoToCzShort(orderDay)}
+                              </span>
+
+                              <span className={pillBase("bg-green-50 text-green-800 ring-green-200/80")}>
+                                {prettyDeliveryCompact(o.delivery_mode)}
                               </span>
                             </div>
 
