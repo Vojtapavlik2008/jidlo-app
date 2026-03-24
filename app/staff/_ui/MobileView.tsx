@@ -87,7 +87,7 @@ export default function MobileView({ tiles }: { tiles: StaffHubTile[] }) {
             <Tile
               href={deliveryTile.href}
               title={deliveryTile.title}
-              bg="#4ade80"
+              bg="#16a34a"
               variant={deliveryTile.variant}
             />
           </div>
