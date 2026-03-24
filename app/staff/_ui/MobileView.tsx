@@ -68,7 +68,7 @@ export default function MobileView({ tiles }: { tiles: StaffHubTile[] }) {
           ))}
         </div>
 
-        <div className="mt-4 flex-1" />
+        <div className="mt-12" />
 
         <div className="grid grid-cols-2 gap-3">
           {rest.map((tile) => (
@@ -87,7 +87,7 @@ export default function MobileView({ tiles }: { tiles: StaffHubTile[] }) {
             <Tile
               href={deliveryTile.href}
               title={deliveryTile.title}
-              bg={deliveryTile.bg}
+              bg="#4ade80"
               variant={deliveryTile.variant}
             />
           </div>
