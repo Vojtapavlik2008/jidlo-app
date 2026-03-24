@@ -68,7 +68,7 @@ export default function MobileView({ tiles }: { tiles: StaffHubTile[] }) {
           ))}
         </div>
 
-        <div className="mt-12" />
+        <div className="mt-16" />
 
         <div className="grid grid-cols-2 gap-3">
           {rest.map((tile) => (
