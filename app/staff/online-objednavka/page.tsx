@@ -22,6 +22,12 @@ export type OrderRow = {
   status: string;
   source?: string | null;
   datum?: string | null;
+  delivery_date?: string | null;
+  order_date?: string | null;
+  date?: string | null;
+  selected_date?: string | null;
+  day?: string | null;
+  times_by_day?: Record<string, any> | null;
 };
 
 export type OrderItemRow = {
@@ -42,6 +48,8 @@ type CartLine = {
   unit_price?: number;
   line_total?: number;
   datum?: string;
+  date?: string;
+  day?: string;
   jidlo_id?: string;
 };
 
@@ -107,6 +115,73 @@ function escapeHtml(s: string) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function toIsoLocal(date: Date) {
+  const y = date.getFullYear();
+  const m = `${date.getMonth() + 1}`.padStart(2, "0");
+  const d = `${date.getDate()}`.padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function isIsoDate(v: unknown): v is string {
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+}
+
+function normalizeMaybeDateString(v: unknown): string | null {
+  if (typeof v !== "string" || !v.trim()) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v.slice(0, 10);
+
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return null;
+
+  return toIsoLocal(d);
+}
+
+function extractOrderDay(order: any): string | null {
+  const directCandidates = [
+    order?.delivery_date,
+    order?.order_date,
+    order?.datum,
+    order?.date,
+    order?.selected_date,
+    order?.day,
+  ];
+
+  for (const c of directCandidates) {
+    const n = normalizeMaybeDateString(c);
+    if (n) return n;
+  }
+
+  const timesByDay = order?.times_by_day;
+  if (timesByDay && typeof timesByDay === "object") {
+    const keys = Object.keys(timesByDay).filter(isIsoDate).sort();
+    if (keys.length > 0) return keys[0];
+  }
+
+  const cart = order?.cart;
+  if (Array.isArray(cart)) {
+    for (const item of cart) {
+      const n =
+        normalizeMaybeDateString(item?.date) ||
+        normalizeMaybeDateString(item?.datum) ||
+        normalizeMaybeDateString(item?.day);
+      if (n) return n;
+    }
+  }
+
+  if (cart && typeof cart === "object" && Array.isArray(cart.items)) {
+    for (const item of cart.items) {
+      const n =
+        normalizeMaybeDateString(item?.date) ||
+        normalizeMaybeDateString(item?.datum) ||
+        normalizeMaybeDateString(item?.day);
+      if (n) return n;
+    }
+  }
+
+  return null;
 }
 
 async function fetchOrderItemsMany(orderIds: string[]) {
@@ -321,6 +396,8 @@ export default function StaffOnlineOrdersPage() {
   const [ePackaging, setEPackaging] = useState("plastic");
   const [ePayment, setEPayment] = useState("card_online");
 
+  const todayIso = useMemo(() => toIsoLocal(new Date()), []);
+
   async function load(silent = false, retried = false) {
     if (!silent) setErr(null);
 
@@ -338,7 +415,9 @@ export default function StaffOnlineOrdersPage() {
       const sig = rows
         .map(
           (o) =>
-            `${o.id}|${o.created_at}|${o.status}|${o.total}|${o.payment_method}|${o.delivery_mode}|${o.packaging_mode}`
+            `${o.id}|${o.created_at}|${o.status}|${o.total}|${o.payment_method}|${o.delivery_mode}|${o.packaging_mode}|${
+              extractOrderDay(o) ?? ""
+            }`
         )
         .join(";;");
 
@@ -379,22 +458,26 @@ export default function StaffOnlineOrdersPage() {
     return () => clearInterval(id);
   }, []);
 
+  const todayOrders = useMemo(() => {
+    return orders.filter((o) => extractOrderDay(o) === todayIso);
+  }, [orders, todayIso]);
+
   const newCount = useMemo(
-    () => orders.filter((o) => (o.status ?? "").toLowerCase() === "new").length,
-    [orders]
+    () => todayOrders.filter((o) => (o.status ?? "").toLowerCase() === "new").length,
+    [todayOrders]
   );
 
   const deliveryCount = useMemo(
-    () => orders.filter((o) => (o.delivery_mode ?? "").toLowerCase() === "delivery").length,
-    [orders]
+    () => todayOrders.filter((o) => (o.delivery_mode ?? "").toLowerCase() === "delivery").length,
+    [todayOrders]
   );
 
   const pickupCount = useMemo(
-    () => orders.filter((o) => (o.delivery_mode ?? "").toLowerCase() === "pickup").length,
-    [orders]
+    () => todayOrders.filter((o) => (o.delivery_mode ?? "").toLowerCase() === "pickup").length,
+    [todayOrders]
   );
 
-  const allCount = useMemo(() => orders.length, [orders]);
+  const allCount = useMemo(() => todayOrders.length, [todayOrders]);
 
   const filteredOrders = useMemo(() => {
     if (filter === "all") return orders;
