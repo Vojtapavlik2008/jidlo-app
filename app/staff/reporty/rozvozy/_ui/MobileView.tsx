@@ -150,6 +150,20 @@ function IconRefresh({ className = "" }: { className?: string }) {
   );
 }
 
+function IconChevronDownSmall({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M6 9l6 6l6-6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function MobileView({
   loading,
   busyId,
@@ -180,10 +194,14 @@ export default function MobileView({
   focusMyLocation,
 }: Props) {
   const [fullscreenMap, setFullscreenMap] = useState(false);
+  const [topMenuOpen, setTopMenuOpen] = useState(false);
+
   const [railOpen, setRailOpen] = useState(false);
   const [railEditMode, setRailEditMode] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [pickedMoveId, setPickedMoveId] = useState<string | null>(null);
   const [localOrder, setLocalOrder] = useState<string[]>([]);
+
   const [sheetState, setSheetState] = useState<SheetState>("peek");
 
   const sheetStartYRef = useRef<number | null>(null);
@@ -245,6 +263,28 @@ export default function MobileView({
     });
   }
 
+  function handleRailItemPress(orderId: string) {
+    if (!railEditMode) {
+      setSelectedId(orderId);
+      const order = orderedForMobile.find((o) => o.id === orderId);
+      if (order) focusOnMap(order);
+      return;
+    }
+
+    if (!pickedMoveId) {
+      setPickedMoveId(orderId);
+      return;
+    }
+
+    if (pickedMoveId === orderId) {
+      setPickedMoveId(null);
+      return;
+    }
+
+    reorderList(pickedMoveId, orderId);
+    setPickedMoveId(null);
+  }
+
   function cycleSheetUp() {
     setSheetState((prev) => {
       if (prev === "peek") return "mid";
@@ -286,7 +326,7 @@ export default function MobileView({
 
   const sheetHeightClass =
     sheetState === "peek"
-      ? "h-[118px]"
+      ? "h-[126px]"
       : sheetState === "mid"
       ? "h-[34dvh]"
       : "h-[82dvh]";
@@ -316,10 +356,32 @@ export default function MobileView({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-[22px] border border-[#d7eadb] bg-white px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
+      <div className="relative rounded-[22px] border border-[#d7eadb] bg-white px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 text-[28px] font-extrabold leading-none text-[#00a63e]">
-            Rozvozy
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setTopMenuOpen((prev) => !prev)}
+              className="flex items-center gap-2 text-[28px] font-extrabold leading-none text-[#00a63e]"
+            >
+              <span>Rozvozy</span>
+              <IconChevronDownSmall className="mt-1 h-5 w-5 text-[#00a63e]" />
+            </button>
+
+            {topMenuOpen ? (
+              <div className="absolute left-0 top-10 z-[60] min-w-[150px] rounded-[18px] border border-[#d7eadb] bg-white p-2 shadow-[0_16px_40px_rgba(0,0,0,0.14)]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTopMenuOpen(false);
+                    setFullscreenMap(false);
+                  }}
+                  className="w-full rounded-xl px-3 py-2 text-left text-sm font-bold text-[#103f20] hover:bg-[#f4fbf5]"
+                >
+                  Zmenšit
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
@@ -361,8 +423,30 @@ export default function MobileView({
         <div className="relative w-full overflow-hidden" style={mapHeightStyle}>
           {fullscreenMap ? (
             <div className="absolute left-3 top-3 right-3 z-[10000] flex items-center justify-between gap-2">
-              <div className="rounded-full border border-[#d7eadb] bg-white/95 px-4 py-2 text-[18px] font-extrabold text-[#00a63e] shadow backdrop-blur">
-                Rozvozy
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setTopMenuOpen((prev) => !prev)}
+                  className="flex items-center gap-2 rounded-full border border-[#d7eadb] bg-white/95 px-4 py-2 text-[18px] font-extrabold text-[#00a63e] shadow backdrop-blur"
+                >
+                  <span>Rozvozy</span>
+                  <IconChevronDownSmall className="h-4 w-4 text-[#00a63e]" />
+                </button>
+
+                {topMenuOpen ? (
+                  <div className="absolute left-0 top-12 z-[60] min-w-[150px] rounded-[18px] border border-[#d7eadb] bg-white p-2 shadow-[0_16px_40px_rgba(0,0,0,0.14)]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTopMenuOpen(false);
+                        setFullscreenMap(false);
+                      }}
+                      className="w-full rounded-xl px-3 py-2 text-left text-sm font-bold text-[#103f20] hover:bg-[#f4fbf5]"
+                    >
+                      Zmenšit
+                    </button>
+                  </div>
+                ) : null}
               </div>
 
               <div className="flex items-center gap-2">
@@ -388,7 +472,7 @@ export default function MobileView({
 
           <div ref={mapWrapRef} className="h-full w-full" />
 
-          <div className="absolute bottom-[132px] left-3 z-[9999] flex flex-col gap-2">
+          <div className="absolute bottom-[142px] left-3 z-[9999] flex flex-col gap-2">
             <button
               type="button"
               onClick={focusMyLocation}
@@ -409,9 +493,7 @@ export default function MobileView({
           </div>
 
           {routeInfo ? (
-            <div
-              className="absolute left-3 top-[78px] z-[9999] max-w-[240px] rounded-[16px] border border-[#dff0e3] bg-[#f7fcf8]/95 px-4 py-3 text-sm font-semibold text-[#103f20] shadow backdrop-blur"
-            >
+            <div className="absolute left-3 top-[78px] z-[9999] max-w-[240px] rounded-[16px] border border-[#dff0e3] bg-[#f7fcf8]/95 px-4 py-3 text-sm font-semibold text-[#103f20] shadow backdrop-blur">
               Trasa: {routeInfo.distanceKm.toFixed(1)} km • přibližně{" "}
               {Math.max(1, Math.round(routeInfo.durationMin))} min
             </div>
@@ -444,10 +526,13 @@ export default function MobileView({
 
             {railOpen ? (
               <div className="w-[81px] overflow-y-auto border-l border-[#e3efe6] bg-[#fbfefb]/95 backdrop-blur">
-                <div className="sticky top-0 z-10 border-b border-[#e3efe6] bg-[#fbfefb]/95 px-2 py-2">
+                <div className="sticky top-0 z-10 space-y-2 border-b border-[#e3efe6] bg-[#fbfefb]/95 px-2 py-2">
                   <button
                     type="button"
-                    onClick={() => setRailEditMode((prev) => !prev)}
+                    onClick={() => {
+                      setRailEditMode((prev) => !prev);
+                      setPickedMoveId(null);
+                    }}
                     className={`w-full rounded-xl px-2 py-2 text-[11px] font-extrabold ${
                       railEditMode
                         ? "border border-[#00a63e] bg-[#00a63e] text-white"
@@ -456,11 +541,18 @@ export default function MobileView({
                   >
                     {railEditMode ? "Hotovo" : "Upravit"}
                   </button>
+
+                  {railEditMode ? (
+                    <div className="text-center text-[10px] leading-tight text-[#5e7568]">
+                      Klikni na číslo a pak na místo, kam ho chceš přesunout
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="p-2">
                   {orderedForMobile.slice(0, 40).map((order, index) => {
                     const selected = selectedId === order.id;
+                    const picked = pickedMoveId === order.id;
 
                     return (
                       <div key={order.id} className="mb-2">
@@ -477,19 +569,19 @@ export default function MobileView({
                               reorderList(draggedId, order.id);
                             }
                             setDraggedId(null);
+                            setPickedMoveId(null);
                           }}
-                          onClick={() => {
-                            setSelectedId(order.id);
-                            focusOnMap(order);
-                          }}
+                          onClick={() => handleRailItemPress(order.id)}
                           className={`flex w-full items-center justify-center gap-1 rounded-[16px] border px-2 py-3 text-sm font-extrabold transition ${
-                            selected
+                            picked
+                              ? "border-[#111827] bg-[#111827] text-white"
+                              : selected
                               ? "border-[#00a63e] bg-[#00a63e] text-white"
                               : "border-[#cfe5d5] bg-white text-[#103f20]"
                           } ${draggedId === order.id ? "opacity-60" : ""}`}
                           title={
                             railEditMode
-                              ? "Podrž a přetáhni pro změnu pořadí"
+                              ? "Klikni pro přesun nebo podrž a přetáhni"
                               : order.full_name
                           }
                         >
@@ -539,8 +631,8 @@ export default function MobileView({
               </div>
 
               {selectedFromOrdered ? (
-                <div className="mt-3 rounded-[20px] border border-[#e3efe6] bg-[#fbfefb] px-3 py-3">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="mt-3 rounded-[22px] border-2 border-[#cfe5d5] bg-white px-3 py-3 shadow-[0_10px_28px_rgba(0,0,0,0.10)]">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="truncate text-[19px] font-extrabold text-[#103f20]">
                         {selectedFromOrdered.full_name}
@@ -548,10 +640,33 @@ export default function MobileView({
                       <div className="mt-1 text-[13px] leading-snug text-[#4f685d]">
                         {selectedFromOrdered.address}
                       </div>
+                      <div className="mt-1 text-[13px] text-[#4f685d]">
+                        {selectedFromOrdered.phone || "bez telefonu"} •{" "}
+                        {formatPrice(selectedFromOrdered.total)}
+                      </div>
                     </div>
 
+                    <div className="shrink-0">
+                      <select
+                        value={selectedFromOrdered.delivery_zone ?? ""}
+                        onChange={(e) =>
+                          setZone(
+                            selectedFromOrdered.id,
+                            (e.target.value || null) as DeliveryZone
+                          )
+                        }
+                        className="rounded-xl border border-[#d6e8da] bg-white px-3 py-2 text-[12px] font-bold text-[#103f20] outline-none"
+                      >
+                        <option value="okruh1">Okruh 1</option>
+                        <option value="okruh2">Okruh 2</option>
+                        <option value="skolky">Školky</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 flex items-center gap-2">
                     <span
-                      className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${zoneBadgeClass(
+                      className={`rounded-full px-2 py-1 text-[11px] font-bold ${zoneBadgeClass(
                         selectedFromOrdered.delivery_zone
                       )}`}
                     >
@@ -559,14 +674,9 @@ export default function MobileView({
                     </span>
                   </div>
 
-                  <div className="mt-2 text-[13px] text-[#4f685d]">
-                    {selectedFromOrdered.phone || "bez telefonu"} •{" "}
-                    {formatPrice(selectedFromOrdered.total)}
-                  </div>
-
                   {sheetState !== "peek" ? (
                     <>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
+                      <div className="mt-4 grid grid-cols-2 gap-2">
                         <button
                           type="button"
                           onClick={() => smsCustomer(selectedFromOrdered)}
@@ -606,27 +716,12 @@ export default function MobileView({
                         </button>
                       </div>
 
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                        <select
-                          value={selectedFromOrdered.delivery_zone ?? ""}
-                          onChange={(e) =>
-                            setZone(
-                              selectedFromOrdered.id,
-                              (e.target.value || null) as DeliveryZone
-                            )
-                          }
-                          className="rounded-xl border border-[#d6e8da] bg-white px-3 py-2 text-sm font-bold text-[#103f20] outline-none"
-                        >
-                          <option value="okruh1">Okruh 1</option>
-                          <option value="okruh2">Okruh 2</option>
-                          <option value="skolky">Školky</option>
-                        </select>
-
+                      <div className="mt-3 flex justify-center">
                         <button
                           type="button"
                           onClick={() => setConfirmDeliveredOrder(selectedFromOrdered)}
                           disabled={busyId === selectedFromOrdered.id}
-                          className="rounded-xl border border-[#00a63e] bg-[#00a63e] px-3 py-2 text-sm font-bold text-white disabled:opacity-60"
+                          className="min-w-[180px] rounded-xl border border-[#00a63e] bg-[#00a63e] px-6 py-3 text-sm font-bold text-white disabled:opacity-60"
                         >
                           Vyřízeno
                         </button>
@@ -641,7 +736,7 @@ export default function MobileView({
               )}
 
               {sheetState !== "peek" ? (
-                <div className="mt-3 max-h-[calc(100%-150px)] overflow-y-auto pb-5">
+                <div className="mt-3 max-h-[calc(100%-170px)] overflow-y-auto pb-5">
                   {locationAllowed === false ? (
                     <div className="mb-3 rounded-[16px] border border-[#ffe2b4] bg-[#fff8ee] px-3 py-3 text-[13px] text-[#8b5a00]">
                       Nepovolil jsi polohu. Trasa se pak počítá z Jiřky, ne z tvojí aktuální pozice.
@@ -658,9 +753,7 @@ export default function MobileView({
                     </button>
 
                     {currentPosition ? (
-                      <div className="text-[12px] text-[#5e7568]">
-                        Poloha nalezena
-                      </div>
+                      <div className="text-[12px] text-[#5e7568]">Poloha nalezena</div>
                     ) : null}
                   </div>
 
@@ -679,6 +772,7 @@ export default function MobileView({
                         onClick={() => {
                           setSelectedId(order.id);
                           focusOnMap(order);
+                          setSheetState("mid");
                         }}
                         className={`mb-2 rounded-[18px] border px-3 py-3 transition ${
                           selected
