@@ -1,7 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import type { PokladnaViewProps } from "../page";
+import { useMemo, useState } from "react";
+
+function cls(...arr: Array<string | false | null | undefined>) {
+  return arr.filter(Boolean).join(" ");
+}
 
 function InfoIcon() {
   return (
@@ -11,8 +15,9 @@ function InfoIcon() {
   );
 }
 
-function cls(...arr: Array<string | false | null | undefined>) {
-  return arr.filter(Boolean).join(" ");
+function formatShortTodayLabel(input: string) {
+  if (!input) return "";
+  return input;
 }
 
 export default function MobileView({
@@ -86,18 +91,21 @@ export default function MobileView({
   keypadApply,
   router,
   czk,
-}: PokladnaViewProps) {
+  // @ts-ignore
+  changeLocalCategory,
+}: PokladnaViewProps & {
+  changeLocalCategory?: (id: string, value: string) => void;
+}) {
   const shell = "min-h-screen bg-[#f8faf8]";
   const wrap = "mx-auto w-full max-w-md px-3 pt-3 pb-36";
 
-  const topCard =
-    "rounded-[28px] border border-[#bde7c8] bg-white p-4 shadow-[0_10px_26px_rgba(27,54,39,0.04)]";
-
   const greenBtn =
     "rounded-full bg-[#4aa948] px-4 py-2.5 text-[13px] font-extrabold text-white shadow-[0_8px_20px_rgba(74,169,72,0.20)] transition hover:brightness-95";
-
   const whiteBtn =
     "rounded-full bg-white px-4 py-2.5 text-[13px] font-extrabold text-gray-800 ring-1 ring-[#d7e3db] transition hover:bg-gray-50";
+
+  const topCard =
+    "mt-3 rounded-[28px] border border-[#bde7c8] bg-white p-4 shadow-[0_10px_26px_rgba(27,54,39,0.04)]";
 
   const modeBtn = (active: boolean) =>
     cls(
@@ -115,19 +123,14 @@ export default function MobileView({
 
   const rowCardBase =
     "rounded-[22px] border px-3 py-3 shadow-[0_8px_22px_rgba(27,54,39,0.03)] transition";
-  const rowCard =
-    "border-[#bde7c8] bg-white";
-  const rowCardActive =
-    "border-[#8ec8a1] bg-[#e8f6eb]";
+  const rowCard = "border-[#bde7c8] bg-white";
+  const rowCardActive = "border-[#8ec8a1] bg-[#e8f6eb]";
 
   const addBtn =
     "rounded-full px-3 py-2 text-[12px] font-extrabold text-[#0b7c4d] ring-1 ring-[#78d3a0] bg-white hover:bg-[#f5fbf7] transition";
 
   const priceBtn =
     "rounded-[16px] border border-[#bde7c8] bg-[#f3faf5] px-3 py-2 text-[14px] font-extrabold text-[#0b7c4d] transition hover:bg-[#ebf7ef]";
-
-  const linkEdit =
-    "text-[12px] font-bold text-gray-500 underline underline-offset-2";
 
   const qtyBtn =
     "h-9 w-9 rounded-[12px] bg-white text-[20px] font-extrabold text-[#0b7c4d] ring-1 ring-[#78d3a0] hover:bg-[#f5fbf7] transition";
@@ -138,13 +141,11 @@ export default function MobileView({
 
   const btnCancel =
     "rounded-full bg-white px-4 py-3 text-[15px] font-extrabold text-gray-900 ring-1 ring-black/10 hover:bg-gray-50 transition";
-
   const btnPay =
     "rounded-full bg-[#4aa948] px-4 py-3 text-[15px] font-extrabold text-white shadow-sm hover:brightness-95 transition disabled:opacity-40";
 
   const modalCard =
     "mx-auto w-full max-w-md rounded-[28px] bg-white p-4 shadow-[0_22px_70px_rgba(0,0,0,0.2)] ring-1 ring-black/10";
-
   const modalBtn =
     "rounded-full bg-white px-3 py-2 text-[13px] font-extrabold text-gray-800 ring-1 ring-black/10 hover:bg-gray-50";
 
@@ -154,53 +155,67 @@ export default function MobileView({
       active ? "bg-[#4aa948] text-white" : "bg-[#eef8f1] text-[#0d6b44] ring-1 ring-[#bde7c8] hover:bg-[#e4f4e8]"
     );
 
-  const [foodEditId, setFoodEditId] = useState<string | null>(null);
   const [allergenOpenId, setAllergenOpenId] = useState<string | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
 
-  const foodEditItem = useMemo(
-    () => localItems.find((x) => String(x.id) === String(foodEditId)) ?? null,
-    [localItems, foodEditId]
-  );
+  const categoryOptions = useMemo(() => {
+    const arr = Array.from(
+      new Set(
+        localItems
+          .map((x: any) => (x.category ?? x.kategorie ?? "").trim())
+          .filter(Boolean)
+      )
+    );
+    return arr.sort((a, b) => a.localeCompare(b, "cs"));
+  }, [localItems]);
+
+  const confirmRemove = (id: string, name?: string) => {
+    const ok = window.confirm(`Opravdu chceš smazat "${name ?? "toto jídlo"}" z tohoto dne?`);
+    if (!ok) return;
+    removeLocalItem(id);
+  };
 
   return (
     <div className={shell}>
       <div className={wrap}>
-        <div className={topCard}>
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-[22px] font-extrabold tracking-tight text-[#0f172a]">
-                Pokladna
-              </div>
-            </div>
-
-            <div className="flex shrink-0 items-center gap-2">
-              <button type="button" className={greenBtn} onClick={() => setEditOpen(true)}>
-                Upravit
-              </button>
-              <button type="button" className={greenBtn} onClick={() => router.push("/staff")}>
-                Rozcestník
-              </button>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[23px] font-extrabold tracking-tight text-[#0f172a]">
+              Pokladna
             </div>
           </div>
 
-          <div className="mt-2 text-[13px] font-extrabold text-[#0b7c4d]">{todayLabel}</div>
-
-          <div className="mt-4 flex gap-2">
-            <button type="button" className={modeBtn(mode === "tady")} onClick={() => setMode("tady")}>
-              Tady
+          <div className="flex shrink-0 items-center gap-2">
+            <button type="button" className={greenBtn} onClick={() => setEditOpen(true)}>
+              Upravit
             </button>
-            <button type="button" className={modeBtn(mode === "sebou")} onClick={() => setMode("sebou")}>
-              Sebou
+            <button type="button" className={greenBtn} onClick={() => router.push("/staff")}>
+              Rozcestník
             </button>
           </div>
         </div>
 
-        {mode === "sebou" && (
-          <div className="mt-3 rounded-[24px] border border-[#bde7c8] bg-white px-4 py-3 shadow-[0_8px_20px_rgba(27,54,39,0.03)]">
-            <div className="grid gap-4">
+        <div className={topCard}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex gap-2">
+              <button type="button" className={modeBtn(mode === "tady")} onClick={() => setMode("tady")}>
+                Tady
+              </button>
+              <button type="button" className={modeBtn(mode === "sebou")} onClick={() => setMode("sebou")}>
+                Sebou
+              </button>
+            </div>
+
+            <div className="shrink-0 text-[14px] font-extrabold text-[#0b7c4d]">
+              {formatShortTodayLabel(todayLabel)}
+            </div>
+          </div>
+
+          {mode === "sebou" && (
+            <div className="mt-4 grid gap-4">
               <div>
                 <div className="text-[12px] font-extrabold text-gray-900">Doprava</div>
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                   <button type="button" className={smallBtn(delivery === "ano")} onClick={() => setDelivery("ano")}>
                     Ano
                   </button>
@@ -212,7 +227,7 @@ export default function MobileView({
 
               <div>
                 <div className="text-[12px] font-extrabold text-gray-900">Balení</div>
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                   <button type="button" className={smallBtn(packaging === "plast")} onClick={() => setPackaging("plast")}>
                     Plast
                   </button>
@@ -221,13 +236,20 @@ export default function MobileView({
                     className={smallBtn(packaging === "rekrabicka")}
                     onClick={() => setPackaging("rekrabicka")}
                   >
-                    Rekr
+                    Rekrabička
+                  </button>
+                  <button
+                    type="button"
+                    className={smallBtn(packaging === "jidlonosic")}
+                    onClick={() => setPackaging("jidlonosic")}
+                  >
+                    Jídlonosič
                   </button>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <div className="mt-3 grid gap-2.5">
           {loadingItems ? (
@@ -243,16 +265,10 @@ export default function MobileView({
               Pro dnešek zatím nejsou ve správě menu zadaná žádná jídla.
             </div>
           ) : (
-            items.map((it) => {
+            items.map((it: any) => {
               const q = qty[it.id] ?? 0;
               const unit = specialPrice[it.id] ?? it.price;
-              const localRow = localItems.find((x) => String(x.id) === String(it.id));
-              const allergens =
-                (it as any).allergens ??
-                (it as any).alergeny ??
-                (localRow as any)?.allergens ??
-                (localRow as any)?.alergeny ??
-                "";
+              const allergens = it.allergens ?? it.alergeny ?? "";
 
               return (
                 <div
@@ -262,10 +278,7 @@ export default function MobileView({
                   <div className="grid grid-cols-[1fr_auto_auto] items-start gap-2">
                     <div className="min-w-0">
                       <div className="flex items-start gap-2">
-                        <div
-                          className="line-clamp-2 min-w-0 flex-1 text-[15px] font-extrabold leading-[1.25] text-gray-900"
-                          onClick={() => (q === 0 ? setToOne(it.id) : inc(it.id))}
-                        >
+                        <div className="line-clamp-2 min-w-0 flex-1 text-[15px] font-extrabold leading-[1.25] text-gray-900">
                           {it.name}
                         </div>
 
@@ -279,18 +292,8 @@ export default function MobileView({
                         </button>
                       </div>
 
-                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <div className="text-[12px] font-extrabold text-[#1d8f52]">
-                          {it.category || "Bez kategorie"}
-                        </div>
-
-                        <button
-                          type="button"
-                          className={linkEdit}
-                          onClick={() => setFoodEditId(it.id)}
-                        >
-                          Upravit
-                        </button>
+                      <div className="mt-1 text-[12px] font-extrabold text-[#1d8f52]">
+                        {it.category || "Bez kategorie"}
                       </div>
                     </div>
 
@@ -356,9 +359,6 @@ export default function MobileView({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-[18px] font-extrabold text-gray-900">Alergeny</div>
-                  <div className="mt-1 text-[12px] font-semibold text-gray-500">
-                    Informace k vybranému jídlu.
-                  </div>
                 </div>
 
                 <button type="button" className={modalBtn} onClick={() => setAllergenOpenId(null)}>
@@ -367,17 +367,13 @@ export default function MobileView({
               </div>
 
               {(() => {
-                const row =
-                  items.find((x) => String(x.id) === String(allergenOpenId)) ??
-                  localItems.find((x) => String(x.id) === String(allergenOpenId));
-
-                const allergens =
-                  (row as any)?.allergens ?? (row as any)?.alergeny ?? "";
+                const row: any = items.find((x: any) => String(x.id) === String(allergenOpenId));
+                const allergens = row?.allergens ?? row?.alergeny ?? "";
 
                 return (
                   <div className="mt-4 rounded-[22px] border border-[#bde7c8] bg-[#f5fbf7] p-4">
                     <div className="text-[15px] font-extrabold text-gray-900">
-                      {(row as any)?.name ?? "Jídlo"}
+                      {row?.name ?? "Jídlo"}
                     </div>
                     <div className="mt-2 text-sm font-semibold text-gray-600">
                       {allergens ? `Alergeny: ${allergens}` : "Alergeny nejsou zadané."}
@@ -385,73 +381,6 @@ export default function MobileView({
                   </div>
                 );
               })()}
-            </div>
-          </div>
-        </>
-      )}
-
-      {foodEditId && foodEditItem && (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-[70] bg-black/40"
-            onClick={() => setFoodEditId(null)}
-          />
-          <div className="fixed inset-0 z-[80] overflow-auto px-3 py-6">
-            <div className={modalCard}>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-[18px] font-extrabold text-gray-900">Upravit jídlo</div>
-                  <div className="mt-1 text-[12px] font-semibold text-gray-500">
-                    Tady můžeš změnit název a cenu.
-                  </div>
-                </div>
-
-                <button type="button" className={modalBtn} onClick={() => setFoodEditId(null)}>
-                  Zavřít
-                </button>
-              </div>
-
-              <div className="mt-4 grid gap-3">
-                <div>
-                  <div className="mb-1 text-[12px] font-extrabold text-gray-700">Název</div>
-                  <input
-                    value={foodEditItem.name}
-                    onChange={(e) => renameLocalItem(foodEditItem.id, e.target.value)}
-                    className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <div className="mb-1 text-[12px] font-extrabold text-gray-700">Kategorie</div>
-                  <div className="rounded-2xl bg-[#f5fbf7] px-4 py-3 text-sm font-bold text-[#0b7c4d] ring-1 ring-[#bde7c8]">
-                    {foodEditItem.category || "Bez kategorie"}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="mb-1 text-[12px] font-extrabold text-gray-700">Cena</div>
-                  <input
-                    value={String(foodEditItem.price ?? 0)}
-                    onChange={(e) => changeLocalPrice(foodEditItem.id, e.target.value)}
-                    inputMode="numeric"
-                    className="w-full rounded-2xl bg-white px-4 py-3 text-right text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none"
-                  />
-                </div>
-
-                <div className="rounded-[20px] border border-[#bde7c8] bg-[#f5fbf7] px-4 py-3 text-[12px] font-semibold text-gray-600">
-                  Tohle okno je pro úpravu názvu a běžné ceny. Speciální cena pro jednu objednávku se mění kliknutím na cenu u řádku jídla.
-                </div>
-              </div>
-
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <button type="button" className={btnCancel} onClick={() => setFoodEditId(null)}>
-                  Zpět
-                </button>
-                <button type="button" className={btnPay} onClick={() => setFoodEditId(null)}>
-                  Uložit
-                </button>
-              </div>
             </div>
           </div>
         </>
@@ -466,39 +395,55 @@ export default function MobileView({
                 <div>
                   <div className="text-[18px] font-extrabold text-gray-900">Upravit jídla</div>
                   <div className="mt-1 text-[12px] font-semibold text-gray-500">
-                    Hromadná úprava jídel pro dnešní pokladnu.
+                    Změny se mají propsat natrvalo. Smazání maž jen z tohoto dne.
                   </div>
                 </div>
+
                 <button type="button" className={modalBtn} onClick={() => setEditOpen(false)}>
                   Zavřít
                 </button>
               </div>
 
-              <div className="mt-4 max-h-[34vh] overflow-auto rounded-[22px] border border-[#bde7c8]">
+              <div className="mt-4 max-h-[40vh] overflow-auto rounded-[22px] border border-[#bde7c8]">
                 <div className="divide-y divide-[#dff2e5]">
-                  {localItems.map((it) => (
+                  {localItems.map((it: any) => (
                     <div key={it.id} className="grid gap-2 px-3 py-3">
-                      <input
-                        value={it.name}
-                        onChange={(e) => renameLocalItem(it.id, e.target.value)}
-                        className="w-full rounded-2xl bg-white px-3 py-2 text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none"
-                      />
+                      <div className="grid grid-cols-[1fr_auto_auto] gap-2 items-start">
+                        <div className="min-w-0">
+                          <input
+                            value={it.name}
+                            onChange={(e) => renameLocalItem(it.id, e.target.value)}
+                            className="w-full rounded-2xl bg-white px-3 py-2 text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none"
+                            placeholder="Název"
+                          />
 
-                      <div className="truncate text-xs font-semibold text-[#0b7c4d]">
-                        {it.category || "Bez kategorie"}
-                      </div>
+                          <div className="mt-2">
+                            <input
+                              list={`cat-${it.id}`}
+                              value={it.category ?? ""}
+                              onChange={(e) => changeLocalCategory?.(it.id, e.target.value)}
+                              className="w-full rounded-2xl bg-[#f8faf8] px-3 py-2 text-xs font-semibold text-[#0b7c4d] ring-1 ring-[#d7e3db] outline-none"
+                              placeholder="Kategorie"
+                            />
+                            <datalist id={`cat-${it.id}`}>
+                              {categoryOptions.map((cat) => (
+                                <option key={cat} value={cat} />
+                              ))}
+                            </datalist>
+                          </div>
+                        </div>
 
-                      <div className="grid grid-cols-[1fr_auto] gap-2">
                         <input
                           value={String(it.price ?? 0)}
                           onChange={(e) => changeLocalPrice(it.id, e.target.value)}
                           inputMode="numeric"
-                          className="w-full rounded-2xl bg-white px-3 py-2 text-right text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none"
+                          className="w-[88px] rounded-2xl bg-white px-3 py-2 text-right text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none"
                         />
+
                         <button
                           type="button"
-                          onClick={() => removeLocalItem(it.id)}
-                          className="rounded-full px-3 py-2 text-xs font-extrabold text-red-600 hover:underline"
+                          onClick={() => confirmRemove(it.id, it.name)}
+                          className="rounded-full px-3 py-2 text-xs font-extrabold text-red-600 ring-1 ring-red-200 hover:bg-red-50"
                         >
                           Smazat
                         </button>
@@ -508,8 +453,17 @@ export default function MobileView({
                 </div>
               </div>
 
-              <div className="mt-4 rounded-[22px] border border-[#bde7c8] bg-[#f5fbf7] p-3">
-                <div className="text-sm font-extrabold text-[#0b7c4d]">Přidat jídlo</div>
+              <div className="mt-4 rounded-[20px] border border-[#bde7c8] bg-[#f7fbf8] p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-extrabold text-[#0b7c4d]">Přidat jídlo</div>
+                  <button
+                    type="button"
+                    className="text-[12px] font-extrabold text-gray-500 underline underline-offset-2"
+                    onClick={() => setManualOpen(true)}
+                  >
+                    Přidat ručně
+                  </button>
+                </div>
 
                 <div className="mt-3 relative">
                   <input
@@ -528,7 +482,7 @@ export default function MobileView({
                       {filteredFoods.length === 0 ? (
                         <div className="px-4 py-3 text-sm font-semibold text-gray-500">Nic nenalezeno.</div>
                       ) : (
-                        filteredFoods.map((f) => (
+                        filteredFoods.map((f: any) => (
                           <button
                             key={f.id}
                             type="button"
@@ -550,34 +504,74 @@ export default function MobileView({
                     </div>
                   )}
                 </div>
+              </div>
 
-                <div className="mt-3 grid grid-cols-1 gap-2">
-                  <input
-                    value={manualFoodName}
-                    onChange={(e) => setManualFoodName(e.target.value)}
-                    placeholder="Název"
-                    className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none"
-                  />
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <button type="button" className={btnCancel} onClick={() => setEditOpen(false)}>
+                  Zpět
+                </button>
+                <button type="button" className={btnPay} onClick={() => setEditOpen(false)}>
+                  Uložit
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
-                  <input
-                    value={manualFoodCategory}
-                    onChange={(e) => setManualFoodCategory(e.target.value)}
-                    placeholder="Kategorie"
-                    className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none"
-                  />
-
-                  <input
-                    value={manualFoodPrice}
-                    onChange={(e) => setManualFoodPrice(e.target.value.replace(/[^\d]/g, ""))}
-                    placeholder="Cena"
-                    inputMode="numeric"
-                    className="w-full rounded-2xl bg-white px-4 py-3 text-right text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none"
-                  />
-
-                  <button type="button" onClick={addManualFood} className={greenBtn}>
-                    Přidat ručně
-                  </button>
+      {manualOpen && (
+        <>
+          <button type="button" className="fixed inset-0 z-[60] bg-black/40" onClick={() => setManualOpen(false)} />
+          <div className="fixed inset-0 z-[70] overflow-auto px-3 py-4">
+            <div className={modalCard}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[18px] font-extrabold text-gray-900">Přidat ručně</div>
                 </div>
+                <button type="button" className={modalBtn} onClick={() => setManualOpen(false)}>
+                  Zavřít
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-2">
+                <input
+                  value={manualFoodName}
+                  onChange={(e) => setManualFoodName(e.target.value)}
+                  placeholder="Název"
+                  className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none"
+                />
+
+                <input
+                  list="manual-categories"
+                  value={manualFoodCategory}
+                  onChange={(e) => setManualFoodCategory(e.target.value)}
+                  placeholder="Kategorie"
+                  className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none"
+                />
+                <datalist id="manual-categories">
+                  {categoryOptions.map((cat) => (
+                    <option key={cat} value={cat} />
+                  ))}
+                </datalist>
+
+                <input
+                  value={manualFoodPrice}
+                  onChange={(e) => setManualFoodPrice(e.target.value.replace(/[^\d]/g, ""))}
+                  placeholder="Cena"
+                  inputMode="numeric"
+                  className="w-full rounded-2xl bg-white px-4 py-3 text-right text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    addManualFood();
+                    setManualOpen(false);
+                  }}
+                  className={greenBtn}
+                >
+                  Přidat
+                </button>
               </div>
             </div>
           </div>
@@ -706,7 +700,7 @@ export default function MobileView({
                   <div className="px-4 py-6 text-sm font-semibold text-gray-600">Nikdo nenalezen.</div>
                 ) : (
                   <div className="divide-y divide-[#dff2e5]">
-                    {customers.map((c) => (
+                    {customers.map((c: any) => (
                       <button
                         key={c.id}
                         type="button"
