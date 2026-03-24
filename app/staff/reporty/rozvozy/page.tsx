@@ -54,11 +54,13 @@ export type CurrentPosition = {
   lat: number;
   lng: number;
   accuracy?: number | null;
+  heading?: number | null;
+  speed?: number | null;
 };
 
 const JIRKA_BASE = {
   name: "Jiřka",
-  address: "Havlíčkova 72/1, 29001 Poděbrady",
+  address: "Havlíčkova 72, 29001 Poděbrady",
   lat: 50.14277,
   lng: 15.11838,
 };
@@ -204,6 +206,10 @@ export default function RozvozyPage() {
   const routeLayerRef = useRef<any>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const geoWatchIdRef = useRef<number | null>(null);
+  const followUserRef = useRef(false);
+  const userHasInteractedWithMapRef = useRef(false);
+  const suppressManualInteractionUntilRef = useRef(0);
+  const lastAutoFollowAtRef = useRef(0);
 
   async function loadOrders() {
     try {
@@ -296,6 +302,14 @@ export default function RozvozyPage() {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           accuracy: pos.coords.accuracy,
+          heading:
+            typeof pos.coords.heading === "number" && Number.isFinite(pos.coords.heading)
+              ? pos.coords.heading
+              : null,
+          speed:
+            typeof pos.coords.speed === "number" && Number.isFinite(pos.coords.speed)
+              ? pos.coords.speed
+              : null,
         };
 
         setCurrentPosition(next);
@@ -303,7 +317,8 @@ export default function RozvozyPage() {
         setLocationBusy(false);
 
         if (center && mapRef.current) {
-          mapRef.current.flyTo([next.lat, next.lng], 16, { duration: 0.6 });
+          suppressManualInteractionUntilRef.current = Date.now() + 1200;
+          mapRef.current.flyTo([next.lat, next.lng], 17, { duration: 0.6 });
         }
       },
       () => {
@@ -312,7 +327,7 @@ export default function RozvozyPage() {
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 10000,
+        maximumAge: 5000,
         timeout: 10000,
       }
     );
@@ -329,6 +344,14 @@ export default function RozvozyPage() {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           accuracy: pos.coords.accuracy,
+          heading:
+            typeof pos.coords.heading === "number" && Number.isFinite(pos.coords.heading)
+              ? pos.coords.heading
+              : null,
+          speed:
+            typeof pos.coords.speed === "number" && Number.isFinite(pos.coords.speed)
+              ? pos.coords.speed
+              : null,
         });
         setLocationAllowed(true);
       },
@@ -337,8 +360,8 @@ export default function RozvozyPage() {
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 7000,
-        timeout: 15000,
+        maximumAge: 3000,
+        timeout: 12000,
       }
     );
 
@@ -565,6 +588,7 @@ export default function RozvozyPage() {
 
   function focusOnMap(order: OrderUi) {
     clearRoute();
+    followUserRef.current = false;
     setSelectedId(order.id);
     setMobileTab("mapa");
 
@@ -572,6 +596,7 @@ export default function RozvozyPage() {
       forceMapResize();
 
       if (mapRef.current && order.lat != null && order.lng != null) {
+        suppressManualInteractionUntilRef.current = Date.now() + 1200;
         mapRef.current.flyTo([order.lat, order.lng], 16, {
           duration: 0.6,
         });
@@ -585,10 +610,7 @@ export default function RozvozyPage() {
     setRoutingOrderId(order.id);
     setSelectedId(order.id);
     setMobileTab("mapa");
-
-    window.setTimeout(() => {
-      forceMapResize();
-    }, 120);
+    followUserRef.current = true;
 
     const startPoint = currentPosition
       ? { lat: currentPosition.lat, lng: currentPosition.lng }
@@ -607,17 +629,28 @@ export default function RozvozyPage() {
     routeLayerRef.current.clearLayers();
 
     if (route) {
-      const poly = L.polyline(route.points, {
+      L.polyline(route.points, {
         color: "#16a34a",
         weight: 6,
         opacity: 0.92,
       }).addTo(routeLayerRef.current);
 
-      mapRef.current.fitBounds(poly.getBounds(), { padding: [30, 30] });
       setRouteInfo({
         distanceKm: route.distanceKm,
         durationMin: route.durationMin,
       });
+
+      if (currentPosition) {
+        suppressManualInteractionUntilRef.current = Date.now() + 1200;
+        mapRef.current.setView([currentPosition.lat, currentPosition.lng], 17, {
+          animate: true,
+        });
+      } else {
+        suppressManualInteractionUntilRef.current = Date.now() + 1200;
+        mapRef.current.fitBounds(L.polyline(route.points).getBounds(), {
+          padding: [30, 30],
+        });
+      }
     } else {
       setRouteInfo(null);
     }
@@ -626,19 +659,23 @@ export default function RozvozyPage() {
   function clearRoute() {
     setRoutingOrderId(null);
     setRouteInfo(null);
+    followUserRef.current = false;
     if (routeLayerRef.current) {
       routeLayerRef.current.clearLayers();
     }
   }
 
   function focusMyLocation() {
+    followUserRef.current = true;
+
     if (!currentPosition) {
       requestCurrentPosition(true);
       return;
     }
 
     if (mapRef.current) {
-      mapRef.current.flyTo([currentPosition.lat, currentPosition.lng], 16, {
+      suppressManualInteractionUntilRef.current = Date.now() + 1200;
+      mapRef.current.flyTo([currentPosition.lat, currentPosition.lng], 17, {
         duration: 0.6,
       });
     }
@@ -680,6 +717,21 @@ export default function RozvozyPage() {
       markersLayerRef.current = L.layerGroup().addTo(map);
       routeLayerRef.current = L.layerGroup().addTo(map);
       mapRef.current = map;
+
+      const markUserInteraction = () => {
+        if (Date.now() < suppressManualInteractionUntilRef.current) return;
+        userHasInteractedWithMapRef.current = true;
+        if (followUserRef.current) {
+          followUserRef.current = false;
+        }
+      };
+
+      map.on("dragstart", markUserInteraction);
+      map.on("zoomstart", markUserInteraction);
+      map.on("movestart", () => {
+        if (Date.now() < suppressManualInteractionUntilRef.current) return;
+        if (Date.now() - lastAutoFollowAtRef.current < 500) return;
+      });
     }
 
     const timers = [0, 100, 250, 500, 900, 1400].map((delay) =>
@@ -827,7 +879,9 @@ export default function RozvozyPage() {
         .addTo(markersLayer)
         .bindPopup(`<div style="font-weight:800;color:#103f20">Moje poloha</div>`);
 
-      points.push([currentPosition.lat, currentPosition.lng]);
+      if (!userHasInteractedWithMapRef.current && !routingOrderId) {
+        points.push([currentPosition.lat, currentPosition.lng]);
+      }
     }
 
     filteredOrders.forEach((order, idx) => {
@@ -889,18 +943,32 @@ export default function RozvozyPage() {
         clearRoute();
         setSelectedId(order.id);
         setMobileTab("mapa");
+        userHasInteractedWithMapRef.current = true;
       });
     });
 
-    if (points.length === 1) {
-      map.setView([JIRKA_BASE.lat, JIRKA_BASE.lng], 13);
-    } else {
-      const bounds = L.latLngBounds(points);
-      map.fitBounds(bounds, { padding: [28, 28] });
+    if (!userHasInteractedWithMapRef.current && !routingOrderId) {
+      if (points.length === 1) {
+        map.setView([JIRKA_BASE.lat, JIRKA_BASE.lng], 13);
+      } else {
+        const bounds = L.latLngBounds(points);
+        map.fitBounds(bounds, { padding: [28, 28] });
+      }
     }
 
     forceMapResize();
-  }, [leafletReady, filteredOrders, selectedId, currentPosition]);
+  }, [leafletReady, filteredOrders, selectedId, currentPosition, routingOrderId]);
+
+  useEffect(() => {
+    if (!mapRef.current || !currentPosition || !followUserRef.current) return;
+
+    suppressManualInteractionUntilRef.current = Date.now() + 700;
+    lastAutoFollowAtRef.current = Date.now();
+
+    mapRef.current.setView([currentPosition.lat, currentPosition.lng], 17, {
+      animate: true,
+    });
+  }, [currentPosition]);
 
   const outlineBtn =
     "rounded-xl border border-[#00a63e] bg-white px-3 py-2 text-sm font-bold text-[#0f6c2a] transition hover:bg-[#f4fbf5]";
