@@ -1,43 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import DesktopView from "./_ui/DesktopView";
+import MobileView from "./_ui/MobileView";
 
-function Tile({
-  href,
-  title,
-  bg,
-  variant = "top",
-}: {
+export type StaffHubTile = {
   href: string;
   title: string;
   bg: string;
   variant?: "top" | "bottom";
-}) {
-  const isTop = variant === "top";
-
-  const minH = isTop
-    ? "min-h-[78px] sm:min-h-[90px] md:min-h-[110px]"
-    : "min-h-[70px] sm:min-h-[86px] md:min-h-[100px]";
-  const text = "text-[16px] sm:text-[18px] md:text-2xl";
-  const pad = "px-4 sm:px-6 md:px-10";
-
-  return (
-    <Link
-      href={href}
-      className={
-        "flex w-full items-center justify-center rounded-3xl text-center font-extrabold text-white shadow-md ring-1 ring-black/5 transition hover:brightness-95 " +
-        pad +
-        " " +
-        minH
-      }
-      style={{ backgroundColor: bg }}
-    >
-      <span className={text}>{title}</span>
-    </Link>
-  );
-}
+};
 
 function PinDot({ filled }: { filled: boolean }) {
   return (
@@ -87,6 +60,93 @@ export default function StaffHubPage() {
   const [pinError, setPinError] = useState<string | null>(null);
 
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const desktopTopTiles: StaffHubTile[] = [
+    {
+      href: "/staff/objednavka",
+      title: "Objednávka (pokladna)",
+      bg: "#16a34a",
+      variant: "top",
+    },
+    {
+      href: "/staff/online-objednavka",
+      title: "Online objednávky",
+      bg: "#047857",
+      variant: "top",
+    },
+  ];
+
+  const desktopBottomTiles: StaffHubTile[] = [
+    {
+      href: "/staff/seznam-zakazniku",
+      title: "Seznam zákazníků",
+      bg: "#dc2626",
+      variant: "bottom",
+    },
+    {
+      href: "/staff/objednavka-z-jidelnicku",
+      title: "Objednávka z jídelníčku",
+      bg: "#1333ea",
+      variant: "bottom",
+    },
+    {
+      href: "/staff/sprava-menu",
+      title: "Správa menu",
+      bg: "#9333ea",
+      variant: "bottom",
+    },
+    {
+      href: "/staff/reporty",
+      title: "Reporty a administrace",
+      bg: "#475569",
+      variant: "bottom",
+    },
+  ];
+
+  const mobileTiles: StaffHubTile[] = [
+    {
+      href: "/staff/objednavka",
+      title: "Objednávka (pokladna)",
+      bg: "#16a34a",
+      variant: "top",
+    },
+    {
+      href: "/staff/online-objednavka",
+      title: "Online objednávky",
+      bg: "#047857",
+      variant: "top",
+    },
+    {
+      href: "/staff/seznam-zakazniku",
+      title: "Seznam zákazníků",
+      bg: "#dc2626",
+      variant: "bottom",
+    },
+    {
+      href: "/staff/objednavka-z-jidelnicku",
+      title: "Objednávka z jídelníčku",
+      bg: "#1333ea",
+      variant: "bottom",
+    },
+    {
+      href: "/staff/sprava-menu",
+      title: "Správa menu",
+      bg: "#9333ea",
+      variant: "bottom",
+    },
+    {
+      href: "/staff/reporty",
+      title: "Reporty a administrace",
+      bg: "#475569",
+      variant: "bottom",
+    },
+    {
+      href: "/staff/reporty/rozvozy",
+      title: "Rozvozy",
+      bg: "#b91c1c",
+      variant: "bottom",
+    },
+  ];
 
   useEffect(() => {
     function syncFullscreen() {
@@ -256,7 +316,7 @@ export default function StaffHubPage() {
     if (pinBusy) return;
 
     if (!/^\d{4}$/.test(pin)) {
-      setPinError("Zadej PIN o délce 4 až 6 číslic.");
+      setPinError("Zadej PIN o délce 4 číslic.");
       return;
     }
 
@@ -302,84 +362,21 @@ export default function StaffHubPage() {
   return (
     <>
       <div className="min-h-screen bg-white">
-        <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 sm:py-7 md:py-8">
-          <div className="mb-5 flex items-start justify-between sm:mb-7 md:mb-10">
-            <div>
-              <h1 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">
-                <span className="sm:hidden">Rozcestník</span>
-                <span className="hidden sm:inline">Personální rozcestník</span>
-              </h1>
-              <p className="mt-1 text-sm font-semibold text-gray-500">Administrace jídelny</p>
-            </div>
-
-            <Link
-              href="/"
-              className="rounded-2xl bg-white px-4 py-2 text-sm font-extrabold text-gray-900 ring-1 ring-black/10 transition hover:bg-gray-50"
-            >
-              Web →
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:gap-5 md:gap-8">
-            <Tile href="/staff/objednavka" title="Objednávka (pokladna)" bg="#16a34a" variant="top" />
-            <Tile href="/staff/online-objednavka" title="Online objednávky" bg="#047857" variant="top" />
-          </div>
-
-          <div className="h-28 sm:h-36 md:flex-1" />
-
-          <div className="grid grid-cols-2 gap-3 pb-4 sm:gap-5 sm:pb-8 md:gap-8 md:pb-10">
-            <Tile href="/staff/seznam-zakazniku" title="Seznam zákazníků" bg="#dc2626" variant="bottom" />
-            <Tile href="/staff/objednavka-z-jidelnicku" title="Objednávka z jídelníčku" bg="#1333ea" variant="bottom" />
-            <Tile href="/staff/sprava-menu" title="Správa menu" bg="#9333ea" variant="bottom" />
-            <Tile href="/staff/reporty" title="Reporty a administrace" bg="#475569" variant="bottom" />
-          </div>
+        <div className="block md:hidden">
+          <MobileView tiles={mobileTiles} />
         </div>
 
-        <div ref={menuRef} className="fixed bottom-6 right-6 z-[100] hidden md:block">
-          {menuOpen ? (
-            <div className="mb-3 w-[260px] overflow-hidden rounded-[24px] bg-white shadow-[0_20px_50px_rgba(0,0,0,0.18)] ring-1 ring-black/10">
-              <div className="border-b border-gray-100 px-4 py-3">
-                <div className="text-sm font-extrabold text-gray-900">Ovládání</div>
-                <div className="mt-1 text-xs font-semibold text-gray-500">Rychlé akce pro desktop</div>
-              </div>
-
-              <div className="p-2">
-                <button
-                  type="button"
-                  onClick={toggleFullscreen}
-                  className="flex w-full items-center justify-between rounded-[18px] px-4 py-3 text-left transition hover:bg-gray-50"
-                >
-                  <div>
-                    <div className="text-sm font-extrabold text-gray-900">
-                      {isFullscreen ? "Ukončit celou obrazovku" : "Celá obrazovka"}
-                    </div>
-                  </div>
-                  <div className="text-xl">{isFullscreen ? "🗗" : "🗖"}</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={enterSleepMode}
-                  className="mt-2 flex w-full items-center justify-between rounded-[18px] px-4 py-3 text-left transition hover:bg-gray-50"
-                >
-                  <div>
-                    <div className="text-sm font-extrabold text-gray-900">Vypnout</div>
-                    <div className="mt-1 text-xs font-semibold text-gray-500">režim spánku</div>
-                  </div>
-                  <div className="text-xl">🌙</div>
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          <button
-            type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            className="grid h-16 w-16 place-items-center rounded-full bg-[#111827] text-2xl text-white shadow-[0_18px_40px_rgba(0,0,0,0.25)] transition hover:scale-[1.03] hover:bg-black active:scale-[0.98]"
-            title="Otevřít ovládání"
-          >
-            ⏻
-          </button>
+        <div className="hidden md:block">
+          <DesktopView
+            topTiles={desktopTopTiles}
+            bottomTiles={desktopBottomTiles}
+            menuOpen={menuOpen}
+            setMenuOpen={setMenuOpen}
+            isFullscreen={isFullscreen}
+            toggleFullscreen={toggleFullscreen}
+            enterSleepMode={enterSleepMode}
+            menuRef={menuRef}
+          />
         </div>
       </div>
 
