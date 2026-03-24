@@ -1,6 +1,19 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import type { PokladnaViewProps } from "../page";
+
+function InfoIcon() {
+  return (
+    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#bde7c8] bg-[#eef8f1] text-[11px] font-extrabold text-[#0b7c4d]">
+      i
+    </span>
+  );
+}
+
+function cls(...arr: Array<string | false | null | undefined>) {
+  return arr.filter(Boolean).join(" ");
+}
 
 export default function MobileView({
   todayLabel,
@@ -60,7 +73,7 @@ export default function MobileView({
   customersLoading,
   setSelectedCustomer,
   creditTopupOpen,
-setCreditTopupValue,
+  setCreditTopupValue,
   setCreditTopupOpen,
   creditTopupValue,
   creditTopupSaving,
@@ -74,80 +87,103 @@ setCreditTopupValue,
   router,
   czk,
 }: PokladnaViewProps) {
-  const shell = "min-h-screen bg-white";
+  const shell = "min-h-screen bg-[#f8faf8]";
   const wrap = "mx-auto w-full max-w-md px-3 pt-3 pb-36";
 
   const topCard =
-    "rounded-[24px] border border-[#bde7c8] bg-white p-4 shadow-[0_10px_26px_rgba(27,54,39,0.04)]";
+    "rounded-[28px] border border-[#bde7c8] bg-white p-4 shadow-[0_10px_26px_rgba(27,54,39,0.04)]";
+
+  const greenBtn =
+    "rounded-full bg-[#4aa948] px-4 py-2.5 text-[13px] font-extrabold text-white shadow-[0_8px_20px_rgba(74,169,72,0.20)] transition hover:brightness-95";
 
   const whiteBtn =
-    "rounded-full bg-white px-3 py-2 text-[13px] font-extrabold text-gray-800 ring-1 ring-black/10 hover:bg-gray-50 transition";
-  const greenBtn =
-    "rounded-full bg-[#08a35c] px-3 py-2 text-[13px] font-extrabold text-white shadow-sm hover:brightness-95 transition";
+    "rounded-full bg-white px-4 py-2.5 text-[13px] font-extrabold text-gray-800 ring-1 ring-[#d7e3db] transition hover:bg-gray-50";
 
   const modeBtn = (active: boolean) =>
-    [
-      "rounded-full px-4 py-2.5 text-[14px] font-extrabold transition",
+    cls(
+      "rounded-full px-5 py-3 text-[15px] font-extrabold transition",
       active
-        ? "bg-[#08a35c] text-white shadow-[0_6px_18px_rgba(8,163,92,0.18)]"
-        : "bg-[#eef8f1] text-[#0d6b44] ring-1 ring-[#bde7c8] hover:bg-[#e4f4e8]",
-    ].join(" ");
+        ? "bg-[#4aa948] text-white shadow-[0_8px_20px_rgba(74,169,72,0.18)]"
+        : "bg-white text-[#266a37] ring-1 ring-[#bde7c8]"
+    );
 
   const smallBtn = (active: boolean) =>
-    [
+    cls(
       "rounded-full px-3 py-2 text-[12px] font-extrabold transition",
-      active ? "bg-[#08a35c] text-white" : "bg-white text-gray-900 ring-1 ring-black/10 hover:bg-gray-50",
-    ].join(" ");
+      active ? "bg-[#4aa948] text-white" : "bg-white text-gray-900 ring-1 ring-black/10 hover:bg-gray-50"
+    );
 
-  const card =
-    "rounded-[22px] border border-[#bde7c8] bg-white px-4 py-4 shadow-[0_8px_22px_rgba(27,54,39,0.03)]";
-  const cardActive = "bg-[#dff0e5] border-[#8ec8a1]";
+  const rowCardBase =
+    "rounded-[22px] border px-3 py-3 shadow-[0_8px_22px_rgba(27,54,39,0.03)] transition";
+  const rowCard =
+    "border-[#bde7c8] bg-white";
+  const rowCardActive =
+    "border-[#8ec8a1] bg-[#e8f6eb]";
 
-  const qtyBtn =
-    "h-10 w-10 rounded-[14px] bg-white text-[22px] font-extrabold text-[#0b7c4d] ring-1 ring-[#78d3a0] hover:bg-[#f5fbf7] transition";
   const addBtn =
     "rounded-full px-3 py-2 text-[12px] font-extrabold text-[#0b7c4d] ring-1 ring-[#78d3a0] bg-white hover:bg-[#f5fbf7] transition";
-  const specBtn =
-    "rounded-full px-3 py-2 text-[12px] font-extrabold text-[#0b7c4d] ring-1 ring-[#78d3a0] bg-white hover:bg-[#f5fbf7] transition";
 
-  const bottomFixed = "fixed left-0 right-0 bottom-0 z-30 bg-white/95 backdrop-blur border-t border-black/5";
+  const priceBtn =
+    "rounded-[16px] border border-[#bde7c8] bg-[#f3faf5] px-3 py-2 text-[14px] font-extrabold text-[#0b7c4d] transition hover:bg-[#ebf7ef]";
+
+  const linkEdit =
+    "text-[12px] font-bold text-gray-500 underline underline-offset-2";
+
+  const qtyBtn =
+    "h-9 w-9 rounded-[12px] bg-white text-[20px] font-extrabold text-[#0b7c4d] ring-1 ring-[#78d3a0] hover:bg-[#f5fbf7] transition";
+
+  const bottomFixed =
+    "fixed left-0 right-0 bottom-0 z-30 border-t border-black/5 bg-white/95 backdrop-blur";
   const bottomInner = "mx-auto w-full max-w-md px-3 pb-4 pt-3";
+
   const btnCancel =
     "rounded-full bg-white px-4 py-3 text-[15px] font-extrabold text-gray-900 ring-1 ring-black/10 hover:bg-gray-50 transition";
+
   const btnPay =
-    "rounded-full bg-[#08a35c] px-4 py-3 text-[15px] font-extrabold text-white shadow-sm hover:brightness-95 transition disabled:opacity-40";
+    "rounded-full bg-[#4aa948] px-4 py-3 text-[15px] font-extrabold text-white shadow-sm hover:brightness-95 transition disabled:opacity-40";
 
   const modalCard =
     "mx-auto w-full max-w-md rounded-[28px] bg-white p-4 shadow-[0_22px_70px_rgba(0,0,0,0.2)] ring-1 ring-black/10";
+
   const modalBtn =
     "rounded-full bg-white px-3 py-2 text-[13px] font-extrabold text-gray-800 ring-1 ring-black/10 hover:bg-gray-50";
 
   const payBig = (active: boolean) =>
-    [
+    cls(
       "rounded-full px-4 py-3 text-[15px] font-extrabold transition",
-      active ? "bg-[#08a35c] text-white" : "bg-[#eef8f1] text-[#0d6b44] ring-1 ring-[#bde7c8] hover:bg-[#e4f4e8]",
-    ].join(" ");
+      active ? "bg-[#4aa948] text-white" : "bg-[#eef8f1] text-[#0d6b44] ring-1 ring-[#bde7c8] hover:bg-[#e4f4e8]"
+    );
+
+  const [foodEditId, setFoodEditId] = useState<string | null>(null);
+  const [allergenOpenId, setAllergenOpenId] = useState<string | null>(null);
+
+  const foodEditItem = useMemo(
+    () => localItems.find((x) => String(x.id) === String(foodEditId)) ?? null,
+    [localItems, foodEditId]
+  );
 
   return (
     <div className={shell}>
       <div className={wrap}>
         <div className={topCard}>
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[22px] font-extrabold tracking-tight text-gray-900">Pokladna</div>
-              <div className="mt-1 text-[13px] font-extrabold text-[#0b7c4d]">{todayLabel}</div>
+            <div className="min-w-0">
+              <div className="text-[22px] font-extrabold tracking-tight text-[#0f172a]">
+                Pokladna
+              </div>
             </div>
 
-            <button type="button" className={greenBtn} onClick={() => router.push("/staff")}>
-              Zpět
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <button type="button" className={greenBtn} onClick={() => setEditOpen(true)}>
+                Upravit
+              </button>
+              <button type="button" className={greenBtn} onClick={() => router.push("/staff")}>
+                Rozcestník
+              </button>
+            </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" className={whiteBtn} onClick={() => setEditOpen(true)}>
-              Upravit jídla
-            </button>
-          </div>
+          <div className="mt-2 text-[13px] font-extrabold text-[#0b7c4d]">{todayLabel}</div>
 
           <div className="mt-4 flex gap-2">
             <button type="button" className={modeBtn(mode === "tady")} onClick={() => setMode("tady")}>
@@ -160,7 +196,7 @@ setCreditTopupValue,
         </div>
 
         {mode === "sebou" && (
-          <div className="mt-3 rounded-[20px] border border-[#bde7c8] bg-white px-4 py-3 shadow-[0_8px_20px_rgba(27,54,39,0.03)]">
+          <div className="mt-3 rounded-[24px] border border-[#bde7c8] bg-white px-4 py-3 shadow-[0_8px_20px_rgba(27,54,39,0.03)]">
             <div className="grid gap-4">
               <div>
                 <div className="text-[12px] font-extrabold text-gray-900">Doprava</div>
@@ -193,7 +229,7 @@ setCreditTopupValue,
           </div>
         )}
 
-        <div className="mt-3 grid gap-3">
+        <div className="mt-3 grid gap-2.5">
           {loadingItems ? (
             <div className="rounded-[22px] border border-[#bde7c8] bg-white px-4 py-4 text-sm font-semibold text-gray-600">
               Načítám dnešní menu…
@@ -210,42 +246,83 @@ setCreditTopupValue,
             items.map((it) => {
               const q = qty[it.id] ?? 0;
               const unit = specialPrice[it.id] ?? it.price;
+              const localRow = localItems.find((x) => String(x.id) === String(it.id));
+              const allergens =
+                (it as any).allergens ??
+                (it as any).alergeny ??
+                (localRow as any)?.allergens ??
+                (localRow as any)?.alergeny ??
+                "";
 
               return (
-                <div key={it.id} className={`${card} ${q > 0 ? cardActive : ""}`}>
-                  <button
-                    type="button"
-                    className="w-full text-left"
-                    onClick={() => (q === 0 ? setToOne(it.id) : inc(it.id))}
-                  >
-                    <div className="text-[15px] font-extrabold text-gray-900 leading-snug">{it.name}</div>
-                  </button>
+                <div
+                  key={it.id}
+                  className={cls(rowCardBase, q > 0 ? rowCardActive : rowCard)}
+                >
+                  <div className="grid grid-cols-[1fr_auto_auto] items-start gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-start gap-2">
+                        <div
+                          className="line-clamp-2 min-w-0 flex-1 text-[15px] font-extrabold leading-[1.25] text-gray-900"
+                          onClick={() => (q === 0 ? setToOne(it.id) : inc(it.id))}
+                        >
+                          {it.name}
+                        </div>
 
-                  <div className="mt-1 flex items-center justify-between gap-3">
-                    <div className="min-w-0 text-[12px] font-extrabold text-[#0b8b52]">{it.category}</div>
-                    <div className="shrink-0 text-[15px] font-extrabold text-[#0b7c4d]">{czk(unit)}</div>
-                  </div>
+                        <button
+                          type="button"
+                          className="mt-[1px] shrink-0"
+                          onClick={() => setAllergenOpenId(it.id)}
+                          aria-label="Zobrazit alergeny"
+                        >
+                          <InfoIcon />
+                        </button>
+                      </div>
 
-                  <div className="mt-4 flex items-center justify-between gap-2">
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <div className="text-[12px] font-extrabold text-[#1d8f52]">
+                          {it.category || "Bez kategorie"}
+                        </div>
+
+                        <button
+                          type="button"
+                          className={linkEdit}
+                          onClick={() => setFoodEditId(it.id)}
+                        >
+                          Upravit
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className={priceBtn}
+                      onClick={() => openKeypadFor(it.id)}
+                    >
+                      {czk(unit)}
+                    </button>
+
                     {q === 0 ? (
-                      <button type="button" className={addBtn} onClick={() => setToOne(it.id)}>
+                      <button
+                        type="button"
+                        className={addBtn}
+                        onClick={() => setToOne(it.id)}
+                      >
                         Přidat
                       </button>
                     ) : (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <button type="button" className={qtyBtn} onClick={() => dec(it.id)}>
                           −
                         </button>
-                        <div className="min-w-[18px] text-center text-[15px] font-extrabold text-gray-900">{q}</div>
+                        <div className="min-w-[18px] text-center text-[14px] font-extrabold text-gray-900">
+                          {q}
+                        </div>
                         <button type="button" className={qtyBtn} onClick={() => inc(it.id)}>
                           +
                         </button>
                       </div>
                     )}
-
-                    <button type="button" className={specBtn} onClick={() => openKeypadFor(it.id)}>
-                      {specialPrice[it.id] == null ? "Spec. cena" : `Spec: ${czk(specialPrice[it.id]!)}`}
-                    </button>
                   </div>
                 </div>
               );
@@ -267,6 +344,119 @@ setCreditTopupValue,
         </div>
       </div>
 
+      {allergenOpenId && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[70] bg-black/40"
+            onClick={() => setAllergenOpenId(null)}
+          />
+          <div className="fixed inset-0 z-[80] overflow-auto px-3 py-6">
+            <div className={modalCard}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[18px] font-extrabold text-gray-900">Alergeny</div>
+                  <div className="mt-1 text-[12px] font-semibold text-gray-500">
+                    Informace k vybranému jídlu.
+                  </div>
+                </div>
+
+                <button type="button" className={modalBtn} onClick={() => setAllergenOpenId(null)}>
+                  Zavřít
+                </button>
+              </div>
+
+              {(() => {
+                const row =
+                  items.find((x) => String(x.id) === String(allergenOpenId)) ??
+                  localItems.find((x) => String(x.id) === String(allergenOpenId));
+
+                const allergens =
+                  (row as any)?.allergens ?? (row as any)?.alergeny ?? "";
+
+                return (
+                  <div className="mt-4 rounded-[22px] border border-[#bde7c8] bg-[#f5fbf7] p-4">
+                    <div className="text-[15px] font-extrabold text-gray-900">
+                      {(row as any)?.name ?? "Jídlo"}
+                    </div>
+                    <div className="mt-2 text-sm font-semibold text-gray-600">
+                      {allergens ? `Alergeny: ${allergens}` : "Alergeny nejsou zadané."}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </>
+      )}
+
+      {foodEditId && foodEditItem && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[70] bg-black/40"
+            onClick={() => setFoodEditId(null)}
+          />
+          <div className="fixed inset-0 z-[80] overflow-auto px-3 py-6">
+            <div className={modalCard}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[18px] font-extrabold text-gray-900">Upravit jídlo</div>
+                  <div className="mt-1 text-[12px] font-semibold text-gray-500">
+                    Tady můžeš změnit název a cenu.
+                  </div>
+                </div>
+
+                <button type="button" className={modalBtn} onClick={() => setFoodEditId(null)}>
+                  Zavřít
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                <div>
+                  <div className="mb-1 text-[12px] font-extrabold text-gray-700">Název</div>
+                  <input
+                    value={foodEditItem.name}
+                    onChange={(e) => renameLocalItem(foodEditItem.id, e.target.value)}
+                    className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <div className="mb-1 text-[12px] font-extrabold text-gray-700">Kategorie</div>
+                  <div className="rounded-2xl bg-[#f5fbf7] px-4 py-3 text-sm font-bold text-[#0b7c4d] ring-1 ring-[#bde7c8]">
+                    {foodEditItem.category || "Bez kategorie"}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-1 text-[12px] font-extrabold text-gray-700">Cena</div>
+                  <input
+                    value={String(foodEditItem.price ?? 0)}
+                    onChange={(e) => changeLocalPrice(foodEditItem.id, e.target.value)}
+                    inputMode="numeric"
+                    className="w-full rounded-2xl bg-white px-4 py-3 text-right text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none"
+                  />
+                </div>
+
+                <div className="rounded-[20px] border border-[#bde7c8] bg-[#f5fbf7] px-4 py-3 text-[12px] font-semibold text-gray-600">
+                  Tohle okno je pro úpravu názvu a běžné ceny. Speciální cena pro jednu objednávku se mění kliknutím na cenu u řádku jídla.
+                </div>
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <button type="button" className={btnCancel} onClick={() => setFoodEditId(null)}>
+                  Zpět
+                </button>
+                <button type="button" className={btnPay} onClick={() => setFoodEditId(null)}>
+                  Uložit
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {editOpen && (
         <>
           <button type="button" className="fixed inset-0 z-40 bg-black/40" onClick={() => setEditOpen(false)} />
@@ -276,7 +466,7 @@ setCreditTopupValue,
                 <div>
                   <div className="text-[18px] font-extrabold text-gray-900">Upravit jídla</div>
                   <div className="mt-1 text-[12px] font-semibold text-gray-500">
-                    Úpravy platí pro dnešní pokladnu.
+                    Hromadná úprava jídel pro dnešní pokladnu.
                   </div>
                 </div>
                 <button type="button" className={modalBtn} onClick={() => setEditOpen(false)}>
@@ -294,7 +484,9 @@ setCreditTopupValue,
                         className="w-full rounded-2xl bg-white px-3 py-2 text-sm font-bold text-gray-900 ring-1 ring-black/10 outline-none"
                       />
 
-                      <div className="truncate text-xs font-semibold text-gray-500">{it.category}</div>
+                      <div className="truncate text-xs font-semibold text-[#0b7c4d]">
+                        {it.category || "Bez kategorie"}
+                      </div>
 
                       <div className="grid grid-cols-[1fr_auto] gap-2">
                         <input
@@ -421,7 +613,7 @@ setCreditTopupValue,
               <div className="mt-4 flex justify-center">
                 <button
                   type="button"
-                  className="text-center text-[13px] font-extrabold text-[#0b7c4d] hover:underline underline-offset-4"
+                  className="text-center text-[13px] font-extrabold text-[#0b7c4d] underline underline-offset-4 hover:opacity-80"
                   onClick={() => {
                     setPaymentMethod("credit");
                     setCustomerPickerOpen(true);
@@ -455,7 +647,7 @@ setCreditTopupValue,
                           setCreditTopupValue("");
                           setCreditTopupOpen(true);
                         }}
-                        className="mt-2 text-xs font-extrabold text-[#0b7c4d] hover:underline underline-offset-4"
+                        className="mt-2 text-xs font-extrabold text-[#0b7c4d] underline underline-offset-4 hover:opacity-80"
                       >
                         Dobít kredit
                       </button>
@@ -639,7 +831,9 @@ setCreditTopupValue,
                 <div className="mt-1 text-[28px] font-extrabold text-gray-900">
                   {keypad.value ? `${keypad.value} Kč` : "—"}
                 </div>
-                <div className="mt-2 text-[12px] font-semibold text-gray-500">Prázdné = zrušit</div>
+                <div className="mt-2 text-[12px] font-semibold text-gray-500">
+                  Tato cena platí jen pro tuto jednu objednávku. Prázdné = zrušit.
+                </div>
               </div>
 
               <div className="mt-4 grid grid-cols-3 gap-3">
@@ -657,7 +851,7 @@ setCreditTopupValue,
 
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <button type="button" className={btnPay} onClick={keypadApply}>
-                  Potvrdit
+                  Uložit
                 </button>
                 <button type="button" className={btnCancel} onClick={() => setKeypadOpen(false)}>
                   Zpět
