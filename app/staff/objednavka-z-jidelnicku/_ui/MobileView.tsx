@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import type { Dispatch, SetStateAction } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import type { MenuDay, MenuItem, WeekOption } from "../page";
 
 type CustomerType = "zakaznik" | "fakturovany";
@@ -32,23 +31,28 @@ function czk(n: number) {
   return `${Number(n || 0).toFixed(0)} Kč`;
 }
 
-function monthLabel(date: Date) {
-  return new Intl.DateTimeFormat("cs-CZ", {
-    month: "long",
-    year: "numeric",
-  }).format(date);
+function isoLocal(d: Date) {
+  const y = d.getFullYear();
+  const m = `${d.getMonth() + 1}`.padStart(2, "0");
+  const day = `${d.getDate()}`.padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function startOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1);
 }
 
-function endOfMonth(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
-}
-
 function addMonths(d: Date, diff: number) {
   return new Date(d.getFullYear(), d.getMonth() + diff, 1);
+}
+
+function monthLabel(date: Date) {
+  const raw = new Intl.DateTimeFormat("cs-CZ", {
+    month: "long",
+    year: "numeric",
+  }).format(date);
+
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
 function isSameDay(a: Date, b: Date) {
@@ -57,13 +61,6 @@ function isSameDay(a: Date, b: Date) {
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
   );
-}
-
-function isoLocal(d: Date) {
-  const y = d.getFullYear();
-  const m = `${d.getMonth() + 1}`.padStart(2, "0");
-  const day = `${d.getDate()}`.padStart(2, "0");
-  return `${y}-${m}-${day}`;
 }
 
 type Props = {
@@ -101,12 +98,7 @@ type Props = {
 
 function InfoIcon({ className = "" }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      className={className}
-    >
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
       <path d="M12 10.2V16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       <circle cx="12" cy="7.2" r="1.2" fill="currentColor" />
@@ -149,9 +141,6 @@ export default function MobileView({
   const [weeksOpen, setWeeksOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
 
-  const selectedWeek = weekOptions.find((w) => w.index === weekIndex) ?? weekOptions[0];
-  const currentWeekLabel = selectedWeek?.label ?? "Tento týden";
-
   const searchValue =
     customerType === "zakaznik"
       ? selectedProfile
@@ -161,14 +150,17 @@ export default function MobileView({
         ? selectedInvoiceCustomer.name
         : invoiceSearch;
 
+  const currentWeekLabel =
+    weekOptions.find((w) => w.index === weekIndex)?.label ?? weekOptions[0]?.label ?? "Tento týden";
+
   const canGoPrev = weekIndex > 0;
   const canGoNext = weekIndex < 3;
 
   const initialCalendarDate = useMemo(() => {
-    const found = selectedWeek?.days?.[0]?.key || activeDay || isoLocal(new Date());
+    const found = activeDay || isoLocal(new Date());
     const d = new Date(found);
     return Number.isNaN(d.getTime()) ? new Date() : d;
-  }, [selectedWeek, activeDay]);
+  }, [activeDay]);
 
   const [calendarMonth, setCalendarMonth] = useState<Date>(startOfMonth(initialCalendarDate));
 
@@ -178,24 +170,12 @@ export default function MobileView({
 
   const calendarDays = useMemo(() => {
     const start = startOfMonth(calendarMonth);
-    const end = endOfMonth(calendarMonth);
+    const firstWeekDay = (start.getDay() + 6) % 7;
 
-    const startWeekDay = (start.getDay() + 6) % 7;
     const days: Date[] = [];
-
-    for (let i = 0; i < startWeekDay; i++) {
-      days.push(new Date(start.getFullYear(), start.getMonth(), start.getDate() - startWeekDay + i));
+    for (let i = 0; i < 42; i++) {
+      days.push(new Date(start.getFullYear(), start.getMonth(), i - firstWeekDay + 1));
     }
-
-    for (let d = 1; d <= end.getDate(); d++) {
-      days.push(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), d));
-    }
-
-    while (days.length < 42) {
-      const nextIndex = days.length - (startWeekDay + end.getDate()) + 1;
-      days.push(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, nextIndex));
-    }
-
     return days;
   }, [calendarMonth]);
 
@@ -221,7 +201,7 @@ export default function MobileView({
         </div>
 
         <div className="rounded-[28px] border border-[#cfe8d4] bg-white px-3 py-3 shadow-[0_10px_26px_rgba(27,54,39,0.045)]">
-          <div className="grid grid-cols-[1fr_1.35fr] gap-2">
+          <div className="grid grid-cols-[1fr_1.38fr] gap-2">
             <button
               type="button"
               onClick={() => setCustomerType("zakaznik")}
@@ -266,7 +246,7 @@ export default function MobileView({
                   ? "Vyhledat zákazníka"
                   : "Vyhledat fakturovaného zákazníka"
               }
-              className="h-[48px] w-full rounded-full border border-[#c7e4ce] bg-white pl-4 pr-[150px] text-[14px] font-semibold text-[#182033] outline-none placeholder:text-[#98a1b2] focus:border-[#67ad4f]"
+              className="h-[48px] w-full rounded-full border border-[#c7e4ce] bg-white pl-4 pr-[148px] text-[14px] font-semibold text-[#182033] outline-none placeholder:text-[#98a1b2] focus:border-[#67ad4f]"
             />
 
             <button
@@ -462,7 +442,7 @@ export default function MobileView({
                   ←
                 </button>
 
-                <div className="text-[18px] font-extrabold capitalize text-[#182033]">
+                <div className="text-[18px] font-extrabold text-[#182033]">
                   {monthLabel(calendarMonth)}
                 </div>
 
@@ -475,7 +455,7 @@ export default function MobileView({
                 </button>
               </div>
 
-              <div className="mt-4 grid grid-cols-7 gap-y-2 text-center text-[12px] font-extrabold uppercase tracking-[0.02em] text-[#6b7280]">
+              <div className="mt-4 grid grid-cols-7 gap-y-2 text-center text-[12px] font-extrabold text-[#6b7280]">
                 {["po", "út", "st", "čt", "pá", "so", "ne"].map((d) => (
                   <div key={d}>{d}</div>
                 ))}
@@ -485,13 +465,13 @@ export default function MobileView({
                 {calendarDays.map((d, i) => {
                   const inMonth = d.getMonth() === calendarMonth.getMonth();
                   const selected = isSameDay(d, initialCalendarDate);
+
                   return (
                     <button
                       key={`${d.toISOString()}-${i}`}
                       type="button"
                       onClick={() => {
-                        const iso = isoLocal(d);
-                        setActiveDay(iso);
+                        setActiveDay(isoLocal(d));
                         setCalendarOpen(false);
                       }}
                       className={cls(
@@ -537,11 +517,6 @@ export default function MobileView({
             ) : (
               activeItems.map((item) => {
                 const qty = cartQty(item.foodId, item.dayKey);
-                const allergens =
-                  (item as any).allergens ??
-                  (item as any).alergeny ??
-                  (item as any).allergen_text ??
-                  "";
 
                 return (
                   <div
@@ -563,7 +538,7 @@ export default function MobileView({
 
                       <button
                         type="button"
-                        title={allergens ? `Alergeny: ${allergens}` : "Alergeny"}
+                        title={item.allergens ? `Alergeny: ${item.allergens}` : "Alergeny"}
                         className="inline-flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full border border-[#cfe8d4] bg-[#f2f7f3] text-[#42935c]"
                       >
                         <InfoIcon className="h-[18px] w-[18px]" />
@@ -610,9 +585,7 @@ export default function MobileView({
           </div>
         </div>
 
-        {saveMsg ? (
-          <div className="px-1 text-[13px] font-semibold text-[#2f7a49]">{saveMsg}</div>
-        ) : null}
+        {saveMsg ? <div className="px-1 text-[13px] font-semibold text-[#2f7a49]">{saveMsg}</div> : null}
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e7eee8] bg-white/96 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
