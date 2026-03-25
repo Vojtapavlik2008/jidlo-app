@@ -131,17 +131,6 @@ export default function MobileView({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setCreateMode(customerType === "zakaznik" ? "profile" : "invoice");
-                setShowCreateCustomer(true);
-              }}
-              className="inline-flex h-[44px] items-center justify-center rounded-full bg-[#61ae4f] px-5 text-[15px] font-extrabold text-white shadow-[0_5px_14px_rgba(97,174,79,0.22)]"
-            >
-              Upravit
-            </button>
-
             <Link
               href="/staff"
               className="inline-flex h-[44px] items-center justify-center rounded-full bg-[#61ae4f] px-5 text-[15px] font-extrabold text-white shadow-[0_5px_14px_rgba(97,174,79,0.22)]"
@@ -151,7 +140,7 @@ export default function MobileView({
           </div>
         </div>
 
-        {/* CUSTOMER BLOCK */}
+        {/* CUSTOMER */}
         <div className="rounded-[28px] border border-[#cde9d3] bg-white px-3 py-3 shadow-[0_10px_26px_rgba(27,54,39,0.045)]">
           <div className="grid grid-cols-[1fr_1.35fr] gap-2">
             <button
@@ -273,7 +262,7 @@ export default function MobileView({
           </div>
         </div>
 
-        {/* WEEK + DAYS */}
+        {/* WEEK + DAYS + MENU */}
         <div className="rounded-[28px] border border-[#cde9d3] bg-white p-3 shadow-[0_10px_26px_rgba(27,54,39,0.045)]">
           <div className="rounded-[26px] border border-[#cde9d3] px-3 py-3">
             <div className="relative flex items-center gap-2">
@@ -283,7 +272,7 @@ export default function MobileView({
                   canGoPrev && setWeekIndex((prev) => Math.max(0, prev - 1) as 0 | 1 | 2 | 3)
                 }
                 className={cls(
-                  "inline-flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-full border bg-white text-[24px] font-semibold",
+                  "inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full border bg-white text-[22px] font-semibold",
                   canGoPrev
                     ? "border-[#d4ebda] text-[#8b8f99]"
                     : "border-[#e7eeea] text-[#c8ccd3]"
@@ -295,12 +284,12 @@ export default function MobileView({
               <button
                 type="button"
                 onClick={() => setWeeksOpen((v) => !v)}
-                className="flex h-[54px] min-w-0 flex-1 items-center justify-between rounded-full border border-[#cde9d3] bg-[#eef5ef] px-6 text-left"
+                className="flex h-[48px] min-w-0 flex-1 items-center justify-between rounded-full border border-[#cde9d3] bg-[#f6faf6] px-4 text-left"
               >
-                <span className="truncate text-[16px] font-extrabold text-[#182033]">
+                <span className="truncate text-[13px] font-extrabold text-[#182033]">
                   {currentWeekLabel}
                 </span>
-                <span className="ml-3 flex shrink-0 flex-col items-center justify-center text-[14px] leading-[10px] text-[#247046]">
+                <span className="ml-2 flex shrink-0 flex-col items-center justify-center text-[12px] leading-[9px] text-[#247046]">
                   <span>▲</span>
                   <span>▼</span>
                 </span>
@@ -312,7 +301,7 @@ export default function MobileView({
                   canGoNext && setWeekIndex((prev) => Math.min(3, prev + 1) as 0 | 1 | 2 | 3)
                 }
                 className={cls(
-                  "inline-flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-full border bg-white text-[24px] font-semibold",
+                  "inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full border bg-white text-[22px] font-semibold",
                   canGoNext
                     ? "border-[#d4ebda] text-[#182033]"
                     : "border-[#e7eeea] text-[#c8ccd3]"
@@ -324,13 +313,13 @@ export default function MobileView({
               <button
                 type="button"
                 onClick={() => setWeeksOpen((v) => !v)}
-                className="inline-flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[18px] border border-[#d4ebda] bg-white text-[24px]"
+                className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[16px] border border-[#d4ebda] bg-white text-[21px]"
               >
                 <span className="translate-y-[1px]">📅</span>
               </button>
 
               {weeksOpen ? (
-                <div className="absolute left-[66px] right-[66px] top-[62px] z-20 rounded-[28px] border border-[#dcefe1] bg-white p-3 shadow-[0_18px_36px_rgba(16,24,40,0.16)]">
+                <div className="absolute left-[58px] right-[58px] top-[56px] z-20 rounded-[28px] border border-[#dcefe1] bg-white p-3 shadow-[0_18px_36px_rgba(16,24,40,0.16)]">
                   <div className="grid gap-2">
                     {weekOptions.map((w) => {
                       const active = w.index === weekIndex;
@@ -366,7 +355,7 @@ export default function MobileView({
                   type="button"
                   onClick={() => setActiveDay(day.key)}
                   className={cls(
-                    "h-[54px] rounded-full border text-center text-[14px] font-extrabold transition",
+                    "h-[42px] rounded-full border text-center text-[14px] font-extrabold transition",
                     activeDay === day.key
                       ? "border-[#08b42f] bg-[#08b42f] text-white"
                       : "border-[#d4ebda] bg-white text-[#2f6f44]"
@@ -378,7 +367,6 @@ export default function MobileView({
             </div>
           </div>
 
-          {/* MENU */}
           <div className="mt-3 space-y-2.5">
             {menuLoading ? (
               <div className="rounded-[24px] border border-[#dcefe1] bg-[#fbfdfb] px-4 py-4 text-[14px] font-semibold text-[#6b7280]">
@@ -406,20 +394,13 @@ export default function MobileView({
                   >
                     <div className="flex items-center gap-3">
                       <div className="min-w-0 flex-1">
-                        <div className="text-[16px] font-extrabold leading-[1.2] text-[#182033]">
+                        <div className="truncate text-[16px] font-extrabold leading-[1.15] text-[#182033]">
                           {item.name}
                         </div>
-                        <div className="mt-1 text-[12px] font-bold leading-[1.2] text-[#3f8f57]">
+                        <div className="mt-1 truncate text-[12px] font-bold leading-[1.15] text-[#3f8f57]">
                           {item.subtitle || "—"}
                         </div>
                       </div>
-
-                      <button
-                        type="button"
-                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#cde9d3] bg-[#eef6f0] text-[19px] font-extrabold text-[#3f8f57]"
-                      >
-                        i
-                      </button>
 
                       <div className="shrink-0 rounded-[18px] border border-[#bfe3c6] bg-white px-4 py-2 text-[15px] font-extrabold text-[#2f7a49]">
                         {czk(item.price)}
