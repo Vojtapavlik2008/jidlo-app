@@ -78,9 +78,9 @@ export default function MobileView({
   onOpenEdit,
   onOpenAddCustomer,
 }: Props) {
+  const niceGreen = "bg-[#4ea947] border-[#4ea947] text-white";
   const topBtn =
-    "inline-flex h-[48px] items-center justify-center rounded-full px-4 text-[12px] font-extrabold shadow-sm transition active:scale-[0.99]";
-  const greenTop = "border border-emerald-600 bg-emerald-600 text-white";
+    "inline-flex h-[46px] items-center justify-center rounded-full border px-4 text-[12px] font-extrabold shadow-sm transition active:scale-[0.99]";
 
   return (
     <div className="pb-5">
@@ -95,7 +95,7 @@ export default function MobileView({
           <button
             type="button"
             onClick={onOpenAddCustomer}
-            className={cls(topBtn, greenTop, "px-4")}
+            className={cls(topBtn, niceGreen)}
           >
             Přidat zákazníka
           </button>
@@ -103,7 +103,7 @@ export default function MobileView({
           <button
             type="button"
             onClick={onOpenHub}
-            className={cls(topBtn, greenTop, "px-4")}
+            className={cls(topBtn, niceGreen)}
           >
             Rozcestník
           </button>
@@ -116,14 +116,14 @@ export default function MobileView({
             type="button"
             onClick={() => setTab("platici")}
             className={cls(
-              "inline-flex h-[52px] items-center justify-center rounded-full border px-3 text-[13px] font-extrabold transition active:scale-[0.99]",
+              "inline-flex h-[44px] items-center justify-center rounded-full border px-3 text-[13px] font-extrabold transition active:scale-[0.99]",
               tab === "platici"
-                ? "border-emerald-600 bg-emerald-600 text-white"
-                : "border-emerald-200 bg-white text-emerald-900"
+                ? "border-[#4ea947] bg-[#4ea947] text-white"
+                : "border-emerald-200 bg-white text-[#2f6f3c]"
             )}
           >
             <span>Plátící</span>
-            <span className={cls("ml-1.5", tab === "platici" ? "text-white" : "text-emerald-700")}>
+            <span className={cls("ml-1.5", tab === "platici" ? "text-white" : "text-[#2f6f3c]")}>
               {platiciCount}
             </span>
           </button>
@@ -132,15 +132,15 @@ export default function MobileView({
             type="button"
             onClick={() => setTab("zalohovani")}
             className={cls(
-              "inline-flex h-[52px] items-center justify-center rounded-full border px-3 text-[13px] font-extrabold transition active:scale-[0.99]",
+              "inline-flex h-[44px] items-center justify-center rounded-full border px-3 text-[13px] font-extrabold transition active:scale-[0.99]",
               tab === "zalohovani"
-                ? "border-emerald-600 bg-emerald-600 text-white"
-                : "border-emerald-200 bg-white text-emerald-900"
+                ? "border-[#4ea947] bg-[#4ea947] text-white"
+                : "border-emerald-200 bg-white text-[#2f6f3c]"
             )}
           >
             <span>Zálohovaní</span>
             <span
-              className={cls("ml-1.5", tab === "zalohovani" ? "text-white" : "text-emerald-700")}
+              className={cls("ml-1.5", tab === "zalohovani" ? "text-white" : "text-[#2f6f3c]")}
             >
               {zalohovaniCount}
             </span>
@@ -150,14 +150,14 @@ export default function MobileView({
             type="button"
             onClick={() => setTab("vsichni")}
             className={cls(
-              "inline-flex h-[52px] items-center justify-center rounded-full border px-3 text-[13px] font-extrabold transition active:scale-[0.99]",
+              "inline-flex h-[44px] items-center justify-center rounded-full border px-3 text-[13px] font-extrabold transition active:scale-[0.99]",
               tab === "vsichni"
-                ? "border-emerald-600 bg-emerald-600 text-white"
-                : "border-emerald-200 bg-white text-emerald-900"
+                ? "border-[#4ea947] bg-[#4ea947] text-white"
+                : "border-emerald-200 bg-white text-[#2f6f3c]"
             )}
           >
             <span>Všichni</span>
-            <span className={cls("ml-1.5", tab === "vsichni" ? "text-white" : "text-emerald-700")}>
+            <span className={cls("ml-1.5", tab === "vsichni" ? "text-white" : "text-[#2f6f3c]")}>
               {vsichniCount}
             </span>
           </button>
@@ -178,7 +178,7 @@ export default function MobileView({
         <button
           type="button"
           onClick={onOpenTopUp}
-          className="shrink-0 rounded-full border border-emerald-200 bg-white px-3 py-2.5 text-[11px] font-extrabold text-emerald-700 shadow-sm"
+          className="shrink-0 rounded-full border border-emerald-200 bg-white px-3 py-2.5 text-[11px] font-extrabold text-[#2f6f3c] shadow-sm"
         >
           Dobít kredit
         </button>
