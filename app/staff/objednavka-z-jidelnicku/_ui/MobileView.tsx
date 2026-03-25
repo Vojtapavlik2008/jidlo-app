@@ -1,7 +1,7 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { MenuDay, MenuItem, WeekOption } from "../page";
 
@@ -114,16 +114,12 @@ export default function MobileView({
   const canGoPrev = weekIndex > 0;
   const canGoNext = weekIndex < 3;
 
-  const activeDayTitle = useMemo(() => {
-    return menuDays.find((d) => d.key === activeDay)?.label ?? "";
-  }, [menuDays, activeDay]);
-
   return (
     <div className="space-y-4 pb-28">
-      <div className="rounded-[28px] border border-[#dff2e5] bg-white px-4 py-4 shadow-[0_12px_30px_rgba(27,54,39,0.05)]">
+      <div className="rounded-[28px] border border-[#dff2e5] bg-white p-4 shadow-[0_12px_30px_rgba(27,54,39,0.05)]">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-[30px] font-extrabold leading-[0.95] text-[#14213d]">
+            <div className="text-[32px] font-extrabold leading-[0.95] text-[#14213d]">
               Objednávka
             </div>
             <div className="mt-1 text-[14px] font-bold leading-none text-[#5f677b]">
@@ -144,7 +140,7 @@ export default function MobileView({
             type="button"
             onClick={() => setCustomerType("zakaznik")}
             className={cls(
-              "min-w-0 rounded-full border px-4 py-2.5 text-[14px] font-extrabold transition",
+              "rounded-full border px-4 py-2.5 text-[14px] font-extrabold transition",
               customerType === "zakaznik"
                 ? "border-[#60b14d] bg-[#60b14d] text-white"
                 : "border-[#bde7c8] bg-white text-[#2d6f43]"
@@ -157,7 +153,7 @@ export default function MobileView({
             type="button"
             onClick={() => setCustomerType("fakturovany")}
             className={cls(
-              "min-w-0 flex-1 rounded-full border px-4 py-2.5 text-[13px] font-extrabold transition",
+              "flex-1 rounded-full border px-4 py-2.5 text-[13px] font-extrabold transition",
               customerType === "fakturovany"
                 ? "border-[#60b14d] bg-[#60b14d] text-white"
                 : "border-[#bde7c8] bg-white text-[#2d6f43]"
@@ -167,86 +163,25 @@ export default function MobileView({
           </button>
         </div>
 
-        <div className="relative mt-3 flex items-center gap-2">
-          <div className="relative flex-1">
-            <input
-              value={searchValue}
-              onChange={(e) => {
-                if (customerType === "zakaznik") {
-                  setSelectedProfile(null);
-                  setProfileSearch(e.target.value);
-                } else {
-                  setSelectedInvoiceCustomer(null);
-                  setInvoiceSearch(e.target.value);
-                }
-              }}
-              placeholder={
-                customerType === "zakaznik"
-                  ? "Vyhledat zákazníka"
-                  : "Vyhledat fakturovaného zákazníka"
+        <div className="relative mt-3">
+          <input
+            value={searchValue}
+            onChange={(e) => {
+              if (customerType === "zakaznik") {
+                setSelectedProfile(null);
+                setProfileSearch(e.target.value);
+              } else {
+                setSelectedInvoiceCustomer(null);
+                setInvoiceSearch(e.target.value);
               }
-              className="w-full rounded-full border border-[#bde7c8] bg-white px-4 py-3 text-[14px] font-semibold text-[#182033] outline-none placeholder:text-[#9aa2b1] focus:border-[#60b14d]"
-            />
-
-            {customerType === "zakaznik" &&
-            filteredProfiles.length > 0 &&
-            profileSearch.trim() &&
-            !selectedProfile ? (
-              <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-[20px] border border-[#dff2e5] bg-white p-2 shadow-[0_14px_28px_rgba(16,24,40,0.12)]">
-                <div className="grid gap-2">
-                  {filteredProfiles.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedProfile(c);
-                        setProfileSearch("");
-                      }}
-                      className="rounded-[16px] border border-[#dff2e5] bg-[#f7fcf8] px-4 py-3 text-left"
-                    >
-                      <div className="text-[14px] font-extrabold text-[#182033]">
-                        {c.full_name || "Bez jména"}
-                      </div>
-                      <div className="mt-1 text-[12px] font-bold text-[#667085]">
-                        {c.phone || "bez telefonu"}
-                        {c.email ? ` • ${c.email}` : ""}
-                      </div>
-                      <div className="mt-1 text-[13px] font-extrabold text-[#2f7a49]">
-                        Kredit {czk(Number(c.kredit ?? 0))}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {customerType === "fakturovany" &&
-            filteredInvoiceCustomers.length > 0 &&
-            invoiceSearch.trim() &&
-            !selectedInvoiceCustomer ? (
-              <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-[20px] border border-[#dff2e5] bg-white p-2 shadow-[0_14px_28px_rgba(16,24,40,0.12)]">
-                <div className="grid gap-2">
-                  {filteredInvoiceCustomers.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedInvoiceCustomer(c);
-                        setInvoiceSearch("");
-                      }}
-                      className="rounded-[16px] border border-[#dff2e5] bg-[#f7fcf8] px-4 py-3 text-left"
-                    >
-                      <div className="text-[14px] font-extrabold text-[#182033]">{c.name}</div>
-                      <div className="mt-1 text-[12px] font-bold text-[#667085]">
-                        {c.phone || "bez telefonu"}
-                        {c.email ? ` • ${c.email}` : ""}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </div>
+            }}
+            placeholder={
+              customerType === "zakaznik"
+                ? "Vyhledat zákazníka"
+                : "Vyhledat fakturovaného zákazníka"
+            }
+            className="w-full rounded-full border border-[#bde7c8] bg-white px-4 py-3 pr-[150px] text-[14px] font-semibold text-[#182033] outline-none placeholder:text-[#9aa2b1] focus:border-[#60b14d]"
+          />
 
           <button
             type="button"
@@ -254,10 +189,69 @@ export default function MobileView({
               setCreateMode(customerType === "zakaznik" ? "profile" : "invoice");
               setShowCreateCustomer(true);
             }}
-            className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[16px] border border-[#bde7c8] bg-white text-[28px] font-extrabold leading-none text-[#2d6f43]"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] font-extrabold text-[#2d6f43] underline underline-offset-4"
           >
-            +
+            Přidat zákazníka
           </button>
+
+          {customerType === "zakaznik" &&
+          filteredProfiles.length > 0 &&
+          profileSearch.trim() &&
+          !selectedProfile ? (
+            <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-[20px] border border-[#dff2e5] bg-white p-2 shadow-[0_14px_28px_rgba(16,24,40,0.12)]">
+              <div className="grid gap-2">
+                {filteredProfiles.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedProfile(c);
+                      setProfileSearch("");
+                    }}
+                    className="rounded-[16px] border border-[#dff2e5] bg-[#f7fcf8] px-4 py-3 text-left"
+                  >
+                    <div className="text-[14px] font-extrabold text-[#182033]">
+                      {c.full_name || "Bez jména"}
+                    </div>
+                    <div className="mt-1 text-[12px] font-bold text-[#667085]">
+                      {c.phone || "bez telefonu"}
+                      {c.email ? ` • ${c.email}` : ""}
+                    </div>
+                    <div className="mt-1 text-[13px] font-extrabold text-[#2f7a49]">
+                      Kredit {czk(Number(c.kredit ?? 0))}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {customerType === "fakturovany" &&
+          filteredInvoiceCustomers.length > 0 &&
+          invoiceSearch.trim() &&
+          !selectedInvoiceCustomer ? (
+            <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-[20px] border border-[#dff2e5] bg-white p-2 shadow-[0_14px_28px_rgba(16,24,40,0.12)]">
+              <div className="grid gap-2">
+                {filteredInvoiceCustomers.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedInvoiceCustomer(c);
+                      setInvoiceSearch("");
+                    }}
+                    className="rounded-[16px] border border-[#dff2e5] bg-[#f7fcf8] px-4 py-3 text-left"
+                  >
+                    <div className="text-[14px] font-extrabold text-[#182033]">{c.name}</div>
+                    <div className="mt-1 text-[12px] font-bold text-[#667085]">
+                      {c.phone || "bez telefonu"}
+                      {c.email ? ` • ${c.email}` : ""}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -268,7 +262,7 @@ export default function MobileView({
               type="button"
               onClick={() => canGoPrev && setWeekIndex((prev) => Math.max(0, prev - 1) as 0 | 1 | 2 | 3)}
               className={cls(
-                "inline-flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-full border bg-white text-[24px] font-bold",
+                "inline-flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full border bg-white text-[24px] font-bold",
                 canGoPrev
                   ? "border-[#bde7c8] text-[#7a7f8a]"
                   : "border-[#dfe8e1] text-[#c0c6d0]"
@@ -280,9 +274,9 @@ export default function MobileView({
             <button
               type="button"
               onClick={() => setWeeksOpen((v) => !v)}
-              className="flex h-[54px] min-w-0 flex-1 items-center justify-between rounded-full border border-[#bde7c8] bg-[#f4faf5] px-5 text-left"
+              className="flex h-[52px] min-w-0 flex-1 items-center justify-between rounded-full border border-[#bde7c8] bg-[#f4faf5] px-4 text-left"
             >
-              <span className="truncate text-[16px] font-extrabold text-[#182033]">
+              <span className="text-[16px] font-extrabold text-[#182033]">
                 {currentWeekLabel}
               </span>
               <span className="ml-3 text-[16px] font-extrabold leading-none text-[#2f7a49]">
@@ -296,7 +290,7 @@ export default function MobileView({
               type="button"
               onClick={() => canGoNext && setWeekIndex((prev) => Math.min(3, prev + 1) as 0 | 1 | 2 | 3)}
               className={cls(
-                "inline-flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-full border bg-white text-[24px] font-bold",
+                "inline-flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full border bg-white text-[24px] font-bold",
                 canGoNext
                   ? "border-[#bde7c8] text-[#182033]"
                   : "border-[#dfe8e1] text-[#c0c6d0]"
@@ -308,13 +302,13 @@ export default function MobileView({
             <button
               type="button"
               onClick={() => setWeeksOpen((v) => !v)}
-              className="inline-flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[18px] border border-[#bde7c8] bg-white text-[24px]"
+              className="inline-flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[18px] border border-[#bde7c8] bg-white text-[22px]"
             >
               📅
             </button>
 
             {weeksOpen ? (
-              <div className="absolute left-[82px] right-[82px] top-[62px] z-20 rounded-[26px] border border-[#dff2e5] bg-white p-3 shadow-[0_16px_34px_rgba(16,24,40,0.16)]">
+              <div className="absolute left-[72px] right-[72px] top-[60px] z-20 rounded-[26px] border border-[#dff2e5] bg-white p-3 shadow-[0_16px_34px_rgba(16,24,40,0.16)]">
                 <div className="grid gap-2">
                   {weekOptions.map((w) => {
                     const active = w.index === weekIndex;
@@ -328,9 +322,7 @@ export default function MobileView({
                         }}
                         className={cls(
                           "rounded-[18px] px-5 py-4 text-left text-[16px] font-extrabold transition",
-                          active
-                            ? "bg-[#60b14d] text-white"
-                            : "bg-[#eef4ef] text-[#182033]"
+                          active ? "bg-[#60b14d] text-white" : "bg-[#eef4ef] text-[#182033]"
                         )}
                       >
                         <span className="flex items-center justify-between gap-3">
@@ -352,7 +344,7 @@ export default function MobileView({
                 type="button"
                 onClick={() => setActiveDay(day.key)}
                 className={cls(
-                  "rounded-full border px-1 py-3 text-center text-[14px] font-extrabold transition",
+                  "rounded-full border px-1 py-2.5 text-center text-[14px] font-extrabold transition",
                   activeDay === day.key
                     ? "border-[#60b14d] bg-[#60b14d] text-white"
                     : "border-[#bde7c8] bg-white text-[#2d6f43]"
@@ -464,8 +456,8 @@ export default function MobileView({
             className={cls(
               "min-w-0 flex-1 rounded-full px-4 py-3 text-center text-[15px] font-extrabold transition",
               cartCount > 0
-                ? "bg-[#b9dcae] text-white"
-                : "border border-[#dff2e5] bg-[#eef6ee] text-white"
+                ? "bg-[#60b14d] text-white"
+                : "border border-[#dff2e5] bg-[#b7d9ae] text-white"
             )}
           >
             <span className="block truncate">Objednávka • {cartCount} ks • {czk(cartTotal)}</span>
