@@ -35,27 +35,11 @@ function round2(n: number) {
   return Math.round(n * 100) / 100;
 }
 
-function XIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-      <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function SearchIcon({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
       <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
       <path d="m20 20-3.5-3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function ChevronLeftIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-      <path d="m15 18-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -88,7 +72,9 @@ function prettyPayment(x: string | null) {
 function prettyDeliveryMode(x: string | null | undefined) {
   const s = (x ?? "").toLowerCase();
   if (s === "delivery" || s === "ano" || s === "rozvoz") return "Doručení";
-  if (s === "pickup" || s === "ne" || s === "osobni_odber" || s === "osobní odběr") return "Osobní odběr";
+  if (s === "pickup" || s === "ne" || s === "osobni_odber" || s === "osobní odběr") {
+    return "Osobní odběr";
+  }
   return "Osobní odběr / doručení";
 }
 
@@ -641,8 +627,9 @@ export default function StaffCustomersPage() {
                         : "Upravit zákazníka"
                     }
                     onBack={goOneLayerBack}
-                    onClose={closeAllSheets}
+                    onClose={() => router.push("/staff")}
                     backLabel="Zpět"
+                    closeLabel="Rozcestník"
                   />
 
                   <div className="px-4 pb-5 pt-1 md:px-5 md:pb-5">
@@ -715,8 +702,8 @@ export default function StaffCustomersPage() {
                           </div>
                         ) : null}
 
-                        <div>
-                          <div className="mb-1.5 text-xs font-bold uppercase tracking-wide text-gray-500">
+                        <div className="rounded-[22px] border border-emerald-200 bg-[#f5fbf7] px-4 py-4">
+                          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
                             Částka k dobití
                           </div>
                           <input
@@ -727,7 +714,7 @@ export default function StaffCustomersPage() {
                             inputMode="numeric"
                             pattern="[0-9]*"
                             placeholder="Zadej částku"
-                            className="h-12 w-full rounded-full border border-gray-200 bg-gray-50 px-4 text-[15px] font-medium text-gray-900 outline-none transition focus:border-emerald-300 focus:bg-white"
+                            className="h-12 w-full rounded-full border border-emerald-200 bg-white px-4 text-[15px] font-medium text-gray-900 outline-none transition focus:border-emerald-300"
                           />
                         </div>
 
@@ -747,7 +734,7 @@ export default function StaffCustomersPage() {
                               "h-12 rounded-full text-[15px] font-extrabold text-white",
                               busy || !edit || Number(creditAmount || 0) <= 0
                                 ? "bg-emerald-300"
-                                : "bg-emerald-600"
+                                : "bg-[#4ea947]"
                             )}
                           >
                             Dobít kredit
@@ -837,7 +824,7 @@ export default function StaffCustomersPage() {
                                     <div className="text-[16px] font-extrabold text-[#182033]">
                                       Objednávky
                                     </div>
-                                    <div className="text-[16px] font-extrabold text-[#182033]">
+                                    <div className="text-[16px] font-extrabold text-[#4ea947]">
                                       {ordersLoading ? "…" : ordersCount}
                                     </div>
                                   </div>
@@ -873,7 +860,7 @@ export default function StaffCustomersPage() {
                               onClick={mainSheetMode === "create" ? createCustomer : saveEdit}
                               className={cls(
                                 "h-12 rounded-full text-[15px] font-extrabold text-white",
-                                busy ? "bg-emerald-300" : "bg-emerald-600"
+                                busy ? "bg-emerald-300" : "bg-[#4ea947]"
                               )}
                             >
                               {busy
@@ -906,10 +893,11 @@ export default function StaffCustomersPage() {
               {ordersOpen ? (
                 <>
                   <SheetHeader
-                    title="Objednávky"
+                    title={`Objednávky${edit?.full_name ? ` • ${edit.full_name}` : ""}`}
                     onBack={goOneLayerBack}
-                    onClose={closeAllSheets}
+                    onClose={() => router.push("/staff")}
                     backLabel="Zpět"
+                    closeLabel="Rozcestník"
                   />
 
                   <div className="px-4 pb-5 pt-1 md:px-5">
@@ -970,8 +958,9 @@ export default function StaffCustomersPage() {
                   <SheetHeader
                     title="Dobít kredit"
                     onBack={goOneLayerBack}
-                    onClose={closeAllSheets}
+                    onClose={() => router.push("/staff")}
                     backLabel="Zpět"
+                    closeLabel="Rozcestník"
                   />
 
                   <div className="px-4 pb-5 pt-1 md:px-5">
@@ -1001,7 +990,7 @@ export default function StaffCustomersPage() {
                         onClick={confirmTopUp}
                         className={cls(
                           "h-12 rounded-full text-[15px] font-extrabold text-white",
-                          busy ? "bg-emerald-300" : "bg-emerald-600"
+                          busy ? "bg-emerald-300" : "bg-[#4ea947]"
                         )}
                       >
                         Ano
@@ -1016,8 +1005,9 @@ export default function StaffCustomersPage() {
                   <SheetHeader
                     title="Smazat zákazníka"
                     onBack={goOneLayerBack}
-                    onClose={closeAllSheets}
+                    onClose={() => router.push("/staff")}
                     backLabel="Zpět"
+                    closeLabel="Rozcestník"
                   />
 
                   <div className="px-4 pb-5 pt-1 md:px-5">
@@ -1068,37 +1058,41 @@ function SheetHeader({
   onBack,
   onClose,
   backLabel = "Zpět",
+  closeLabel = "Rozcestník",
 }: {
   title: string;
   onBack: () => void;
   onClose: () => void;
   backLabel?: string;
+  closeLabel?: string;
 }) {
   return (
-    <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-emerald-100 bg-white/95 px-4 py-4 backdrop-blur md:px-5">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-2 text-[13px] font-bold text-gray-700"
-        >
-          <ChevronLeftIcon className="h-4 w-4" />
-          {backLabel}
-        </button>
-      </div>
+    <div className="sticky top-0 z-10 border-b border-emerald-100 bg-white/95 px-4 py-4 backdrop-blur md:px-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 pt-1">
+          <div className="truncate text-[24px] font-extrabold leading-none tracking-tight text-[#0b2149]">
+            {title}
+          </div>
+        </div>
 
-      <div className="min-w-0 flex-1 text-center text-[18px] font-extrabold text-[#182033]">
-        {title}
-      </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex h-[44px] items-center justify-center rounded-full border border-[#4ea947] bg-[#4ea947] px-4 text-[12px] font-extrabold text-white shadow-sm"
+          >
+            {backLabel}
+          </button>
 
-      <button
-        type="button"
-        onClick={onClose}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700"
-        title="Zavřít"
-      >
-        <XIcon className="h-5 w-5" />
-      </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-[44px] items-center justify-center rounded-full border border-[#4ea947] bg-[#4ea947] px-4 text-[12px] font-extrabold text-white shadow-sm"
+          >
+            {closeLabel}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
