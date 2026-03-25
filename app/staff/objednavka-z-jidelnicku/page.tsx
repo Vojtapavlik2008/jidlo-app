@@ -38,13 +38,13 @@ type JidloRow = {
   kategorie: string | null;
 };
 
-type MenuDay = {
+export type MenuDay = {
   key: string;
   label: string;
   short: string;
 };
 
-type MenuItem = {
+export type MenuItem = {
   id: string;
   foodId: string;
   dayKey: string;
@@ -61,6 +61,11 @@ type CartItem = {
   subtitle: string;
   price: number;
   qty: number;
+};
+
+type WeekOption = {
+  index: 0 | 1 | 2 | 3;
+  label: string;
 };
 
 function cls(...a: Array<string | false | undefined | null>) {
@@ -94,7 +99,7 @@ function startOfWeekMonday(d: Date) {
 }
 
 function czk(n: number) {
-  return `${Number(n || 0).toFixed(2)} Kč`;
+  return `${Number(n || 0).toFixed(0)} Kč`;
 }
 
 function dayLabelShort(iso: string) {
@@ -102,6 +107,13 @@ function dayLabelShort(iso: string) {
   const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
   const names = ["ne", "po", "út", "st", "čt", "pá", "so"];
   return `${names[dt.getDay()]} ${dt.getDate()}.${dt.getMonth() + 1}.`;
+}
+
+function formatWeekRange(start: Date) {
+  const end = addDays(start, 5);
+  const s = `${String(start.getDate()).padStart(2, "0")}. ${String(start.getMonth() + 1).padStart(2, "0")}.`;
+  const e = `${String(end.getDate()).padStart(2, "0")}. ${String(end.getMonth() + 1).padStart(2, "0")}.`;
+  return `${s} – ${e}`;
 }
 
 export default function ObjednavkaZJidelnickuPage() {
@@ -123,6 +135,7 @@ export default function ObjednavkaZJidelnickuPage() {
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
   const [newCustomerEmail, setNewCustomerEmail] = useState("");
   const [newCustomerAddress, setNewCustomerAddress] = useState("");
+  const [newCustomerCredit, setNewCustomerCredit] = useState("");
   const [creatingCustomer, setCreatingCustomer] = useState(false);
   const [createCustomerMsg, setCreateCustomerMsg] = useState<string | null>(null);
 
@@ -131,9 +144,10 @@ export default function ObjednavkaZJidelnickuPage() {
   const [menuLoading, setMenuLoading] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
 
-  const [weekOffset, setWeekOffset] = useState<0 | 1>(0);
+  const [weekIndex, setWeekIndex] = useState<0 | 1 | 2 | 3>(0);
   const [activeDay, setActiveDay] = useState<string>(toISODateLocal(startOfWeekMonday(new Date())));
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [orderNote, setOrderNote] = useState("");
 
   const [showSummary, setShowSummary] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
@@ -169,6 +183,34 @@ export default function ObjednavkaZJidelnickuPage() {
   }, []);
 
   useEffect(() => {
+    const shouldLock = showSummary || showCreateCustomer || creditOpen;
+    const prevHtml = document.documentElement.style.overflow;
+    const prevBody = document.body.style.overflow;
+
+    if (shouldLock) {
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+    }
+
+    return () => {
+      document.documentElement.style.overflow = prevHtml;
+      document.body.style.overflow = prevBody;
+    };
+  }, [showSummary, showCreateCustomer, creditOpen]);
+
+  const weekOptions = useMemo<WeekOption[]>(() => {
+    const baseWeek = startOfWeekMonday(new Date());
+
+    return [0, 1, 2, 3].map((i) => {
+      const start = addDays(baseWeek, i * 7);
+      return {
+        index: i as 0 | 1 | 2 | 3,
+        label: formatWeekRange(start),
+      };
+    });
+  }, []);
+
+  useEffect(() => {
     let alive = true;
 
     (async () => {
@@ -177,7 +219,7 @@ export default function ObjednavkaZJidelnickuPage() {
 
       try {
         const baseWeek = startOfWeekMonday(new Date());
-        const currentWeek = addDays(baseWeek, weekOffset * 7);
+        const currentWeek = addDays(baseWeek, weekIndex * 7);
 
         const days: MenuDay[] = Array.from({ length: 6 }, (_, i) => {
           const d = addDays(currentWeek, i);
@@ -254,7 +296,7 @@ export default function ObjednavkaZJidelnickuPage() {
     return () => {
       alive = false;
     };
-  }, [weekOffset, activeDay]);
+  }, [weekIndex, activeDay]);
 
   const filteredProfiles = useMemo(() => {
     const q = profileSearch.trim().toLowerCase();
@@ -263,7 +305,9 @@ export default function ObjednavkaZJidelnickuPage() {
     return profiles
       .filter((c) => {
         const name = (c.full_name ?? "").toLowerCase();
-        return name.includes(q);
+        const email = (c.email ?? "").toLowerCase();
+        const phone = (c.phone ?? "").toLowerCase();
+        return name.includes(q) || email.includes(q) || phone.includes(q);
       })
       .slice(0, 8);
   }, [profiles, profileSearch]);
@@ -272,7 +316,14 @@ export default function ObjednavkaZJidelnickuPage() {
     const q = invoiceSearch.trim().toLowerCase();
     if (!q) return invoiceCustomers.slice(0, 8);
 
-    return invoiceCustomers.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 8);
+    return invoiceCustomers
+      .filter((c) => {
+        const name = (c.name ?? "").toLowerCase();
+        const email = (c.email ?? "").toLowerCase();
+        const phone = (c.phone ?? "").toLowerCase();
+        return name.includes(q) || email.includes(q) || phone.includes(q);
+      })
+      .slice(0, 8);
   }, [invoiceCustomers, invoiceSearch]);
 
   const activeItems = useMemo(
@@ -363,6 +414,8 @@ export default function ObjednavkaZJidelnickuPage() {
         setSelectedInvoiceCustomer(created);
         setInvoiceSearch(created.name);
       } else {
+        const initialCredit = Number(newCustomerCredit || 0);
+
         const { data, error } = await supabase
           .from("profiles")
           .insert({
@@ -370,7 +423,7 @@ export default function ObjednavkaZJidelnickuPage() {
             phone: newCustomerPhone.trim() || null,
             email: newCustomerEmail.trim() || null,
             address: newCustomerAddress.trim() || null,
-            kredit: 0,
+            kredit: Number.isFinite(initialCredit) ? initialCredit : 0,
           })
           .select("id, full_name, phone, email, address, kredit")
           .single();
@@ -380,7 +433,7 @@ export default function ObjednavkaZJidelnickuPage() {
         const created = data as ProfileRow;
         await loadProfiles();
         setSelectedProfile(created);
-        setProfileSearch(`${created.full_name ?? ""} • kredit ${czk(Number(created.kredit ?? 0))}`);
+        setProfileSearch(created.full_name ?? "");
       }
 
       setShowCreateCustomer(false);
@@ -388,6 +441,7 @@ export default function ObjednavkaZJidelnickuPage() {
       setNewCustomerPhone("");
       setNewCustomerEmail("");
       setNewCustomerAddress("");
+      setNewCustomerCredit("");
     } catch (e: any) {
       setCreateCustomerMsg(e?.message ?? "Nepodařilo se vytvořit zákazníka.");
     } finally {
@@ -399,9 +453,7 @@ export default function ObjednavkaZJidelnickuPage() {
     if (!selectedProfile || creditSaving) return;
 
     const amount = Number(creditAmount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return;
-    }
+    if (!Number.isFinite(amount) || amount <= 0) return;
 
     setCreditSaving(true);
     try {
@@ -419,6 +471,7 @@ export default function ObjednavkaZJidelnickuPage() {
       setProfiles((prev) =>
         prev.map((p) => (p.id === selectedProfile.id ? { ...p, kredit: nextCredit } : p))
       );
+
       setCreditAmount("");
       setCreditOpen(false);
     } catch (e: any) {
@@ -431,6 +484,7 @@ export default function ObjednavkaZJidelnickuPage() {
   function resetOrderStateAfterSave() {
     setShowSummary(false);
     setCart([]);
+    setOrderNote("");
     setSaveMsg("Objednávka byla uložena.");
   }
 
@@ -494,7 +548,7 @@ export default function ObjednavkaZJidelnickuPage() {
         full_name: selectedName,
         phone: selectedPhone,
         address: selectedAddress,
-        note: null,
+        note: orderNote.trim() || null,
         delivery_mode: null,
         packaging_mode: null,
         payment_method: paymentMethod,
@@ -530,6 +584,7 @@ export default function ObjednavkaZJidelnickuPage() {
             total: cartTotal,
             created_from: "staff_menu_order",
             email: selectedEmail,
+            note: orderNote.trim() || null,
           },
         },
       });
@@ -582,8 +637,9 @@ export default function ObjednavkaZJidelnickuPage() {
     menuDays,
     activeDay,
     setActiveDay,
-    weekOffset,
-    setWeekOffset,
+    weekIndex,
+    setWeekIndex,
+    weekOptions,
     menuLoading,
     menuError,
     activeItems,
@@ -597,11 +653,11 @@ export default function ObjednavkaZJidelnickuPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f8f6] pb-[92px] md:pb-[96px]">
+    <div className="min-h-screen bg-[#f5f6f4] pb-[96px] md:pb-[100px]">
       <div className="mx-auto w-full max-w-[1320px] px-4 py-4 md:px-6 md:py-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-[28px] md:text-[34px] font-extrabold tracking-tight text-[#0b2149]">
+            <h1 className="text-[28px] font-extrabold tracking-tight text-[#0b2149] md:text-[34px]">
               Objednávka z jídelníčku
             </h1>
             <div className="mt-1 text-[13px] font-semibold text-gray-500">
@@ -611,7 +667,7 @@ export default function ObjednavkaZJidelnickuPage() {
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden items-center gap-3 md:flex">
             <Link
               href="/staff"
               className="rounded-[18px] bg-[#08a35c] px-5 py-3 text-[15px] font-extrabold text-white hover:brightness-95"
@@ -630,11 +686,11 @@ export default function ObjednavkaZJidelnickuPage() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#dff2e5] bg-white/95 backdrop-blur">
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#dfe8e1] bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1320px] items-center gap-3 px-4 py-4 md:px-6">
           <Link
             href="/staff"
-            className="rounded-full border border-[#dff2e5] bg-white px-5 py-3 text-[15px] md:px-6 md:text-[16px] font-extrabold text-[#182033]"
+            className="rounded-full border border-[#d9dfdb] bg-white px-5 py-3 text-[15px] font-extrabold text-[#182033]"
           >
             Zpět
           </Link>
@@ -643,7 +699,7 @@ export default function ObjednavkaZJidelnickuPage() {
             type="button"
             onClick={() => setShowSummary(true)}
             className={cls(
-              "ml-auto rounded-full px-5 py-3 text-[15px] md:px-6 md:text-[16px] font-extrabold transition",
+              "ml-auto rounded-full px-5 py-3 text-[15px] font-extrabold transition",
               cartCount > 0
                 ? "bg-[#08a35c] text-white"
                 : "border border-[#dff2e5] bg-white text-[#182033]"
@@ -655,15 +711,15 @@ export default function ObjednavkaZJidelnickuPage() {
       </div>
 
       {showCreateCustomer ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-4">
           <div className="w-full max-w-[560px] rounded-[28px] border border-[#dff2e5] bg-white p-5 shadow-2xl">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-[22px] md:text-[24px] font-extrabold text-[#0b2149]">
+                <div className="text-[22px] font-extrabold text-[#0b2149] md:text-[24px]">
                   {createMode === "invoice" ? "Nový fakturovaný zákazník" : "Nový zákazník"}
                 </div>
                 <div className="mt-1 text-[14px] font-semibold text-gray-500">
-                  Vyplň základní údaje zákazníka
+                  Vyplň základní údaje
                 </div>
               </div>
 
@@ -701,6 +757,16 @@ export default function ObjednavkaZJidelnickuPage() {
                 placeholder="Adresa"
                 className="w-full rounded-full border border-[#bde7c8] bg-white px-4 py-3 text-[15px] font-semibold text-[#182033] outline-none focus:border-[#08a35c]"
               />
+
+              {createMode === "profile" ? (
+                <input
+                  value={newCustomerCredit}
+                  onChange={(e) => setNewCustomerCredit(e.target.value.replace(/[^\d]/g, ""))}
+                  placeholder="Kredit v Kč"
+                  inputMode="numeric"
+                  className="w-full rounded-full border border-[#bde7c8] bg-white px-4 py-3 text-[15px] font-semibold text-[#182033] outline-none focus:border-[#08a35c]"
+                />
+              ) : null}
             </div>
 
             {createCustomerMsg ? (
@@ -732,7 +798,7 @@ export default function ObjednavkaZJidelnickuPage() {
       ) : null}
 
       {creditOpen && selectedProfile ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 p-4">
           <div className="w-full max-w-[430px] rounded-[28px] border border-[#dff2e5] bg-white p-5 shadow-2xl">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -795,109 +861,148 @@ export default function ObjednavkaZJidelnickuPage() {
       ) : null}
 
       {showSummary ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-[930px] rounded-[28px] border border-[#dff2e5] bg-white p-4 md:p-5 shadow-2xl">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-[22px] md:text-[24px] font-extrabold text-[#0b2149]">Objednávka</div>
-                <div className="mt-1 text-[14px] font-semibold text-gray-500">
-                  Jednoduchý souhrn objednávky
+        <div className="fixed inset-0 z-50 bg-black/35">
+          <div className="flex h-full items-end justify-center p-0 md:items-center md:p-4">
+            <div className="max-h-[94vh] w-full overflow-hidden rounded-t-[30px] border border-[#dff2e5] bg-white shadow-2xl md:max-w-[930px] md:rounded-[28px]">
+              <div className="flex items-center justify-between gap-3 border-b border-[#e8f1ea] px-4 py-4 md:px-5">
+                <div className="min-w-0">
+                  <div className="truncate text-[22px] font-extrabold text-[#0b2149] md:text-[24px]">
+                    Objednávka
+                  </div>
+                  <div className="mt-1 text-[14px] font-semibold text-gray-500">
+                    Souhrn objednávky
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowSummary(false)}
+                  className="rounded-full border border-[#dff2e5] bg-white px-4 py-2 text-[14px] font-extrabold text-[#0b7c4d]"
+                >
+                  Zavřít
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowSummary(false)}
-                className="rounded-full border border-[#dff2e5] bg-white px-4 py-2 text-[14px] font-extrabold text-[#0b7c4d]"
-              >
-                Zavřít
-              </button>
-            </div>
-
-            <div className="mt-5 rounded-[18px] border border-[#dff2e5] bg-[#f5fbf7] px-4 py-4">
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-5">
-                <div className="min-w-0">
-                  <div className="text-[14px] font-bold text-gray-500">Zákazník</div>
-                  <div className="mt-1 text-[18px] font-extrabold text-[#182033]">
-                    {selectedCustomerSummary?.title || "Nevybrán"}
+              <div className="max-h-[calc(94vh-88px)] overflow-y-auto px-4 py-4 md:px-5">
+                <div className="rounded-[22px] border border-[#dff2e5] bg-[#f5fbf7] p-4">
+                  <div className="text-[22px] font-extrabold text-[#182033]">
+                    {selectedCustomerSummary?.title || "Nevybrán zákazník"}
                   </div>
-                  <div className="mt-1 text-[14px] text-gray-500">
+
+                  <div className="mt-2 text-[13px] font-semibold leading-relaxed text-[#687184]">
                     {selectedCustomerSummary?.phone || "—"} • {selectedCustomerSummary?.email || "—"} •{" "}
                     {selectedCustomerSummary?.address || "—"}
                   </div>
 
                   {customerType === "zakaznik" && selectedProfile ? (
-                    <button
-                      type="button"
-                      onClick={() => setCreditOpen(true)}
-                      className="mt-2 text-[13px] font-extrabold text-[#0b7c4d] underline underline-offset-4"
-                    >
-                      Dobít kredit
-                    </button>
+                    <div className="mt-4 grid gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-[16px] border border-[#dff2e5] bg-white px-4 py-3">
+                        <div className="text-[13px] font-bold text-[#6a7387]">Akt. kredit • objednávka</div>
+                        <div className="text-[14px] font-extrabold text-[#182033]">
+                          {czk(currentCredit)} • {czk(cartTotal)}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-[16px] border border-[#dff2e5] bg-white px-4 py-3">
+                        <div className="text-[13px] font-bold text-[#6a7387]">Zůstatek na účtu • dobít kredit</div>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={cls(
+                              "text-[14px] font-extrabold",
+                              remainingCredit >= 0 ? "text-[#0b7c4d]" : "text-red-600"
+                            )}
+                          >
+                            {czk(remainingCredit)}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCreditOpen(true)}
+                            className="rounded-full border border-[#bde7c8] bg-white px-3 py-1.5 text-[13px] font-extrabold text-[#0b7c4d]"
+                          >
+                            Dobít kredit
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   ) : null}
                 </div>
 
-                {customerType === "zakaznik" && selectedProfile ? (
-                  <div className="shrink-0 rounded-[16px] border border-[#dff2e5] bg-white px-4 py-3">
-                    <div className="text-[14px] font-extrabold text-gray-600">
-                      Kredit: <span className="text-[#0b7c4d]">{czk(currentCredit)}</span>
-                    </div>
-                    <div className="mt-2 text-[14px] font-extrabold text-gray-600">
-                      Objednávka: <span className="text-[#182033]">{czk(cartTotal)}</span>
-                    </div>
-                    <div className="mt-2 text-[14px] font-extrabold text-gray-600">
-                      Zůstatek na účtu:{" "}
-                      <span className={remainingCredit >= 0 ? "text-[#0b7c4d]" : "text-red-600"}>
-                        {czk(remainingCredit)}
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </div>
+                <div className="mt-4 rounded-[22px] border border-[#dff2e5] bg-white p-4">
+                  <div className="text-[15px] font-extrabold text-[#182033]">Poznámka k objednávce</div>
+                  <textarea
+                    value={orderNote}
+                    onChange={(e) => setOrderNote(e.target.value)}
+                    rows={3}
+                    placeholder="Napiš poznámku..."
+                    className="mt-3 w-full resize-none rounded-[18px] border border-[#dff2e5] bg-[#fbfdfb] px-4 py-3 text-[14px] font-semibold text-[#182033] outline-none placeholder:text-[#98a1b2] focus:border-[#08a35c]"
+                  />
+                </div>
 
-            <div className="mt-4 max-h-[340px] overflow-y-auto pr-1">
-              <div className="grid gap-2.5">
-                {cart.length === 0 ? (
-                  <div className="text-sm font-semibold text-gray-500">Objednávka je prázdná.</div>
-                ) : (
-                  cart.map((item) => (
-                    <div
-                      key={item.id}
-                      className="grid grid-cols-1 gap-2 rounded-[18px] border border-[#dff2e5] bg-white px-4 py-3 md:grid-cols-[minmax(0,1.8fr)_110px_70px_120px_130px] md:items-center md:gap-3"
-                    >
-                      <div className="truncate text-[15px] font-extrabold text-[#182033]">{item.name}</div>
-                      <div className="text-[14px] font-semibold text-gray-500">{dayLabelShort(item.dayKey)}</div>
-                      <div className="text-[15px] font-semibold text-[#182033]">{item.qty} ks</div>
-                      <div className="text-[14px] font-semibold text-gray-500">{czk(item.price)}</div>
-                      <div className="text-left md:text-right text-[15px] font-extrabold text-[#0b7c4d]">
-                        {czk(item.qty * item.price)}
+                <div className="mt-4 space-y-3">
+                  {cart.length === 0 ? (
+                    <div className="rounded-[20px] border border-[#dff2e5] bg-white px-4 py-4 text-sm font-semibold text-gray-500">
+                      Objednávka je prázdná.
+                    </div>
+                  ) : (
+                    cart.map((item) => (
+                      <div
+                        key={item.id}
+                        className="rounded-[22px] border border-[#dff2e5] bg-white px-4 py-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-[15px] font-bold text-[#5d667a]">
+                              {dayLabelShort(item.dayKey)}
+                            </div>
+                            <div className="mt-2 text-[17px] font-extrabold leading-snug text-[#182033]">
+                              {item.qty}x {item.name}
+                            </div>
+                            {item.subtitle ? (
+                              <div className="mt-1 text-[13px] font-bold text-[#3f8f57]">
+                                {item.subtitle}
+                              </div>
+                            ) : null}
+                          </div>
+
+                          <div className="shrink-0 text-right">
+                            <div className="text-[14px] font-bold text-[#6c7589]">{czk(item.price)}</div>
+                            <div className="mt-2 text-[16px] font-extrabold text-[#0b7c4d]">
+                              {czk(item.qty * item.price)}
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
+                </div>
+
+                {saveMsg ? (
+                  <div className="mt-4 text-sm font-semibold text-[#0b7c4d]">{saveMsg}</div>
+                ) : null}
+
+                <div className="mt-5 flex items-center gap-3 pb-[max(6px,env(safe-area-inset-bottom))]">
+                  <button
+                    type="button"
+                    onClick={() => setShowSummary(false)}
+                    className="rounded-full border border-[#d9dfdb] bg-white px-5 py-3 text-[15px] font-extrabold text-[#182033]"
+                  >
+                    Zrušit
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={saveOrder}
+                    disabled={savingOrder}
+                    className={cls(
+                      "flex-1 rounded-full px-5 py-3 text-center text-[15px] font-extrabold text-white",
+                      savingOrder ? "bg-[#77caa1]" : "bg-[#08a35c]"
+                    )}
+                  >
+                    {savingOrder ? "Ukládám…" : `Dokončit • ${czk(cartTotal)}`}
+                  </button>
+                </div>
               </div>
             </div>
-
-            <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="rounded-[18px] border border-[#bde7c8] bg-[#f5fbf7] px-5 py-3 text-[16px] font-extrabold text-[#0b7c4d]">
-                Celkem: {czk(cartTotal)} • {cartCount} ks
-              </div>
-
-              <button
-                type="button"
-                onClick={saveOrder}
-                disabled={savingOrder}
-                className={cls(
-                  "rounded-full px-5 py-3 text-[15px] font-extrabold text-white",
-                  savingOrder ? "bg-[#77caa1]" : "bg-[#08a35c]"
-                )}
-              >
-                {savingOrder ? "Ukládám…" : "Potvrdit objednávku"}
-              </button>
-            </div>
-
-            {saveMsg ? <div className="mt-4 text-sm font-semibold text-[#0b7c4d]">{saveMsg}</div> : null}
           </div>
         </div>
       ) : null}
