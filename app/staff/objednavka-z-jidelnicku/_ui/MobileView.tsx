@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { MenuDay, MenuItem } from "../page";
+import type { MenuDay, MenuItem, WeekOption } from "../page";
 
 type CustomerType = "zakaznik" | "fakturovany";
 
@@ -22,11 +22,6 @@ type InvoiceCustomerDbRow = {
   phone: string | null;
   email: string | null;
   address: string | null;
-};
-
-type WeekOption = {
-  index: 0 | 1 | 2 | 3;
-  label: string;
 };
 
 function cls(...a: Array<string | false | undefined | null>) {
