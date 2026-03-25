@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Dispatch, SetStateAction } from "react";
 import type { MenuDay, MenuItem, WeekOption } from "../page";
@@ -30,6 +30,40 @@ function cls(...a: Array<string | false | undefined | null>) {
 
 function czk(n: number) {
   return `${Number(n || 0).toFixed(0)} Kč`;
+}
+
+function monthLabel(date: Date) {
+  return new Intl.DateTimeFormat("cs-CZ", {
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+function startOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+function endOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+}
+
+function addMonths(d: Date, diff: number) {
+  return new Date(d.getFullYear(), d.getMonth() + diff, 1);
+}
+
+function isSameDay(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function isoLocal(d: Date) {
+  const y = d.getFullYear();
+  const m = `${d.getMonth() + 1}`.padStart(2, "0");
+  const day = `${d.getDate()}`.padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 type Props = {
@@ -65,6 +99,21 @@ type Props = {
   setShowSummary: (value: boolean) => void;
 };
 
+function InfoIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      className={className}
+    >
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+      <path d="M12 10.2V16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="7.2" r="1.2" fill="currentColor" />
+    </svg>
+  );
+}
+
 export default function MobileView({
   customerType,
   setCustomerType,
@@ -98,6 +147,10 @@ export default function MobileView({
   setShowSummary,
 }: Props) {
   const [weeksOpen, setWeeksOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  const selectedWeek = weekOptions.find((w) => w.index === weekIndex) ?? weekOptions[0];
+  const currentWeekLabel = selectedWeek?.label ?? "Tento týden";
 
   const searchValue =
     customerType === "zakaznik"
@@ -108,18 +161,47 @@ export default function MobileView({
         ? selectedInvoiceCustomer.name
         : invoiceSearch;
 
-  const currentWeekLabel =
-    weekOptions.find((w) => w.index === weekIndex)?.label ??
-    weekOptions[0]?.label ??
-    "Tento týden";
-
   const canGoPrev = weekIndex > 0;
   const canGoNext = weekIndex < 3;
+
+  const initialCalendarDate = useMemo(() => {
+    const found = selectedWeek?.days?.[0]?.key || activeDay || isoLocal(new Date());
+    const d = new Date(found);
+    return Number.isNaN(d.getTime()) ? new Date() : d;
+  }, [selectedWeek, activeDay]);
+
+  const [calendarMonth, setCalendarMonth] = useState<Date>(startOfMonth(initialCalendarDate));
+
+  useEffect(() => {
+    setCalendarMonth(startOfMonth(initialCalendarDate));
+  }, [initialCalendarDate]);
+
+  const calendarDays = useMemo(() => {
+    const start = startOfMonth(calendarMonth);
+    const end = endOfMonth(calendarMonth);
+
+    const startWeekDay = (start.getDay() + 6) % 7;
+    const days: Date[] = [];
+
+    for (let i = 0; i < startWeekDay; i++) {
+      days.push(new Date(start.getFullYear(), start.getMonth(), start.getDate() - startWeekDay + i));
+    }
+
+    for (let d = 1; d <= end.getDate(); d++) {
+      days.push(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), d));
+    }
+
+    while (days.length < 42) {
+      const nextIndex = days.length - (startWeekDay + end.getDate()) + 1;
+      days.push(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, nextIndex));
+    }
+
+    return days;
+  }, [calendarMonth]);
 
   return (
     <div className="pb-28">
       <div className="space-y-4">
-        {/* HEADER */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-[31px] font-extrabold leading-[1] tracking-[-0.02em] text-[#14213d]">
@@ -130,18 +212,15 @@ export default function MobileView({
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              href="/staff"
-              className="inline-flex h-[44px] items-center justify-center rounded-full bg-[#61ae4f] px-5 text-[15px] font-extrabold text-white shadow-[0_5px_14px_rgba(97,174,79,0.22)]"
-            >
-              Rozcestník
-            </Link>
-          </div>
+          <Link
+            href="/staff"
+            className="inline-flex h-[44px] shrink-0 items-center justify-center rounded-full bg-[#67ad4f] px-6 text-[15px] font-extrabold text-white shadow-[0_5px_14px_rgba(103,173,79,0.22)]"
+          >
+            Rozcestník
+          </Link>
         </div>
 
-        {/* CUSTOMER */}
-        <div className="rounded-[28px] border border-[#cde9d3] bg-white px-3 py-3 shadow-[0_10px_26px_rgba(27,54,39,0.045)]">
+        <div className="rounded-[28px] border border-[#cfe8d4] bg-white px-3 py-3 shadow-[0_10px_26px_rgba(27,54,39,0.045)]">
           <div className="grid grid-cols-[1fr_1.35fr] gap-2">
             <button
               type="button"
@@ -149,8 +228,8 @@ export default function MobileView({
               className={cls(
                 "h-[46px] rounded-full border text-[14px] font-extrabold transition",
                 customerType === "zakaznik"
-                  ? "border-[#61ae4f] bg-[#61ae4f] text-white"
-                  : "border-[#bfe3c6] bg-white text-[#2f6f44]"
+                  ? "border-[#67ad4f] bg-[#67ad4f] text-white"
+                  : "border-[#c7e4ce] bg-white text-[#396d45]"
               )}
             >
               Zákazník
@@ -162,8 +241,8 @@ export default function MobileView({
               className={cls(
                 "h-[46px] rounded-full border px-3 text-[13px] font-extrabold transition",
                 customerType === "fakturovany"
-                  ? "border-[#61ae4f] bg-[#61ae4f] text-white"
-                  : "border-[#bfe3c6] bg-white text-[#2f6f44]"
+                  ? "border-[#67ad4f] bg-[#67ad4f] text-white"
+                  : "border-[#c7e4ce] bg-white text-[#396d45]"
               )}
             >
               Fakturovaný zákazník
@@ -187,7 +266,7 @@ export default function MobileView({
                   ? "Vyhledat zákazníka"
                   : "Vyhledat fakturovaného zákazníka"
               }
-              className="h-[48px] w-full rounded-full border border-[#bfe3c6] bg-white pl-4 pr-[146px] text-[14px] font-semibold text-[#182033] outline-none placeholder:text-[#98a1b2] focus:border-[#61ae4f]"
+              className="h-[48px] w-full rounded-full border border-[#c7e4ce] bg-white pl-4 pr-[150px] text-[14px] font-semibold text-[#182033] outline-none placeholder:text-[#98a1b2] focus:border-[#67ad4f]"
             />
 
             <button
@@ -196,7 +275,7 @@ export default function MobileView({
                 setCreateMode(customerType === "zakaznik" ? "profile" : "invoice");
                 setShowCreateCustomer(true);
               }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-[12px] font-extrabold text-[#2f6f44] underline underline-offset-4"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-[12px] font-extrabold text-[#396d45] underline underline-offset-4"
             >
               Přidat zákazníka
             </button>
@@ -262,9 +341,8 @@ export default function MobileView({
           </div>
         </div>
 
-        {/* WEEK + DAYS + MENU */}
-        <div className="rounded-[28px] border border-[#cde9d3] bg-white p-3 shadow-[0_10px_26px_rgba(27,54,39,0.045)]">
-          <div className="rounded-[26px] border border-[#cde9d3] px-3 py-3">
+        <div className="rounded-[28px] border border-[#cfe8d4] bg-white p-3 shadow-[0_10px_26px_rgba(27,54,39,0.045)]">
+          <div className="rounded-[26px] border border-[#cfe8d4] px-3 py-3">
             <div className="relative flex items-center gap-2">
               <button
                 type="button"
@@ -274,8 +352,8 @@ export default function MobileView({
                 className={cls(
                   "inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full border bg-white text-[22px] font-semibold",
                   canGoPrev
-                    ? "border-[#d4ebda] text-[#8b8f99]"
-                    : "border-[#e7eeea] text-[#c8ccd3]"
+                    ? "border-[#d2ead8] text-[#aeb5be]"
+                    : "border-[#e8efea] text-[#d0d4da]"
                 )}
               >
                 ←
@@ -283,13 +361,16 @@ export default function MobileView({
 
               <button
                 type="button"
-                onClick={() => setWeeksOpen((v) => !v)}
-                className="flex h-[48px] min-w-0 flex-1 items-center justify-between rounded-full border border-[#cde9d3] bg-[#f6faf6] px-4 text-left"
+                onClick={() => {
+                  setCalendarOpen(false);
+                  setWeeksOpen((v) => !v);
+                }}
+                className="flex h-[48px] min-w-0 flex-1 items-center justify-between rounded-full border border-[#cfe8d4] bg-[#f3f8f3] px-4 text-left"
               >
-                <span className="truncate text-[13px] font-extrabold text-[#182033]">
+                <span className="truncate text-[16px] font-extrabold tracking-[-0.01em] text-[#182033]">
                   {currentWeekLabel}
                 </span>
-                <span className="ml-2 flex shrink-0 flex-col items-center justify-center text-[12px] leading-[9px] text-[#247046]">
+                <span className="ml-2 flex shrink-0 flex-col items-center justify-center text-[12px] leading-[9px] text-[#2e7a48]">
                   <span>▲</span>
                   <span>▼</span>
                 </span>
@@ -303,8 +384,8 @@ export default function MobileView({
                 className={cls(
                   "inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full border bg-white text-[22px] font-semibold",
                   canGoNext
-                    ? "border-[#d4ebda] text-[#182033]"
-                    : "border-[#e7eeea] text-[#c8ccd3]"
+                    ? "border-[#d2ead8] text-[#182033]"
+                    : "border-[#e8efea] text-[#d0d4da]"
                 )}
               >
                 →
@@ -312,8 +393,11 @@ export default function MobileView({
 
               <button
                 type="button"
-                onClick={() => setWeeksOpen((v) => !v)}
-                className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[16px] border border-[#d4ebda] bg-white text-[21px]"
+                onClick={() => {
+                  setWeeksOpen(false);
+                  setCalendarOpen((v) => !v);
+                }}
+                className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[16px] border border-[#d2ead8] bg-white text-[21px]"
               >
                 <span className="translate-y-[1px]">📅</span>
               </button>
@@ -332,8 +416,8 @@ export default function MobileView({
                             setWeeksOpen(false);
                           }}
                           className={cls(
-                            "rounded-[18px] px-5 py-4 text-left text-[16px] font-extrabold transition",
-                            active ? "bg-[#08b42f] text-white" : "bg-[#eef5ef] text-[#182033]"
+                            "rounded-[18px] px-5 py-4 text-left text-[17px] font-extrabold transition",
+                            active ? "bg-[#12b332] text-white" : "bg-[#edf3ee] text-[#182033]"
                           )}
                         >
                           <span className="flex items-center justify-between gap-3">
@@ -357,8 +441,8 @@ export default function MobileView({
                   className={cls(
                     "h-[42px] rounded-full border text-center text-[14px] font-extrabold transition",
                     activeDay === day.key
-                      ? "border-[#08b42f] bg-[#08b42f] text-white"
-                      : "border-[#d4ebda] bg-white text-[#2f6f44]"
+                      ? "border-[#4ead45] bg-[#4ead45] text-white"
+                      : "border-[#d2ead8] bg-white text-[#396d45]"
                   )}
                 >
                   {day.short}
@@ -367,7 +451,77 @@ export default function MobileView({
             </div>
           </div>
 
-          <div className="mt-3 space-y-2.5">
+          {calendarOpen ? (
+            <div className="mt-3 rounded-[28px] border border-[#cfe8d4] bg-white px-4 py-4 shadow-[0_18px_36px_rgba(16,24,40,0.10)]">
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setCalendarMonth((m) => addMonths(m, -1))}
+                  className="inline-flex h-[42px] w-[42px] items-center justify-center rounded-full border border-[#cfe8d4] bg-white text-[22px] text-[#182033]"
+                >
+                  ←
+                </button>
+
+                <div className="text-[18px] font-extrabold capitalize text-[#182033]">
+                  {monthLabel(calendarMonth)}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setCalendarMonth((m) => addMonths(m, 1))}
+                  className="inline-flex h-[42px] w-[42px] items-center justify-center rounded-full border border-[#cfe8d4] bg-white text-[22px] text-[#182033]"
+                >
+                  →
+                </button>
+              </div>
+
+              <div className="mt-4 grid grid-cols-7 gap-y-2 text-center text-[12px] font-extrabold uppercase tracking-[0.02em] text-[#6b7280]">
+                {["po", "út", "st", "čt", "pá", "so", "ne"].map((d) => (
+                  <div key={d}>{d}</div>
+                ))}
+              </div>
+
+              <div className="mt-2 grid grid-cols-7 gap-2">
+                {calendarDays.map((d, i) => {
+                  const inMonth = d.getMonth() === calendarMonth.getMonth();
+                  const selected = isSameDay(d, initialCalendarDate);
+                  return (
+                    <button
+                      key={`${d.toISOString()}-${i}`}
+                      type="button"
+                      onClick={() => {
+                        const iso = isoLocal(d);
+                        setActiveDay(iso);
+                        setCalendarOpen(false);
+                      }}
+                      className={cls(
+                        "inline-flex h-[46px] items-center justify-center rounded-full border text-[18px] font-extrabold",
+                        selected
+                          ? "border-[#4ead45] bg-[#4ead45] text-white"
+                          : inMonth
+                            ? "border-[#cfe8d4] bg-white text-[#182033]"
+                            : "border-[#e6efe8] bg-white text-[#b3b8c0]"
+                      )}
+                    >
+                      {d.getDate()}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setCalendarOpen(false)}
+                  className="inline-flex h-[46px] min-w-[106px] items-center justify-center rounded-full border border-[#cfe8d4] bg-white px-6 text-[18px] font-extrabold text-[#182033]"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-3 space-y-3">
             {menuLoading ? (
               <div className="rounded-[24px] border border-[#dcefe1] bg-[#fbfdfb] px-4 py-4 text-[14px] font-semibold text-[#6b7280]">
                 Načítám menu…
@@ -383,26 +537,39 @@ export default function MobileView({
             ) : (
               activeItems.map((item) => {
                 const qty = cartQty(item.foodId, item.dayKey);
+                const allergens =
+                  (item as any).allergens ??
+                  (item as any).alergeny ??
+                  (item as any).allergen_text ??
+                  "";
 
                 return (
                   <div
                     key={item.id}
                     className={cls(
                       "rounded-[24px] border px-4 py-4 transition",
-                      qty > 0 ? "border-[#98d9ad] bg-[#f3fbf5]" : "border-[#cde9d3] bg-white"
+                      qty > 0 ? "border-[#98d9ad] bg-[#f4fbf5]" : "border-[#cfe8d4] bg-white"
                     )}
                   >
                     <div className="flex items-center gap-3">
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-[16px] font-extrabold leading-[1.15] text-[#182033]">
+                        <div className="truncate text-[17px] font-extrabold leading-[1.15] text-[#182033]">
                           {item.name}
                         </div>
-                        <div className="mt-1 truncate text-[12px] font-bold leading-[1.15] text-[#3f8f57]">
+                        <div className="mt-1 truncate text-[12px] font-bold leading-[1.15] text-[#42935c]">
                           {item.subtitle || "—"}
                         </div>
                       </div>
 
-                      <div className="shrink-0 rounded-[18px] border border-[#bfe3c6] bg-white px-4 py-2 text-[15px] font-extrabold text-[#2f7a49]">
+                      <button
+                        type="button"
+                        title={allergens ? `Alergeny: ${allergens}` : "Alergeny"}
+                        className="inline-flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full border border-[#cfe8d4] bg-[#f2f7f3] text-[#42935c]"
+                      >
+                        <InfoIcon className="h-[18px] w-[18px]" />
+                      </button>
+
+                      <div className="shrink-0 rounded-[18px] border border-[#cfe8d4] bg-white px-4 py-2 text-[16px] font-extrabold text-[#3c7d4e]">
                         {czk(item.price)}
                       </div>
 
@@ -410,7 +577,7 @@ export default function MobileView({
                         <button
                           type="button"
                           onClick={() => addToCart(item)}
-                          className="shrink-0 rounded-[18px] border border-[#73cd97] bg-white px-4 py-2 text-[14px] font-extrabold text-[#2b6e41]"
+                          className="shrink-0 rounded-[18px] border border-[#77c792] bg-white px-4 py-2 text-[15px] font-extrabold text-[#3c7d4e]"
                         >
                           Přidat
                         </button>
@@ -419,7 +586,7 @@ export default function MobileView({
                           <button
                             type="button"
                             onClick={() => subFromCart(item)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#73cd97] bg-white text-[22px] font-extrabold text-[#2b6e41]"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#77c792] bg-white text-[22px] font-extrabold text-[#2b6e41]"
                           >
                             −
                           </button>
@@ -429,7 +596,7 @@ export default function MobileView({
                           <button
                             type="button"
                             onClick={() => addToCart(item)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#73cd97] bg-white text-[20px] font-extrabold text-[#2b6e41]"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#77c792] bg-white text-[20px] font-extrabold text-[#2b6e41]"
                           >
                             +
                           </button>
@@ -448,7 +615,6 @@ export default function MobileView({
         ) : null}
       </div>
 
-      {/* BOTTOM BAR */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e7eee8] bg-white/96 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
         <div className="flex items-center gap-3">
           <Link
@@ -464,7 +630,7 @@ export default function MobileView({
             className={cls(
               "inline-flex h-[56px] min-w-0 flex-1 items-center justify-center rounded-full px-5 text-center text-[16px] font-extrabold transition",
               cartCount > 0
-                ? "bg-[#61ae4f] text-white shadow-[0_6px_18px_rgba(97,174,79,0.22)]"
+                ? "bg-[#67ad4f] text-white shadow-[0_6px_18px_rgba(103,173,79,0.22)]"
                 : "bg-[#badbb1] text-white"
             )}
           >
