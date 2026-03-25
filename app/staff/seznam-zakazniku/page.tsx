@@ -60,20 +60,6 @@ function ChevronLeftIcon({ className = "" }: { className?: string }) {
   );
 }
 
-function PencilIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-      <path d="M12 20h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path
-        d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function CalendarIcon({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
@@ -246,6 +232,25 @@ export default function StaffCustomersPage() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    if (!open) {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+      return;
+    }
+
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
+    };
+  }, [open]);
 
   const platiciCount = useMemo(
     () => rows.filter((r) => Number(r.kredit ?? 0) === 0).length,
@@ -618,11 +623,11 @@ export default function StaffCustomersPage() {
             aria-label="Zavřít"
           />
 
-          <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center p-0 md:p-4">
+          <div className="fixed inset-0 z-50 flex items-end justify-center p-0 md:items-center md:p-4 overscroll-none">
             <div
               className={cls(
-                "relative w-full bg-white shadow-[0_30px_80px_rgba(0,0,0,0.30)]",
-                "max-h-[94vh] overflow-auto rounded-t-[28px] border border-gray-200 md:max-w-[760px] md:rounded-[30px]"
+                "relative w-full bg-white shadow-[0_30px_80px_rgba(0,0,0,0.30)] overscroll-contain",
+                "h-[92vh] max-h-[92vh] overflow-y-auto rounded-t-[28px] border border-gray-200 md:h-auto md:max-h-[90vh] md:max-w-[760px] md:rounded-[30px]"
               )}
             >
               {!ordersOpen && !confirmDeleteOpen && !confirmTopUpOpen ? (
@@ -637,7 +642,7 @@ export default function StaffCustomersPage() {
                     }
                     onBack={goOneLayerBack}
                     onClose={closeAllSheets}
-                    backLabel={mainSheetMode === "topup" ? "Zpět" : "Zpět"}
+                    backLabel="Zpět"
                   />
 
                   <div className="px-4 pb-5 pt-1 md:px-5 md:pb-5">
@@ -653,48 +658,50 @@ export default function StaffCustomersPage() {
                           />
                         </div>
 
-                        <div className="grid gap-2">
-                          {creditCandidates.map((r) => {
-                            const k = round2(Number(r.kredit ?? 0));
-                            return (
-                              <button
-                                key={r.id}
-                                type="button"
-                                onClick={() => chooseCreditCustomer(r)}
-                                className={cls(
-                                  "w-full rounded-[20px] border px-4 py-3 text-left transition",
-                                  edit?.id === r.id
-                                    ? "border-emerald-300 bg-emerald-50"
-                                    : "border-emerald-200 bg-white"
-                                )}
-                              >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <div className="truncate text-[15px] font-extrabold text-[#182033]">
-                                      {r.full_name || "Bez jména"}
+                        <div className="max-h-[332px] overflow-y-auto rounded-[22px] pr-1">
+                          <div className="grid gap-2">
+                            {creditCandidates.map((r) => {
+                              const k = round2(Number(r.kredit ?? 0));
+                              return (
+                                <button
+                                  key={r.id}
+                                  type="button"
+                                  onClick={() => chooseCreditCustomer(r)}
+                                  className={cls(
+                                    "w-full rounded-[20px] border px-4 py-3 text-left transition",
+                                    edit?.id === r.id
+                                      ? "border-emerald-300 bg-emerald-50"
+                                      : "border-emerald-200 bg-white"
+                                  )}
+                                >
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                      <div className="truncate text-[15px] font-extrabold text-[#182033]">
+                                        {r.full_name || "Bez jména"}
+                                      </div>
+                                      <div className="truncate text-[12px] text-gray-500">
+                                        {r.email || r.phone || r.id}
+                                      </div>
                                     </div>
-                                    <div className="truncate text-[12px] text-gray-500">
-                                      {r.email || r.phone || r.id}
-                                    </div>
-                                  </div>
 
-                                  <div
-                                    className={cls(
-                                      "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-extrabold",
-                                      k > 0
-                                        ? "bg-emerald-100 text-emerald-800"
-                                        : k < 0
-                                        ? "bg-red-100 text-red-800"
-                                        : "bg-gray-100 text-gray-600"
-                                    )}
-                                  >
-                                    {k > 0 ? "+" : ""}
-                                    {k} Kč
+                                    <div
+                                      className={cls(
+                                        "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-extrabold",
+                                        k > 0
+                                          ? "bg-emerald-100 text-emerald-800"
+                                          : k < 0
+                                          ? "bg-red-100 text-red-800"
+                                          : "bg-gray-100 text-gray-600"
+                                      )}
+                                    >
+                                      {k > 0 ? "+" : ""}
+                                      {k} Kč
+                                    </div>
                                   </div>
-                                </div>
-                              </button>
-                            );
-                          })}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
 
                         {edit ? (
@@ -823,12 +830,18 @@ export default function StaffCustomersPage() {
                             )}
                           >
                             <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0 flex items-center gap-2">
-                                <CalendarIcon className="h-5 w-5 text-[#0b7c4d]" />
+                              <div className="min-w-0 flex items-start gap-2">
+                                <CalendarIcon className="mt-0.5 h-5 w-5 text-[#0b7c4d]" />
                                 <div className="min-w-0">
-                                  <div className="text-[16px] font-extrabold text-[#182033]">
-                                    Objednávky
+                                  <div className="flex items-center gap-2">
+                                    <div className="text-[16px] font-extrabold text-[#182033]">
+                                      Objednávky
+                                    </div>
+                                    <div className="text-[16px] font-extrabold text-[#182033]">
+                                      {ordersLoading ? "…" : ordersCount}
+                                    </div>
                                   </div>
+
                                   <div className="mt-1 text-[12px] text-gray-500">
                                     {ordersCount > 0
                                       ? "Objednávky staré víc jak 2 týdny se mažou."
@@ -837,13 +850,8 @@ export default function StaffCustomersPage() {
                                 </div>
                               </div>
 
-                              <div className="shrink-0 text-right">
-                                <div className="rounded-full bg-white px-2.5 py-1 text-[12px] font-extrabold text-[#182033] border border-emerald-200">
-                                  {ordersLoading ? "…" : ordersCount}
-                                </div>
-                                <div className="mt-1 text-[11px] text-gray-500">
-                                  záloha 2 týdny
-                                </div>
+                              <div className="shrink-0 rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-extrabold text-gray-500">
+                                záloha 2 týdny
                               </div>
                             </div>
                           </button>
@@ -872,8 +880,6 @@ export default function StaffCustomersPage() {
                                 ? mainSheetMode === "create"
                                   ? "Přidávám…"
                                   : "Ukládám…"
-                                : mainSheetMode === "create"
-                                ? "Uložit"
                                 : "Uložit"}
                             </button>
                           </div>
@@ -1069,7 +1075,7 @@ function SheetHeader({
   backLabel?: string;
 }) {
   return (
-    <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-gray-100 bg-white px-4 py-4 md:px-5">
+    <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-emerald-100 bg-white/95 px-4 py-4 backdrop-blur md:px-5">
       <div className="flex items-center gap-2">
         <button
           type="button"
