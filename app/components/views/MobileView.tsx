@@ -33,7 +33,6 @@ export async function createOrder(params: {
   const uid = sess.session?.user?.id;
   if (!uid) throw new Error("Nejsi přihlášený.");
 
-  // ⚠️ Tohle ukládá jen cenu jídel (bez poplatků za dopravu/balení).
   const total = params.cart.reduce((s, it) => s + it.cena * it.qty, 0);
 
   const { data: order, error: e1 } = await supabase
@@ -84,8 +83,6 @@ function formatPhoneCz(raw: string) {
   const c = d.slice(6, 9);
   return [a, b, c].filter(Boolean).join(" ").trim();
 }
-
-// ✅ nikdy nepoužívej toISOString() pro lokální datum (posouvá o den)
 function toISODateLocal(d: Date) {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
@@ -101,7 +98,7 @@ function isSunday(iso: string) {
 function baseMondayAutoNextWeekend(now: Date) {
   const x = new Date(now);
   x.setHours(0, 0, 0, 0);
-  const day = x.getDay(); // 0=ne, 1=po, ..., 6=so
+  const day = x.getDay();
   const diffToMonday = day === 0 ? 6 : day - 1;
   const monday = new Date(x);
   monday.setDate(monday.getDate() - diffToMonday);
@@ -121,6 +118,16 @@ function formatDayShort(iso: string) {
   const d = new Date(iso + "T00:00:00");
   const map = ["Ne", "Po", "Út", "St", "Čt", "Pá", "So"];
   return map[d.getDay()];
+}
+function formatDayLabelLong(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  const wd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" })
+    .format(d)
+    .replace(".", "")
+    .toLowerCase();
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${wd} ${dd}.${mm}.`;
 }
 function formatCartDay(iso: string) {
   const d = new Date(iso + "T00:00:00");
@@ -188,7 +195,35 @@ type MenuRow = {
   } | null;
 };
 
-/** ===================== Auth Modal (center) ===================== */
+type SystemItemRow = {
+  id: number;
+  section: string;
+  item_key: string | null;
+  label: string | null;
+  value_text: string | null;
+  value_number: number | null;
+  sort_order: number | null;
+  is_active: boolean | null;
+};
+
+function getTodayHoursFromRows(rows: SystemItemRow[]) {
+  const d = new Date();
+  const day = d.getDay();
+
+  let key = "sun";
+  if (day === 1) key = "mon";
+  else if (day === 2) key = "tue";
+  else if (day === 3) key = "wed";
+  else if (day === 4) key = "thu";
+  else if (day === 5) key = "fri";
+  else if (day === 6) key = "sat";
+
+  const row = rows.find((x) => x.item_key === key && x.is_active);
+  if (!row?.value_text) return null;
+  return `dnes ${row.value_text}`;
+}
+
+/** ===================== Auth Modal ===================== */
 function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [tab, setTab] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
@@ -525,7 +560,7 @@ function PackagingInfoModal({
   );
 }
 
-/** ===================== Cart Sheet (modal) ===================== */
+/** ===================== Cart Sheet ===================== */
 function CartSheet({
   open,
   onClose,
@@ -561,7 +596,7 @@ function CartSheet({
     payment,
     setPayment,
     timesByDay,
-    setTimesByDay, // ✅ MUSÍ BÝT TADY
+    setTimesByDay,
   } = useOrder();
 
   const [step, setStep] = useState<"cart" | "checkout" | "done">("cart");
@@ -569,21 +604,18 @@ function CartSheet({
   const [msg, setMsg] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
 
-  // scroll hint
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [canScrollDown, setCanScrollDown] = useState(false);
-const didAutofillRef = useRef(false);
 
-  // picker state
   const [pickOpen, setPickOpen] = useState<null | "delivery" | "packaging" | "payment">(null);
 
-  // packaging info modal state
   const [packInfoOpen, setPackInfoOpen] = useState(false);
   const [packInfoTitle, setPackInfoTitle] = useState("");
   const [packInfoImg, setPackInfoImg] = useState("");
   const [packInfoLines, setPackInfoLines] = useState<string[]>([]);
 
-  // reset při zavření
+  const didAutofillRef = useRef(false);
+
   useEffect(() => {
     if (open) return;
     setStep("cart");
@@ -596,51 +628,37 @@ const didAutofillRef = useRef(false);
     setActiveTimeDay(null);
   }, [open]);
 
-// ===== Autofill z profilu (jen jednou za otevření + nepřepisuje při psaní) =====
-useEffect(() => {
-  // reset po zavření
-  if (!open) {
-    didAutofillRef.current = false;
-    return;
-  }
-
-  // autofill má smysl jen když je otevřený košík a jsme v checkoutu
-  if (!authed) return;
-  if (step !== "checkout") return;
-
-  // jen jednou za otevření košíku
-  if (didAutofillRef.current) return;
-  didAutofillRef.current = true;
-
-  let alive = true;
-
-  (async () => {
-    try {
-      const p = await getMyProfile();
-      if (!alive || !p) return;
-
-      // ✅ doplň jen když je prázdné / nevalidní – jinak nech uživatele psát
-      setName((prev) => (prev.trim() ? prev : String(p.full_name ?? "")));
-
-      setPhone((prev) => {
-        // když už je tel. validní, nech ho
-        if (digitsOnly(prev).length === 9) return prev;
-
-        const raw = String((p as any)?.phone ?? "");
-        if (!raw) return prev;
-        return formatPhoneCz(raw);
-      });
-
-      setAddress((prev) => (prev.trim() ? prev : String((p as any)?.address ?? "")));
-    } catch {
-      // ignore
+  useEffect(() => {
+    if (!open) {
+      didAutofillRef.current = false;
+      return;
     }
-  })();
+    if (!authed) return;
+    if (step !== "checkout") return;
+    if (didAutofillRef.current) return;
+    didAutofillRef.current = true;
 
-  return () => {
-    alive = false;
-  };
-}, [open, authed, step, setName, setPhone, setAddress]);
+    let alive = true;
+    (async () => {
+      try {
+        const p = await getMyProfile();
+        if (!alive || !p) return;
+
+        setName((prev) => (prev.trim() ? prev : String(p.full_name ?? "")));
+        setPhone((prev) => {
+          if (digitsOnly(prev).length === 9) return prev;
+          const raw = String((p as any)?.phone ?? "");
+          if (!raw) return prev;
+          return formatPhoneCz(raw);
+        });
+        setAddress((prev) => (prev.trim() ? prev : String((p as any)?.address ?? "")));
+      } catch {}
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [open, authed, step, setName, setPhone, setAddress]);
 
   const grouped = useMemo(() => {
     const m = new Map<string, CartItem[]>();
@@ -655,7 +673,6 @@ useEffect(() => {
     }));
   }, [cart]);
 
-  // ====== Fees (UI) ======
   const itemsTotal = useMemo(() => cart.reduce((s, it) => s + it.cena * it.qty, 0), [cart]);
   const deliveryFee = deliveryMode === "delivery" && cartCount > 0 ? 10 : 0;
 
@@ -666,10 +683,8 @@ useEffect(() => {
     return /pol[eě]v/i.test(it.nazev);
   }
 
-  // REkrabička: 80 Kč / jídlo, polévka +7; Plast: jídlo 8 / polévka 7
   const packagingFee = useMemo(() => {
     if (cartCount === 0) return 0;
-
     let fee = 0;
 
     if (packagingMode === "plastic") {
@@ -682,7 +697,7 @@ useEffect(() => {
       return fee;
     }
 
-    return 0; // own zdarma
+    return 0;
   }, [cart, cartCount, packagingMode]);
 
   const payTotal = itemsTotal + deliveryFee + packagingFee;
@@ -761,7 +776,6 @@ useEffect(() => {
     );
   }
 
-  // ✅ stabilní render – nepadá focus v inputech
   const RowPick = useCallback(
     ({ label, value, onClick }: { label: string; value: string; onClick: () => void }) => (
       <div className={pill + " p-3"}>
@@ -839,7 +853,6 @@ useEffect(() => {
     [pill]
   );
 
-  // ===== TIME PREFS (modal) =====
   type DayTime = { from: string; to: string } | null;
 
   const [timeOpen, setTimeOpen] = useState(false);
@@ -901,7 +914,6 @@ useEffect(() => {
 
   const timeSummary = useMemo(() => {
     if (cartDays.length === 0) return "Vybrat čas";
-
     const pickedDays = cartDays.filter((d) => (timesByDay as any)?.[d]);
     if (pickedDays.length === 0) return "Vybrat čas";
 
@@ -925,7 +937,6 @@ useEffect(() => {
     return `${formatCartDay(d0)} ${t0.from}–${t0.to}${pickedDays.length > 1 ? ` +${pickedDays.length - 1}` : ""}`;
   }, [cartDays, timesByDay, sameTimeForAll]);
 
-  // vyhodnocení scroll hintu
   const evalScrollHint = () => {
     const el = scrollRef.current;
     if (!el) return;
@@ -937,7 +948,6 @@ useEffect(() => {
     if (!open) return;
     const t = setTimeout(evalScrollHint, 50);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, cartCount, step]);
 
   async function submitOrder() {
@@ -988,7 +998,6 @@ useEffect(() => {
 
   if (!open) return null;
 
-  // labels
   const deliveryLabel = deliveryMode === "delivery" ? "Doručení" : "Osobní odběr";
   const packagingLabel =
     packagingMode === "plastic" ? "Plastová krabička" : packagingMode === "rekrabicka" ? "REkrabička" : "Jídlonosič";
@@ -1029,7 +1038,6 @@ useEffect(() => {
     return (
       <div className="fixed inset-0 z-[260] flex items-center justify-center p-4">
         <button type="button" className="absolute inset-0 bg-black/40" onClick={() => setPickOpen(null)} />
-
         <div className="relative w-full max-w-md max-h-[80dvh] rounded-3xl bg-white shadow-2xl ring-1 ring-black/10 overflow-hidden">
           <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-gray-100">
             <div className="text-[14px] font-extrabold text-gray-900">Balení</div>
@@ -1043,7 +1051,6 @@ useEffect(() => {
           </div>
 
           <div className="p-3 space-y-2 overflow-auto max-h-[70dvh]">
-            {/* PLASTIC */}
             <div
               role="button"
               tabIndex={0}
@@ -1051,20 +1058,12 @@ useEffect(() => {
                 setPackagingMode("plastic");
                 setPickOpen(null);
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  setPackagingMode("plastic");
-                  setPickOpen(null);
-                }
-              }}
               className={optionCls(packagingMode === "plastic")}
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="text-[13px] font-extrabold text-gray-900">Plastová krabička</div>
-
                 <div className="flex items-center gap-2">
                   <PriceLines lines={["+8 Kč jídlo", "+7 Kč polévka"]} />
-
                   <button
                     type="button"
                     onClick={(e) => {
@@ -1079,13 +1078,11 @@ useEffect(() => {
                   >
                     i
                   </button>
-
                   {packagingMode === "plastic" ? <div className="text-green-700 font-extrabold">✓</div> : null}
                 </div>
               </div>
             </div>
 
-            {/* REKRABIČKA */}
             <div
               role="button"
               tabIndex={0}
@@ -1093,20 +1090,12 @@ useEffect(() => {
                 setPackagingMode("rekrabicka");
                 setPickOpen(null);
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  setPackagingMode("rekrabicka");
-                  setPickOpen(null);
-                }
-              }}
               className={optionCls(packagingMode === "rekrabicka")}
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="text-[13px] font-extrabold text-gray-900">REkrabička</div>
-
                 <div className="flex items-center gap-2">
                   <PriceLines lines={["Záloha 80 Kč", "+7 Kč polévka"]} />
-
                   <button
                     type="button"
                     onClick={(e) => {
@@ -1121,13 +1110,11 @@ useEffect(() => {
                   >
                     i
                   </button>
-
                   {packagingMode === "rekrabicka" ? <div className="text-green-700 font-extrabold">✓</div> : null}
                 </div>
               </div>
             </div>
 
-            {/* OWN */}
             <div
               role="button"
               tabIndex={0}
@@ -1135,20 +1122,12 @@ useEffect(() => {
                 setPackagingMode("own");
                 setPickOpen(null);
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  setPackagingMode("own");
-                  setPickOpen(null);
-                }
-              }}
               className={optionCls(packagingMode === "own")}
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="text-[13px] font-extrabold text-gray-900">Jídlonosič</div>
-
                 <div className="flex items-center gap-2">
                   <PriceLines lines={["Bez poplatku"]} />
-
                   <button
                     type="button"
                     onClick={(e) => {
@@ -1163,7 +1142,6 @@ useEffect(() => {
                   >
                     i
                   </button>
-
                   {packagingMode === "own" ? <div className="text-green-700 font-extrabold">✓</div> : null}
                 </div>
               </div>
@@ -1189,7 +1167,6 @@ useEffect(() => {
       <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
 
       <div className="relative w-full max-w-md rounded-3xl bg-white shadow-2xl ring-1 ring-black/10 overflow-hidden">
-        {/* Header */}
         <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-gray-100">
           <div className="text-[14px] font-extrabold text-gray-900">
             {step === "cart" && "Košík"}
@@ -1206,7 +1183,6 @@ useEffect(() => {
           </button>
         </div>
 
-        {/* ====== CART ====== */}
         {step === "cart" ? (
           <div className="relative">
             <div ref={scrollRef} onScroll={evalScrollHint} className="px-4 pt-3 pb-28 max-h-[70dvh] overflow-auto">
@@ -1220,7 +1196,6 @@ useEffect(() => {
                     <div key={g.datum} className={pillSoft + " p-3"}>
                       <div className="flex items-center justify-between mb-2">
                         <div className="text-[12px] font-extrabold text-gray-700">{formatCartDay(g.datum)}</div>
-
                         <div className="text-[11px] font-extrabold text-green-700 bg-white/80 ring-1 ring-green-200/70 px-2 py-1 rounded-full">
                           {g.items.reduce((s, it) => s + it.qty, 0)} ks
                         </div>
@@ -1244,7 +1219,6 @@ useEffect(() => {
                                 <div className="text-[14px] font-extrabold text-gray-900 leading-snug break-words">
                                   {it.nazev}
                                 </div>
-
                                 <div className="mt-0.5 text-[12px] text-gray-500">
                                   {it.cena} Kč · {it.qty}× ={" "}
                                   <span className="font-extrabold text-green-700">{it.cena * it.qty} Kč</span>
@@ -1252,12 +1226,7 @@ useEffect(() => {
                               </div>
 
                               <div className="flex items-center gap-1.5 shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() => removeOne(it.datum, row)}
-                                  disabled={it.qty === 0}
-                                  className={qtyBtn}
-                                >
+                                <button type="button" onClick={() => removeOne(it.datum, row)} className={qtyBtn}>
                                   −
                                 </button>
                                 <div className="w-6 text-center text-[13px] font-extrabold">{it.qty}</div>
@@ -1316,7 +1285,6 @@ useEffect(() => {
           </div>
         ) : null}
 
-        {/* ====== CHECKOUT ====== */}
         {step === "checkout" ? (
           <div className="relative">
             <div className="px-4 pt-3 pb-44 max-h-[75dvh] overflow-auto">
@@ -1355,7 +1323,6 @@ useEffect(() => {
 
                 <RowPick label="Balení" value={packagingLabel} onClick={() => setPickOpen("packaging")} />
 
-                {/* ✅ Preferuji čas doručení */}
                 <div className={pill + " p-3"}>
                   <div className="flex items-center justify-between gap-3">
                     <div>
@@ -1437,7 +1404,6 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* Pickers */}
             <PickerSheet
               open={pickOpen === "delivery"}
               title="Způsob převzetí"
@@ -1476,7 +1442,6 @@ useEffect(() => {
           </div>
         ) : null}
 
-        {/* ✅ TIME PREFS MODAL */}
         {timeOpen ? (
           <div className="fixed inset-0 z-[275] flex items-center justify-center p-4">
             <button
@@ -1573,7 +1538,6 @@ useEffect(() => {
           </div>
         ) : null}
 
-        {/* ====== DONE ====== */}
         {step === "done" ? (
           <div className="px-4 pb-4">
             <div className="mt-3 rounded-2xl bg-green-50 text-green-800 ring-1 ring-green-200 p-4">
@@ -1591,6 +1555,100 @@ useEffect(() => {
     </div>
   );
 }
+
+/** ===================== Day picker modal ===================== */
+function DayPickerModal({
+  open,
+  onClose,
+  weekOffset,
+  setWeekOffset,
+  tabDays,
+  selectedDate,
+  setSelectedDate,
+}: {
+  open: boolean;
+  onClose: () => void;
+  weekOffset: 0 | 1;
+  setWeekOffset: (v: 0 | 1) => void;
+  tabDays: string[];
+  selectedDate: string;
+  setSelectedDate: (d: string) => void;
+}) {
+  if (!open) return null;
+
+  const rangeLabel = tabDays.length ? formatRangeShort(tabDays[0], tabDays[tabDays.length - 1]) : "";
+
+  return (
+    <div className="fixed inset-0 z-[230] flex items-center justify-center p-4">
+      <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
+      <div className="relative w-full max-w-sm rounded-3xl bg-white shadow-2xl ring-1 ring-black/10 overflow-hidden">
+        <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-gray-100">
+          <div>
+            <div className="text-[15px] font-extrabold text-gray-900">Vybrat den</div>
+            <div className="text-[12px] font-semibold text-gray-500">{rangeLabel}</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-10 w-10 rounded-2xl bg-white ring-1 ring-black/10 hover:bg-gray-50 font-extrabold"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="p-4">
+          <div className="grid grid-cols-[44px_1fr_44px] items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setWeekOffset(0)}
+              disabled={weekOffset === 0}
+              className="h-11 rounded-2xl bg-white ring-1 ring-black/10 font-extrabold disabled:opacity-40"
+            >
+              ‹
+            </button>
+
+            <div className="rounded-2xl bg-green-50 ring-1 ring-green-200 px-3 py-3 text-center">
+              <div className="text-[13px] font-extrabold text-green-800">{rangeLabel}</div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setWeekOffset(1)}
+              disabled={weekOffset === 1}
+              className="h-11 rounded-2xl bg-white ring-1 ring-black/10 font-extrabold disabled:opacity-40"
+            >
+              ›
+            </button>
+          </div>
+
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {tabDays.map((d) => {
+              const active = d === selectedDate;
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => {
+                    setSelectedDate(d);
+                    onClose();
+                  }}
+                  className={[
+                    "rounded-2xl px-3 py-3 text-[13px] font-extrabold ring-1 transition",
+                    active ? "bg-green-600 text-white ring-green-600" : "bg-white ring-black/10 hover:bg-gray-50 text-gray-900",
+                  ].join(" ")}
+                >
+                  <div>{formatDayShort(d)}</div>
+                  <div className="mt-0.5 text-[11px] opacity-80">{formatDayLabelLong(d).split(" ").slice(1).join(" ")}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** ===================== Main MobileView ===================== */
 export default function MobileView({
   onOpenCart,
@@ -1599,10 +1657,9 @@ export default function MobileView({
 }) {
   const router = useRouter();
 
-  type Section = "daily" | "order" | "cart" | "shop" | "contact";
+  type Section = "daily" | "order" | "cart" | "jirka" | "about";
   const [activeSection, setActiveSection] = useState<Section>("daily");
 
-  // user
   const [userName, setUserName] = useState("");
   const [credit, setCredit] = useState(0);
   const [authed, setAuthed] = useState(false);
@@ -1611,20 +1668,20 @@ export default function MobileView({
   const [role, setRole] = useState<"customer" | "staff">("customer");
   const [menuOpen, setMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
-const didAutofillRef = useRef(false);
 
-  // cart
   const [cartOpen, setCartOpen] = useState(false);
 
-  // allergens modal
   const [algOpen, setAlgOpen] = useState(false);
   const [algTitle, setAlgTitle] = useState("");
   const [algList, setAlgList] = useState<string[]>([]);
 
-  // order context
+  const [dayPickerOpen, setDayPickerOpen] = useState(false);
+
   const { cart, cartCount, total, keyFor, addOne, removeOne } = useOrder();
 
-  // close dropdown on outside / esc
+  const [systemItems, setSystemItems] = useState<SystemItemRow[]>([]);
+  const [loadingSystemItems, setLoadingSystemItems] = useState(true);
+
   useEffect(() => {
     const onDoc = (e: PointerEvent) => {
       const el = userMenuRef.current;
@@ -1645,7 +1702,6 @@ const didAutofillRef = useRef(false);
     };
   }, []);
 
-  // auth load
   useEffect(() => {
     let alive = true;
 
@@ -1702,12 +1758,69 @@ const didAutofillRef = useRef(false);
     };
   }, []);
 
+  useEffect(() => {
+    let alive = true;
+
+    async function loadSystemItems() {
+      setLoadingSystemItems(true);
+
+      const { data, error } = await supabase
+        .from("system_items")
+        .select("id, section, item_key, label, value_text, value_number, sort_order, is_active")
+        .eq("is_active", true)
+        .order("section", { ascending: true })
+        .order("sort_order", { ascending: true })
+        .order("id", { ascending: true });
+
+      if (!alive) return;
+
+      if (error) {
+        console.error("loadSystemItems error:", error);
+        setSystemItems([]);
+        setLoadingSystemItems(false);
+        return;
+      }
+
+      setSystemItems((data ?? []) as SystemItemRow[]);
+      setLoadingSystemItems(false);
+    }
+
+    loadSystemItems();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   async function signOut() {
     await supabase.auth.signOut();
     setMenuOpen(false);
   }
 
-  // ===== week & days =====
+  const shopHoursRows = useMemo(
+    () => systemItems.filter((x) => x.section === "opening_hours_shop"),
+    [systemItems]
+  );
+
+  const canteenHoursRows = useMemo(
+    () => systemItems.filter((x) => x.section === "opening_hours_canteen"),
+    [systemItems]
+  );
+
+  const aboutTextRow = useMemo(
+    () => systemItems.find((x) => x.section === "about_text" && x.item_key === "main") ?? null,
+    [systemItems]
+  );
+
+  const shopHoursToday = useMemo(
+    () => getTodayHoursFromRows(shopHoursRows),
+    [shopHoursRows]
+  );
+
+  const canteenHoursToday = useMemo(
+    () => getTodayHoursFromRows(canteenHoursRows),
+    [canteenHoursRows]
+  );
+
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 60_000);
@@ -1731,7 +1844,6 @@ const didAutofillRef = useRef(false);
     return arr;
   }, [baseMondayISO, weekOffset]);
 
-  // taby jen Po–So
   const tabDays = useMemo(() => days.slice(0, 6), [days]);
 
   const [selectedDate, setSelectedDate] = useState<string>(() => {
@@ -1745,9 +1857,8 @@ const didAutofillRef = useRef(false);
   }, [tabDays]);
 
   const zavreno = isSunday(selectedDate);
-  const rangeLabel = useMemo(() => formatRangeShort(tabDays[0], tabDays[tabDays.length - 1]), [tabDays]);
+  const selectedDayLabel = formatDayLabelLong(selectedDate);
 
-  // ===== load menu (DB) =====
   const [menuByDate, setMenuByDate] = useState<Record<string, MenuRow[]>>({});
   const [loadingMenu, setLoadingMenu] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -1816,28 +1927,13 @@ const didAutofillRef = useRef(false);
 
   const items = (menuByDate[selectedDate] ?? []).filter((x) => x.jidla).slice(0, 50);
 
-  // styles
-  const dayBtn = (active: boolean) =>
-    [
-      "h-9 rounded-xl px-3 text-[12px] font-semibold ring-1 transition",
-      active ? "bg-green-600 text-white ring-green-600" : "bg-white text-gray-900 ring-black/10 hover:bg-gray-50",
-    ].join(" ");
-
-  const qtyBtn =
-    "h-8 w-8 rounded-xl bg-white ring-1 ring-black/10 text-gray-900 font-extrabold hover:bg-gray-50 active:scale-[0.98] disabled:opacity-40";
-
-  const addBtn =
-    "rounded-xl px-3 py-2 text-[12px] font-extrabold transition ring-1 ring-green-600/70 text-green-700 bg-white hover:bg-green-600 hover:text-white hover:ring-green-600";
-
-  const showWeekAndDays = activeSection === "daily" || activeSection === "order";
-
   function UserArea() {
     if (!authed) {
       return (
         <button
           type="button"
           onClick={() => setAuthOpen(true)}
-          className="rounded-xl px-3 py-2 text-[12px] font-extrabold bg-green-600 text-white hover:bg-green-700"
+          className="rounded-2xl px-3 py-2 text-[12px] font-extrabold bg-green-600 text-white hover:bg-green-700"
         >
           Přihlásit
         </button>
@@ -1847,39 +1943,22 @@ const didAutofillRef = useRef(false);
     const name = userName.trim() || "Uživatel";
 
     return (
-      <div className="relative flex items-center gap-2" ref={userMenuRef}>
+      <div className="relative" ref={userMenuRef}>
         <button
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
-          className="max-w-[220px] truncate rounded-xl px-3 py-2 text-[12px] font-extrabold bg-white ring-1 ring-black/10 hover:bg-gray-50"
+          className="max-w-[150px] truncate rounded-2xl px-3 py-2 text-[12px] font-extrabold bg-white ring-1 ring-black/10 hover:bg-gray-50"
           title={name}
         >
           <span className="truncate">
             {name}
-            {credit > 0 ? ` · ${credit} Kč` : ""}
+            {role !== "staff" ? ` · ${credit} Kč` : ""}
           </span>
           <span className="ml-2 inline-block opacity-80">▾</span>
         </button>
 
         {menuOpen ? (
-          <div className="absolute right-0 top-[44px] w-64 rounded-2xl bg-white shadow-xl ring-1 ring-black/10 overflow-hidden z-[120]">
-            {role === "staff" ? (
-              <>
-                <div className="px-4 pt-3 pb-2 text-[11px] font-extrabold text-gray-500">PERSONÁL</div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    router.push("/staff");
-                  }}
-                  className="w-full text-left px-4 py-3 text-sm font-extrabold hover:bg-gray-50"
-                >
-                  Rozcestník
-                </button>
-                <div className="h-px bg-gray-100" />
-              </>
-            ) : null}
-
+          <div className="absolute right-0 top-[46px] w-64 rounded-2xl bg-white shadow-xl ring-1 ring-black/10 overflow-hidden z-[120]">
             <button
               type="button"
               onClick={() => {
@@ -1917,6 +1996,92 @@ const didAutofillRef = useRef(false);
     );
   }
 
+  function StaffShortcut() {
+    if (role !== "staff" || !authed) return null;
+
+    return (
+      <button
+        type="button"
+        onClick={() => router.push("/staff")}
+        className="rounded-2xl px-3 py-2 text-[12px] font-extrabold bg-green-50 text-green-800 ring-1 ring-green-200 hover:bg-green-100"
+      >
+        Rozcestník
+      </button>
+    );
+  }
+
+  function SectionTitle() {
+    if (activeSection === "daily") {
+      return (
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[20px] font-extrabold text-green-700 leading-tight">
+                Denní menu
+              </div>
+              <div className="text-[13px] font-semibold text-gray-500">
+                pro aktuální den ({selectedDayLabel})
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setDayPickerOpen(true)}
+              className="shrink-0 rounded-2xl px-3 py-2 text-[12px] font-extrabold bg-white ring-1 ring-black/10 hover:bg-gray-50"
+            >
+              Vybrat den
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeSection === "order") {
+      return (
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[20px] font-extrabold text-green-700 leading-tight">
+                Objednávka jídel
+              </div>
+              <div className="text-[13px] font-semibold text-gray-500">
+                {selectedDayLabel}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setDayPickerOpen(true)}
+              className="shrink-0 rounded-2xl px-3 py-2 text-[12px] font-extrabold bg-white ring-1 ring-black/10 hover:bg-gray-50"
+            >
+              Vybrat den
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeSection === "jirka") {
+      return (
+        <div>
+          <div className="text-[20px] font-extrabold text-green-700 leading-tight">Otevírací doba</div>
+          <div className="text-[13px] font-semibold text-gray-500">Jídelna a obchod</div>
+        </div>
+      );
+    }
+
+    if (activeSection === "about") {
+      return (
+        <div>
+          <div className="text-[20px] font-extrabold text-green-700 leading-tight">O nás</div>
+          <div className="text-[13px] font-semibold text-gray-500">Základní informace o Jiřce</div>
+        </div>
+      );
+    }
+
+    return null;
+  }
+
   function MenuList({ mode }: { mode: "daily" | "order" }) {
     if (loadingMenu) return <div className="text-[13px] text-gray-500">Načítám…</div>;
     if (err) return <div className="text-[13px] font-bold text-red-600">{err}</div>;
@@ -1937,23 +2102,28 @@ const didAutofillRef = useRef(false);
 
           const title = r.jidla?.nazev ?? "";
           const price = r.jidla?.cena ?? 0;
+          const category = r.jidla?.kategorie ?? "";
           const allergenList = allergenNamesFromColumn(r.jidla?.alergeny ?? "");
 
-          const cardCls =
-            "rounded-2xl px-3 py-3 transition ring-1 " +
-            (qty > 0 ? "bg-green-50 ring-green-300/70" : "bg-white ring-black/10 hover:bg-gray-50");
-
           return (
-            <div key={k} className={cardCls}>
-              <div className="flex justify-between gap-3">
+            <div
+              key={k}
+              className={[
+                "rounded-3xl px-3 py-3 ring-1 transition",
+                qty > 0 && mode === "order"
+                  ? "bg-green-50 ring-green-300/70"
+                  : "bg-white ring-black/10 hover:bg-gray-50",
+              ].join(" ")}
+            >
+              <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  {mode === "daily" && r.jidla?.kategorie ? (
-                    <div className="text-[11px] font-bold text-green-700">{r.jidla.kategorie}</div>
-                  ) : null}
+                  <div className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[15px] font-extrabold text-[#1f2f56] leading-snug break-words">
+                        {title}
+                      </div>
+                    </div>
 
-                  <div className="text-[14px] font-semibold text-gray-900 leading-snug break-words">{title}</div>
-
-                  {mode !== "daily" && allergenList.length > 0 ? (
                     <button
                       type="button"
                       onClick={() => {
@@ -1961,47 +2131,56 @@ const didAutofillRef = useRef(false);
                         setAlgList(allergenList);
                         setAlgOpen(true);
                       }}
-                      className="mt-1 text-[12px] text-gray-500"
+                      className="shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#7ac796] bg-white text-[11px] font-extrabold text-[#067647]"
+                      aria-label="Alergeny"
+                      title="Alergeny"
                     >
-                      Alergeny
+                      i
                     </button>
-                  ) : null}
+                  </div>
+
+                  <div className="mt-1 text-[12px] font-semibold text-[#08a652]">
+                    {category}
+                  </div>
                 </div>
 
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  {mode === "daily" ? null : qty === 0 ? (
-                    <>
+                <div className="shrink-0 flex flex-col items-end gap-2">
+                  <div className="text-[15px] font-extrabold text-[#067647] whitespace-nowrap">
+                    {price} Kč
+                  </div>
+
+                  {mode === "order" ? (
+                    qty === 0 ? (
                       <button
                         type="button"
                         onClick={() => {
                           if (zavreno) return;
                           addOne(selectedDate, row);
                         }}
-                        className={addBtn}
+                        className="rounded-2xl px-3 py-2 text-[12px] font-extrabold text-green-700 bg-white ring-1 ring-green-600/70 hover:bg-green-600 hover:text-white"
                       >
                         Přidat
                       </button>
-                      <div className="text-[13px] font-extrabold text-green-700">{price} Kč</div>
-                    </>
-                  ) : (
-                    <>
+                    ) : (
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => removeOne(selectedDate, row)}
-                          className={qtyBtn}
-                          disabled={qty === 0}
+                          className="h-8 w-8 rounded-xl bg-white ring-1 ring-black/10 text-gray-900 font-extrabold hover:bg-gray-50"
                         >
                           −
                         </button>
                         <div className="w-6 text-center text-[12px] font-extrabold">{qty}</div>
-                        <button type="button" onClick={() => addOne(selectedDate, row)} className={qtyBtn}>
+                        <button
+                          type="button"
+                          onClick={() => addOne(selectedDate, row)}
+                          className="h-8 w-8 rounded-xl bg-white ring-1 ring-black/10 text-gray-900 font-extrabold hover:bg-gray-50"
+                        >
                           +
                         </button>
                       </div>
-                      <div className="text-[13px] font-extrabold text-green-700">{price} Kč</div>
-                    </>
-                  )}
+                    )
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -2011,14 +2190,99 @@ const didAutofillRef = useRef(false);
     );
   }
 
-  // Košík bar zafixovaný dole NAD bottom nav (jen v objednávání)
+  function JirkaSection() {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-3xl bg-[#f7fbf8] p-4 ring-1 ring-green-100">
+          <div className="text-[16px] font-extrabold text-green-700">Jídelna</div>
+          <div className="mt-2 space-y-2">
+            {loadingSystemItems ? (
+              <div className="text-[13px] font-semibold text-gray-500">Načítám…</div>
+            ) : canteenHoursRows.length === 0 ? (
+              <div className="text-[13px] font-semibold text-gray-500">Otevírací doba zatím není vyplněná.</div>
+            ) : (
+              canteenHoursRows.map((row) => (
+                <div
+                  key={`canteen-${row.id}`}
+                  className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 ring-1 ring-green-100"
+                >
+                  <div className="text-[14px] font-extrabold text-[#1f2f56]">{row.label ?? "Den"}</div>
+                  <div className="text-[14px] font-semibold text-gray-700">{row.value_text ?? "—"}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-3xl bg-[#f7fbf8] p-4 ring-1 ring-green-100">
+          <div className="text-[16px] font-extrabold text-green-700">Obchod</div>
+          <div className="mt-2 space-y-2">
+            {loadingSystemItems ? (
+              <div className="text-[13px] font-semibold text-gray-500">Načítám…</div>
+            ) : shopHoursRows.length === 0 ? (
+              <div className="text-[13px] font-semibold text-gray-500">Otevírací doba zatím není vyplněná.</div>
+            ) : (
+              shopHoursRows.map((row) => (
+                <div
+                  key={`shop-${row.id}`}
+                  className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 ring-1 ring-green-100"
+                >
+                  <div className="text-[14px] font-extrabold text-[#1f2f56]">{row.label ?? "Den"}</div>
+                  <div className="text-[14px] font-semibold text-gray-700">{row.value_text ?? "—"}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3">
+          {["/fotky/obchod-1.jpg", "/fotky/obchod-2.jpg", "/fotky/jidelna-1.jpg"].map((src) => (
+            <div key={src} className="overflow-hidden rounded-3xl bg-white ring-1 ring-black/10 shadow-sm">
+              <img src={src} alt="Jiřka" className="h-48 w-full object-cover" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function AboutSection() {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-3xl bg-white p-4 ring-1 ring-black/10 shadow-sm">
+          <div className="text-[15px] font-extrabold text-green-700">Jiřka</div>
+          <div className="mt-2 text-[14px] leading-6 text-gray-700 whitespace-pre-line">
+            {loadingSystemItems
+              ? "Načítám text…"
+              : aboutTextRow?.value_text || "Sem si potom doplníš článek o Jiřce, historii, nabídce a dalších informacích."}
+          </div>
+        </div>
+
+        <div className="rounded-3xl bg-green-50 p-4 ring-1 ring-green-100">
+          <div className="text-[13px] font-extrabold uppercase tracking-wide text-green-700">Adresa</div>
+          <div className="mt-1 text-[14px] font-semibold text-gray-700">Havlíčkova 72, 29001 Poděbrady</div>
+        </div>
+
+        <div className="rounded-3xl bg-white p-4 ring-1 ring-black/10 shadow-sm">
+          <div className="text-[13px] font-extrabold uppercase tracking-wide text-green-700">IČO</div>
+          <div className="mt-1 text-[14px] font-semibold text-gray-700">Doplníme později</div>
+        </div>
+
+        <div className="rounded-3xl bg-white p-4 ring-1 ring-black/10 shadow-sm">
+          <div className="text-[13px] font-extrabold uppercase tracking-wide text-green-700">Kontakt</div>
+          <div className="mt-1 text-[14px] font-semibold text-gray-700">Doplníme později</div>
+        </div>
+      </div>
+    );
+  }
+
   const showFixedCartBar = activeSection === "order";
 
   function FixedCartBar() {
     if (!showFixedCartBar) return null;
 
     return (
-      <div className="fixed left-0 right-0 z-40" style={{ bottom: 64 }}>
+      <div className="fixed left-0 right-0 z-40" style={{ bottom: 72 }}>
         <div className="max-w-md mx-auto px-3">
           <div className="rounded-2xl bg-white shadow-lg ring-1 ring-black/10 px-3 py-2.5">
             <div className="flex items-center justify-between gap-2">
@@ -2044,12 +2308,22 @@ const didAutofillRef = useRef(false);
     );
   }
 
-  const contentPadBottom = showFixedCartBar ? "pb-[140px]" : "pb-20";
+  const contentPadBottom = showFixedCartBar ? "pb-[152px]" : "pb-24";
 
   return (
     <div className={`min-h-[100dvh] bg-white ${contentPadBottom}`}>
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
       <AllergensModal open={algOpen} onClose={() => setAlgOpen(false)} title={algTitle} allergens={algList} />
+
+      <DayPickerModal
+        open={dayPickerOpen}
+        onClose={() => setDayPickerOpen(false)}
+        weekOffset={weekOffset}
+        setWeekOffset={setWeekOffset}
+        tabDays={tabDays}
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
+      />
 
       <CartSheet
         open={cartOpen}
@@ -2059,94 +2333,51 @@ const didAutofillRef = useRef(false);
         credit={credit}
       />
 
-      {/* Header */}
       <div className="sticky top-0 z-40 bg-white border-b border-gray-100">
-        <div className="max-w-md mx-auto px-3 py-2 flex items-center gap-2">
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="h-8 w-8 rounded-2xl bg-white ring-1 ring-black/10 overflow-hidden flex items-center justify-center">
-              <Image src="/logo.png" alt="Jiřka" width={32} height={32} />
-            </div>
-            <div className="font-extrabold text-green-700 text-[15px] leading-none">Jiřka</div>
-          </div>
+        <div className="max-w-md mx-auto px-3 pt-3 pb-2">
+          <div className="flex items-start gap-3">
+            <Image src="/logo.png" alt="Jiřka" width={54} height={54} className="h-[54px] w-[54px] object-contain" />
 
-          <div className="flex-1" />
-          <UserArea />
+            <div className="min-w-0 flex-1 pt-0.5">
+              <div className="text-[24px] font-extrabold leading-none text-green-700">Jiřka</div>
+              <div className="mt-1 text-[12px] font-semibold text-gray-500">zdravá výživa</div>
+            </div>
+
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-2">
+                <StaffShortcut />
+                <UserArea />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-md mx-auto px-3 py-3 space-y-2.5">
-        {showWeekAndDays ? (
-          <>
-            <div className="rounded-2xl ring-1 ring-black/10 bg-white shadow-sm px-2 py-2 flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => setWeekOffset(0)}
-                disabled={weekOffset === 0}
-                className="h-9 w-9 rounded-2xl bg-white ring-1 ring-black/10 font-extrabold text-gray-900 disabled:opacity-40"
-              >
-                ‹
-              </button>
+      <div className="max-w-md mx-auto px-3 py-3 space-y-3">
+        <SectionTitle />
 
-              <div className="min-w-0 text-center">
-                <div className="text-[13px] font-extrabold text-gray-900">{rangeLabel}</div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setWeekOffset(1)}
-                disabled={weekOffset === 1}
-                className="h-9 w-9 rounded-2xl bg-white ring-1 ring-black/10 font-extrabold text-gray-900 disabled:opacity-40"
-              >
-                ›
-              </button>
-            </div>
-
-            <div className="rounded-2xl ring-1 ring-black/10 bg-white shadow-sm px-2 py-2">
-              <div className="grid grid-cols-6 gap-2">
-                {tabDays.map((d) => (
-                  <button key={d} type="button" onClick={() => setSelectedDate(d)} className={dayBtn(d === selectedDate)}>
-                    {formatDayShort(d)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {zavreno ? (
-              <div className="rounded-2xl bg-red-50 ring-2 ring-red-200/60 p-3 text-red-700 font-semibold">
-                V neděli je zavřeno.
-              </div>
-            ) : null}
-          </>
+        {(activeSection === "daily" || activeSection === "order") && zavreno ? (
+          <div className="rounded-2xl bg-red-50 ring-2 ring-red-200/60 p-3 text-red-700 font-semibold">
+            V neděli je zavřeno.
+          </div>
         ) : null}
 
         {activeSection === "daily" && <MenuList mode="daily" />}
         {activeSection === "order" && <MenuList mode="order" />}
-
-        {activeSection === "shop" && (
-          <div className="rounded-2xl ring-1 ring-black/10 bg-white shadow-sm p-3 text-[13px] text-gray-600">
-            Sem dáme obchod.
-          </div>
-        )}
-
-        {activeSection === "contact" && (
-          <div className="rounded-2xl ring-1 ring-black/10 bg-white shadow-sm p-3 text-[13px] text-gray-600">
-            Sem dáme kontakt + info.
-          </div>
-        )}
+        {activeSection === "jirka" && <JirkaSection />}
+        {activeSection === "about" && <AboutSection />}
       </div>
 
       <FixedCartBar />
 
-      {/* Bottom nav */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200">
         <div className="max-w-md mx-auto grid grid-cols-5 text-[11px] font-semibold text-gray-600">
           {[
             { id: "daily", label: "Menu", icon: "📋" },
             { id: "order", label: "Objednat", icon: "🍽️" },
             { id: "cart", label: "Košík", icon: "🛒" },
-            { id: "shop", label: "Obchod", icon: "🏪" },
-            { id: "contact", label: "Kontakt", icon: "☎️" },
+            { id: "jirka", label: "Jiřka", icon: "🏪" },
+            { id: "about", label: "O nás", icon: "ℹ️" },
           ].map((x) => {
             const isActive = activeSection === x.id || (x.id === "cart" && cartOpen);
             return (
@@ -2155,20 +2386,21 @@ const didAutofillRef = useRef(false);
                 onClick={() => {
                   if (x.id === "cart") {
                     setCartOpen(true);
+                    onOpenCart();
                     return;
                   }
                   setActiveSection(x.id as Section);
                 }}
                 className={`flex flex-col items-center py-2 ${isActive ? "text-green-700" : "text-gray-500"}`}
               >
-<span className="relative text-lg leading-none">
-  {x.icon}
-  {x.id === "cart" && cartCount > 0 ? (
-    <span className="absolute -top-2 -right-3 min-w-[18px] h-[18px] px-1 rounded-full bg-green-600 text-white text-[11px] font-extrabold flex items-center justify-center">
-      {cartCount}
-    </span>
-  ) : null}
-</span>
+                <span className="relative text-lg leading-none">
+                  {x.icon}
+                  {x.id === "cart" && cartCount > 0 ? (
+                    <span className="absolute -top-2 -right-3 min-w-[18px] h-[18px] px-1 rounded-full bg-green-600 text-white text-[11px] font-extrabold flex items-center justify-center">
+                      {cartCount}
+                    </span>
+                  ) : null}
+                </span>
                 {x.label}
               </button>
             );
