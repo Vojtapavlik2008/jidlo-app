@@ -7,6 +7,7 @@ import DesktopView from "./_ui/DesktopView";
 import MobileView from "./_ui/MobileView";
 
 type CustomerType = "zakaznik" | "fakturovany";
+type MobileWeekIndex = 0 | 1 | 2 | 3;
 
 type ProfileRow = {
   id: string;
@@ -63,8 +64,8 @@ type CartItem = {
   qty: number;
 };
 
-type WeekOption = {
-  index: 0 | 1 | 2 | 3;
+export type WeekOption = {
+  index: MobileWeekIndex;
   label: string;
 };
 
@@ -144,7 +145,7 @@ export default function ObjednavkaZJidelnickuPage() {
   const [menuLoading, setMenuLoading] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
 
-  const [weekIndex, setWeekIndex] = useState<0 | 1 | 2 | 3>(0);
+  const [weekIndex, setWeekIndex] = useState<MobileWeekIndex>(0);
   const [activeDay, setActiveDay] = useState<string>(toISODateLocal(startOfWeekMonday(new Date())));
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orderNote, setOrderNote] = useState("");
@@ -204,7 +205,7 @@ export default function ObjednavkaZJidelnickuPage() {
     return [0, 1, 2, 3].map((i) => {
       const start = addDays(baseWeek, i * 7);
       return {
-        index: i as 0 | 1 | 2 | 3,
+        index: i as MobileWeekIndex,
         label: formatWeekRange(start),
       };
     });
@@ -619,37 +620,12 @@ export default function ObjednavkaZJidelnickuPage() {
         }
       : null;
 
-  const sharedProps = {
-    customerType,
-    setCustomerType,
-    profileSearch,
-    setProfileSearch,
-    invoiceSearch,
-    setInvoiceSearch,
-    selectedProfile,
-    setSelectedProfile,
-    selectedInvoiceCustomer,
-    setSelectedInvoiceCustomer,
-    filteredProfiles,
-    filteredInvoiceCustomers,
-    setCreateMode,
-    setShowCreateCustomer,
-    menuDays,
-    activeDay,
-    setActiveDay,
-    weekIndex,
-    setWeekIndex,
-    weekOptions,
-    menuLoading,
-    menuError,
-    activeItems,
-    cartQty,
-    addToCart,
-    subFromCart,
-    cartCount,
-    cartTotal,
-    saveMsg,
-    setShowSummary,
+  const desktopWeekOffset: 0 | 1 = weekIndex > 0 ? 1 : 0;
+  const setDesktopWeekOffset = (value: React.SetStateAction<0 | 1>) => {
+    setWeekIndex((prev) => {
+      const next = typeof value === "function" ? value(prev > 0 ? 1 : 0) : value;
+      return next === 0 ? 0 : 1;
+    });
   };
 
   return (
@@ -678,11 +654,72 @@ export default function ObjednavkaZJidelnickuPage() {
         </div>
 
         <div className="mt-5 hidden md:block">
-          <DesktopView {...sharedProps} />
+          <DesktopView
+            customerType={customerType}
+            setCustomerType={setCustomerType}
+            profileSearch={profileSearch}
+            setProfileSearch={setProfileSearch}
+            invoiceSearch={invoiceSearch}
+            setInvoiceSearch={setInvoiceSearch}
+            selectedProfile={selectedProfile}
+            setSelectedProfile={setSelectedProfile}
+            selectedInvoiceCustomer={selectedInvoiceCustomer}
+            setSelectedInvoiceCustomer={setSelectedInvoiceCustomer}
+            filteredProfiles={filteredProfiles}
+            filteredInvoiceCustomers={filteredInvoiceCustomers}
+            setCreateMode={setCreateMode}
+            setShowCreateCustomer={setShowCreateCustomer}
+            menuDays={menuDays}
+            activeDay={activeDay}
+            setActiveDay={setActiveDay}
+            weekOffset={desktopWeekOffset}
+            setWeekOffset={setDesktopWeekOffset}
+            menuLoading={menuLoading}
+            menuError={menuError}
+            activeItems={activeItems}
+            cartQty={cartQty}
+            addToCart={addToCart}
+            subFromCart={subFromCart}
+            cartCount={cartCount}
+            cartTotal={cartTotal}
+            saveMsg={saveMsg}
+            setShowSummary={setShowSummary}
+          />
         </div>
 
         <div className="mt-5 md:hidden">
-          <MobileView {...sharedProps} />
+          <MobileView
+            customerType={customerType}
+            setCustomerType={setCustomerType}
+            profileSearch={profileSearch}
+            setProfileSearch={setProfileSearch}
+            invoiceSearch={invoiceSearch}
+            setInvoiceSearch={setInvoiceSearch}
+            selectedProfile={selectedProfile}
+            setSelectedProfile={setSelectedProfile}
+            selectedInvoiceCustomer={selectedInvoiceCustomer}
+            setSelectedInvoiceCustomer={setSelectedInvoiceCustomer}
+            filteredProfiles={filteredProfiles}
+            filteredInvoiceCustomers={filteredInvoiceCustomers}
+            setCreateMode={setCreateMode}
+            setShowCreateCustomer={setShowCreateCustomer}
+            menuDays={menuDays}
+            activeDay={activeDay}
+            setActiveDay={setActiveDay}
+            weekIndex={weekIndex}
+            setWeekIndex={setWeekIndex}
+            weekOptions={weekOptions}
+            menuLoading={menuLoading}
+            menuError={menuError}
+            activeItems={activeItems}
+            cartQty={cartQty}
+            addToCart={addToCart}
+            subFromCart={subFromCart}
+            cartCount={cartCount}
+            cartTotal={cartTotal}
+            saveMsg={saveMsg}
+            setShowSummary={setShowSummary}
+          />
         </div>
       </div>
 
