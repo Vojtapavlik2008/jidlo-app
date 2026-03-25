@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type SetStateAction } from "react";
 import { supabase } from "@/lib/supabase";
 import DesktopView from "./_ui/DesktopView";
 import MobileView from "./_ui/MobileView";
@@ -37,6 +37,7 @@ type JidloRow = {
   nazev: string | null;
   cena: number | null;
   kategorie: string | null;
+  alergeny?: string | null;
 };
 
 export type MenuDay = {
@@ -52,6 +53,7 @@ export type MenuItem = {
   name: string;
   subtitle: string;
   price: number;
+  allergens?: string;
 };
 
 type CartItem = {
@@ -62,6 +64,7 @@ type CartItem = {
   subtitle: string;
   price: number;
   qty: number;
+  allergens?: string;
 };
 
 export type WeekOption = {
@@ -112,8 +115,12 @@ function dayLabelShort(iso: string) {
 
 function formatWeekRange(start: Date) {
   const end = addDays(start, 5);
-  const s = `${String(start.getDate()).padStart(2, "0")}. ${String(start.getMonth() + 1).padStart(2, "0")}.`;
-  const e = `${String(end.getDate()).padStart(2, "0")}. ${String(end.getMonth() + 1).padStart(2, "0")}.`;
+  const s = `${String(start.getDate()).padStart(2, "0")}. ${String(
+    start.getMonth() + 1
+  ).padStart(2, "0")}.`;
+  const e = `${String(end.getDate()).padStart(2, "0")}. ${String(
+    end.getMonth() + 1
+  ).padStart(2, "0")}.`;
   return `${s} – ${e}`;
 }
 
@@ -127,7 +134,8 @@ export default function ObjednavkaZJidelnickuPage() {
   const [invoiceSearch, setInvoiceSearch] = useState("");
 
   const [selectedProfile, setSelectedProfile] = useState<ProfileRow | null>(null);
-  const [selectedInvoiceCustomer, setSelectedInvoiceCustomer] = useState<InvoiceCustomerDbRow | null>(null);
+  const [selectedInvoiceCustomer, setSelectedInvoiceCustomer] =
+    useState<InvoiceCustomerDbRow | null>(null);
 
   const [showCreateCustomer, setShowCreateCustomer] = useState(false);
   const [createMode, setCreateMode] = useState<"profile" | "invoice">("invoice");
@@ -259,7 +267,7 @@ export default function ObjednavkaZJidelnickuPage() {
         if (ids.length) {
           const { data: jidlaData, error: jidlaErr } = await supabase
             .from("jidla")
-            .select("id, nazev, cena, kategorie")
+            .select("id, nazev, cena, kategorie, alergeny")
             .in("id", ids);
 
           if (jidlaErr) throw new Error(jidlaErr.message);
@@ -279,6 +287,7 @@ export default function ObjednavkaZJidelnickuPage() {
               name: food.nazev || "Bez názvu",
               subtitle: food.kategorie || "",
               price: Number(food.cena ?? 0),
+              allergens: food.alergeny || "",
             };
           })
           .filter(Boolean) as MenuItem[];
@@ -337,10 +346,7 @@ export default function ObjednavkaZJidelnickuPage() {
     [cart]
   );
 
-  const cartCount = useMemo(
-    () => cart.reduce((sum, item) => sum + item.qty, 0),
-    [cart]
-  );
+  const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.qty, 0), [cart]);
 
   const currentCredit = Number(selectedProfile?.kredit ?? 0);
   const remainingCredit = round2(currentCredit - cartTotal);
@@ -363,9 +369,11 @@ export default function ObjednavkaZJidelnickuPage() {
             subtitle: item.subtitle,
             price: round2(item.price),
             qty: 1,
+            allergens: item.allergens || "",
           },
         ];
       }
+
       const copy = [...prev];
       copy[idx] = { ...copy[idx], qty: copy[idx].qty + 1 };
       return copy;
@@ -491,7 +499,6 @@ export default function ObjednavkaZJidelnickuPage() {
 
   async function saveOrder() {
     setSaveMsg(null);
-
     if (savingOrder) return;
 
     if (customerType === "zakaznik" && !selectedProfile) {
@@ -518,6 +525,7 @@ export default function ObjednavkaZJidelnickuPage() {
         subtitle: x.subtitle,
         price: round2(x.price),
         qty: x.qty,
+        allergens: x.allergens || "",
         line_total: round2(x.qty * x.price),
       }));
 
@@ -560,7 +568,8 @@ export default function ObjednavkaZJidelnickuPage() {
         cart: {
           type: customerType === "fakturovany" ? "invoice_menu_order" : "profile_menu_order",
           profile_id: customerType === "zakaznik" ? selectedProfile?.id ?? null : null,
-          invoice_customer_id: customerType === "fakturovany" ? selectedInvoiceCustomer?.id ?? null : null,
+          invoice_customer_id:
+            customerType === "fakturovany" ? selectedInvoiceCustomer?.id ?? null : null,
           customer_kind: customerType,
           customer:
             customerType === "zakaznik"
@@ -591,7 +600,6 @@ export default function ObjednavkaZJidelnickuPage() {
       });
 
       if (error) throw new Error(error.message);
-
       resetOrderStateAfterSave();
     } catch (e: any) {
       setSaveMsg(e?.message ?? "Objednávku se nepodařilo uložit.");
@@ -601,7 +609,7 @@ export default function ObjednavkaZJidelnickuPage() {
   }
 
   const desktopWeekOffset: 0 | 1 = weekIndex > 0 ? 1 : 0;
-  const setDesktopWeekOffset = (value: React.SetStateAction<0 | 1>) => {
+  const setDesktopWeekOffset = (value: SetStateAction<0 | 1>) => {
     setWeekIndex((prev) => {
       const next = typeof value === "function" ? value(prev > 0 ? 1 : 0) : value;
       return next === 0 ? 0 : 1;
@@ -705,7 +713,7 @@ export default function ObjednavkaZJidelnickuPage() {
         </div>
       </div>
 
-      <div className="hidden md:block fixed bottom-0 left-0 right-0 z-30 border-t border-[#dfe8e1] bg-white/95 backdrop-blur">
+      <div className="fixed bottom-0 left-0 right-0 z-30 hidden border-t border-[#dfe8e1] bg-white/95 backdrop-blur md:block">
         <div className="mx-auto flex max-w-[1320px] items-center gap-3 px-4 py-4 md:px-6">
           <Link
             href="/staff"
@@ -902,16 +910,40 @@ export default function ObjednavkaZJidelnickuPage() {
                   </div>
 
                   <div className="mt-1 text-[12px] font-semibold text-[#6c7589]">
-                    {customerType === "zakaznik" ? selectedProfile?.phone || "—" : selectedInvoiceCustomer?.phone || "—"} •{" "}
-                    {customerType === "zakaznik" ? selectedProfile?.email || "—" : selectedInvoiceCustomer?.email || "—"} •{" "}
-                    {customerType === "zakaznik" ? selectedProfile?.address || "—" : selectedInvoiceCustomer?.address || "—"}
+                    {customerType === "zakaznik"
+                      ? selectedProfile?.phone || "—"
+                      : selectedInvoiceCustomer?.phone || "—"}{" "}
+                    •{" "}
+                    {customerType === "zakaznik"
+                      ? selectedProfile?.email || "—"
+                      : selectedInvoiceCustomer?.email || "—"}{" "}
+                    •{" "}
+                    {customerType === "zakaznik"
+                      ? selectedProfile?.address || "—"
+                      : selectedInvoiceCustomer?.address || "—"}
                   </div>
 
                   {customerType === "zakaznik" && selectedProfile ? (
                     <div className="mt-3 space-y-1 text-[11px] font-semibold text-[#6c7589]">
-                      <div>Aktuální kredit: <span className="font-extrabold text-[#0b7c4d]">{czk(currentCredit)}</span></div>
-                      <div>Cena objednávky: <span className="font-extrabold text-[#182033]">{czk(cartTotal)}</span></div>
-                      <div>Zůstatek na účtu: <span className={cls("font-extrabold", remainingCredit >= 0 ? "text-[#0b7c4d]" : "text-red-600")}>{czk(remainingCredit)}</span></div>
+                      <div>
+                        Aktuální kredit:{" "}
+                        <span className="font-extrabold text-[#0b7c4d]">{czk(currentCredit)}</span>
+                      </div>
+                      <div>
+                        Cena objednávky:{" "}
+                        <span className="font-extrabold text-[#182033]">{czk(cartTotal)}</span>
+                      </div>
+                      <div>
+                        Zůstatek na účtu:{" "}
+                        <span
+                          className={cls(
+                            "font-extrabold",
+                            remainingCredit >= 0 ? "text-[#0b7c4d]" : "text-red-600"
+                          )}
+                        >
+                          {czk(remainingCredit)}
+                        </span>
+                      </div>
                     </div>
                   ) : null}
                 </div>
@@ -947,7 +979,9 @@ export default function ObjednavkaZJidelnickuPage() {
                           </div>
 
                           <div className="shrink-0 text-right">
-                            <div className="text-[13px] font-bold text-[#6c7589]">{czk(item.price)}</div>
+                            <div className="text-[13px] font-bold text-[#6c7589]">
+                              {czk(item.price)}
+                            </div>
                             <div className="mt-1 text-[15px] font-extrabold text-[#0b7c4d]">
                               {czk(item.qty * item.price)}
                             </div>
