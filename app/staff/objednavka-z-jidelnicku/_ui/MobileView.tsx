@@ -1,7 +1,9 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
 import Link from "next/link";
+import { useMemo, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
+import type { MenuDay, MenuItem } from "../page";
 
 type CustomerType = "zakaznik" | "fakturovany";
 
@@ -22,19 +24,9 @@ type InvoiceCustomerDbRow = {
   address: string | null;
 };
 
-type MenuDay = {
-  key: string;
+type WeekOption = {
+  index: 0 | 1 | 2 | 3;
   label: string;
-  short: string;
-};
-
-type MenuItem = {
-  id: string;
-  foodId: string;
-  dayKey: string;
-  name: string;
-  subtitle: string;
-  price: number;
 };
 
 function cls(...a: Array<string | false | undefined | null>) {
@@ -43,29 +35,6 @@ function cls(...a: Array<string | false | undefined | null>) {
 
 function czk(n: number) {
   return `${Number(n || 0).toFixed(0)} Kč`;
-}
-
-function extractDayNumber(label: string) {
-  const m = label.match(/(\d{1,2}\.\s?\d{1,2}\.)/);
-  return m ? m[1].replace(/\s+/g, " ") : label;
-}
-
-function weekRangeFromDays(menuDays: MenuDay[]) {
-  if (!menuDays.length) return "Tento týden";
-  const first = extractDayNumber(menuDays[0].label);
-  const last = extractDayNumber(menuDays[menuDays.length - 1].label);
-  return `${first} – ${last}`;
-}
-
-function prettySelectedCustomer(
-  customerType: CustomerType,
-  selectedProfile: ProfileRow | null,
-  selectedInvoiceCustomer: InvoiceCustomerDbRow | null
-) {
-  if (customerType === "zakaznik") {
-    return selectedProfile?.full_name || "";
-  }
-  return selectedInvoiceCustomer?.name || "";
 }
 
 type Props = {
@@ -86,8 +55,9 @@ type Props = {
   menuDays: MenuDay[];
   activeDay: string;
   setActiveDay: (value: string) => void;
-  weekOffset: 0 | 1;
-  setWeekOffset: Dispatch<SetStateAction<0 | 1>>;
+  weekIndex: 0 | 1 | 2 | 3;
+  setWeekIndex: Dispatch<SetStateAction<0 | 1 | 2 | 3>>;
+  weekOptions: WeekOption[];
   menuLoading: boolean;
   menuError: string | null;
   activeItems: MenuItem[];
@@ -118,8 +88,9 @@ export default function MobileView({
   menuDays,
   activeDay,
   setActiveDay,
-  weekOffset,
-  setWeekOffset,
+  weekIndex,
+  setWeekIndex,
+  weekOptions,
   menuLoading,
   menuError,
   activeItems,
@@ -131,6 +102,8 @@ export default function MobileView({
   saveMsg,
   setShowSummary,
 }: Props) {
+  const [weeksOpen, setWeeksOpen] = useState(false);
+
   const searchValue =
     customerType === "zakaznik"
       ? selectedProfile
@@ -140,44 +113,46 @@ export default function MobileView({
       ? selectedInvoiceCustomer.name
       : invoiceSearch;
 
-  const selectedCustomerName = prettySelectedCustomer(
-    customerType,
-    selectedProfile,
-    selectedInvoiceCustomer
-  );
+  const currentWeekLabel =
+    weekOptions.find((w) => w.index === weekIndex)?.label ?? weekOptions[0]?.label ?? "Tento týden";
 
-  const weekLabel = weekRangeFromDays(menuDays);
+  const canGoPrev = weekIndex > 0;
+  const canGoNext = weekIndex < 3;
+
+  const activeDayTitle = useMemo(() => {
+    return menuDays.find((d) => d.key === activeDay)?.label ?? "";
+  }, [menuDays, activeDay]);
 
   return (
     <div className="space-y-4 pb-28">
-      <div className="rounded-[26px] border border-[#dff2e5] bg-white px-4 py-4 shadow-[0_12px_30px_rgba(27,54,39,0.05)]">
+      <div className="rounded-[28px] border border-[#dff2e5] bg-white px-4 py-4 shadow-[0_12px_30px_rgba(27,54,39,0.05)]">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-[30px] font-extrabold leading-none text-[#14213d]">
+            <div className="text-[30px] font-extrabold leading-[0.95] text-[#14213d]">
               Objednávka
             </div>
-            <div className="-mt-0.5 truncate text-[14px] font-bold text-[#5e687d]">
+            <div className="mt-1 text-[14px] font-bold leading-none text-[#5f677b]">
               z jídelníčku
             </div>
           </div>
 
           <Link
             href="/staff"
-            className="inline-flex h-[50px] shrink-0 items-center justify-center rounded-full bg-[#60b14d] px-6 text-[15px] font-extrabold text-white shadow-[0_6px_18px_rgba(96,177,77,0.28)]"
+            className="inline-flex h-[46px] shrink-0 items-center justify-center rounded-full bg-[#60b14d] px-5 text-[15px] font-extrabold text-white shadow-[0_6px_18px_rgba(96,177,77,0.24)]"
           >
             Rozcestník
           </Link>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-4 flex items-center gap-2">
           <button
             type="button"
             onClick={() => setCustomerType("zakaznik")}
             className={cls(
-              "rounded-full border px-3 py-3 text-center text-[14px] font-extrabold transition",
+              "min-w-0 rounded-full border px-4 py-2.5 text-[14px] font-extrabold transition",
               customerType === "zakaznik"
                 ? "border-[#60b14d] bg-[#60b14d] text-white"
-                : "border-[#bde7c8] bg-white text-[#2b6e41]"
+                : "border-[#bde7c8] bg-white text-[#2d6f43]"
             )}
           >
             Zákazník
@@ -187,10 +162,10 @@ export default function MobileView({
             type="button"
             onClick={() => setCustomerType("fakturovany")}
             className={cls(
-              "rounded-full border px-3 py-3 text-center text-[14px] font-extrabold transition",
+              "min-w-0 flex-1 rounded-full border px-4 py-2.5 text-[13px] font-extrabold transition",
               customerType === "fakturovany"
                 ? "border-[#60b14d] bg-[#60b14d] text-white"
-                : "border-[#bde7c8] bg-white text-[#2b6e41]"
+                : "border-[#bde7c8] bg-white text-[#2d6f43]"
             )}
           >
             Fakturovaný zákazník
@@ -215,7 +190,7 @@ export default function MobileView({
                   ? "Vyhledat zákazníka"
                   : "Vyhledat fakturovaného zákazníka"
               }
-              className="w-full rounded-full border border-[#bde7c8] bg-white px-4 py-3 text-[14px] font-semibold text-[#182033] outline-none placeholder:text-[#98a1b2] focus:border-[#60b14d]"
+              className="w-full rounded-full border border-[#bde7c8] bg-white px-4 py-3 text-[14px] font-semibold text-[#182033] outline-none placeholder:text-[#9aa2b1] focus:border-[#60b14d]"
             />
 
             {customerType === "zakaznik" &&
@@ -237,7 +212,7 @@ export default function MobileView({
                       <div className="text-[14px] font-extrabold text-[#182033]">
                         {c.full_name || "Bez jména"}
                       </div>
-                      <div className="mt-1 text-[12px] font-bold text-[#5f6b7f]">
+                      <div className="mt-1 text-[12px] font-bold text-[#667085]">
                         {c.phone || "bez telefonu"}
                         {c.email ? ` • ${c.email}` : ""}
                       </div>
@@ -266,10 +241,8 @@ export default function MobileView({
                       }}
                       className="rounded-[16px] border border-[#dff2e5] bg-[#f7fcf8] px-4 py-3 text-left"
                     >
-                      <div className="text-[14px] font-extrabold text-[#182033]">
-                        {c.name}
-                      </div>
-                      <div className="mt-1 text-[12px] font-bold text-[#5f6b7f]">
+                      <div className="text-[14px] font-extrabold text-[#182033]">{c.name}</div>
+                      <div className="mt-1 text-[12px] font-bold text-[#667085]">
                         {c.phone || "bez telefonu"}
                         {c.email ? ` • ${c.email}` : ""}
                       </div>
@@ -286,7 +259,7 @@ export default function MobileView({
               setCreateMode(customerType === "zakaznik" ? "profile" : "invoice");
               setShowCreateCustomer(true);
             }}
-            className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[16px] border border-[#bde7c8] bg-white text-[28px] font-extrabold leading-none text-[#2b6e41]"
+            className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[16px] border border-[#bde7c8] bg-white text-[28px] font-extrabold leading-none text-[#2d6f43]"
           >
             +
           </button>
@@ -295,22 +268,27 @@ export default function MobileView({
 
       <div className="rounded-[28px] border border-[#bde7c8] bg-white p-3 shadow-[0_12px_30px_rgba(27,54,39,0.05)]">
         <div className="rounded-[24px] border border-[#bde7c8] p-3">
-          <div className="flex items-center gap-2">
+          <div className="relative flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setWeekOffset(0)}
-              className="inline-flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-full border border-[#bde7c8] bg-white text-[24px] font-bold text-[#7a7f8a]"
+              onClick={() => canGoPrev && setWeekIndex((prev) => Math.max(0, prev - 1) as 0 | 1 | 2 | 3)}
+              className={cls(
+                "inline-flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-full border bg-white text-[24px] font-bold",
+                canGoPrev
+                  ? "border-[#bde7c8] text-[#7a7f8a]"
+                  : "border-[#dfe8e1] text-[#c0c6d0]"
+              )}
             >
               ←
             </button>
 
             <button
               type="button"
-              onClick={() => setWeekOffset((prev) => (prev === 0 ? 1 : 0))}
+              onClick={() => setWeeksOpen((v) => !v)}
               className="flex h-[54px] min-w-0 flex-1 items-center justify-between rounded-full border border-[#bde7c8] bg-[#f4faf5] px-5 text-left"
             >
               <span className="truncate text-[16px] font-extrabold text-[#182033]">
-                {weekLabel}
+                {currentWeekLabel}
               </span>
               <span className="ml-3 text-[16px] font-extrabold leading-none text-[#2f7a49]">
                 ▲
@@ -321,18 +299,55 @@ export default function MobileView({
 
             <button
               type="button"
-              onClick={() => setWeekOffset(1)}
-              className="inline-flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-full border border-[#bde7c8] bg-white text-[24px] font-bold text-[#182033]"
+              onClick={() => canGoNext && setWeekIndex((prev) => Math.min(3, prev + 1) as 0 | 1 | 2 | 3)}
+              className={cls(
+                "inline-flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-full border bg-white text-[24px] font-bold",
+                canGoNext
+                  ? "border-[#bde7c8] text-[#182033]"
+                  : "border-[#dfe8e1] text-[#c0c6d0]"
+              )}
             >
               →
             </button>
 
             <button
               type="button"
+              onClick={() => setWeeksOpen((v) => !v)}
               className="inline-flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[18px] border border-[#bde7c8] bg-white text-[24px]"
             >
               📅
             </button>
+
+            {weeksOpen ? (
+              <div className="absolute left-[82px] right-[82px] top-[62px] z-20 rounded-[26px] border border-[#dff2e5] bg-white p-3 shadow-[0_16px_34px_rgba(16,24,40,0.16)]">
+                <div className="grid gap-2">
+                  {weekOptions.map((w) => {
+                    const active = w.index === weekIndex;
+                    return (
+                      <button
+                        key={w.index}
+                        type="button"
+                        onClick={() => {
+                          setWeekIndex(w.index);
+                          setWeeksOpen(false);
+                        }}
+                        className={cls(
+                          "rounded-[18px] px-5 py-4 text-left text-[16px] font-extrabold transition",
+                          active
+                            ? "bg-[#60b14d] text-white"
+                            : "bg-[#eef4ef] text-[#182033]"
+                        )}
+                      >
+                        <span className="flex items-center justify-between gap-3">
+                          <span>{w.label}</span>
+                          {active ? <span className="text-[22px]">✓</span> : null}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-3 grid grid-cols-6 gap-2">
@@ -345,7 +360,7 @@ export default function MobileView({
                   "rounded-full border px-1 py-3 text-center text-[14px] font-extrabold transition",
                   activeDay === day.key
                     ? "border-[#60b14d] bg-[#60b14d] text-white"
-                    : "border-[#bde7c8] bg-white text-[#2b6e41]"
+                    : "border-[#bde7c8] bg-white text-[#2d6f43]"
                 )}
               >
                 {day.short}
@@ -376,17 +391,15 @@ export default function MobileView({
                   key={item.id}
                   className={cls(
                     "rounded-[24px] border px-4 py-4 transition",
-                    qty > 0
-                      ? "border-[#95d6af] bg-[#f3fbf5]"
-                      : "border-[#bde7c8] bg-white"
+                    qty > 0 ? "border-[#95d6af] bg-[#f3fbf5]" : "border-[#bde7c8] bg-white"
                   )}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-center gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="text-[16px] font-extrabold leading-snug text-[#182033]">
+                      <div className="truncate text-[17px] font-extrabold text-[#182033]">
                         {item.name}
                       </div>
-                      <div className="mt-1 text-[13px] font-bold leading-snug text-[#3f8f57]">
+                      <div className="mt-1 truncate text-[13px] font-bold text-[#3f8f57]">
                         {item.subtitle || "—"}
                       </div>
                     </div>
@@ -439,33 +452,28 @@ export default function MobileView({
         </div>
       </div>
 
-      {saveMsg ? (
-        <div className="px-1 text-[13px] font-semibold text-[#2f7a49]">{saveMsg}</div>
-      ) : null}
+      {saveMsg ? <div className="px-1 text-[13px] font-semibold text-[#2f7a49]">{saveMsg}</div> : null}
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e6efe8] bg-white/95 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className="flex-1 rounded-full border border-[#d8dfdb] bg-white px-5 py-4 text-[16px] font-extrabold text-[#182033]"
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/staff"
+            className="rounded-full border border-[#d8dfdb] bg-white px-5 py-3 text-[15px] font-extrabold text-[#182033]"
           >
             Zrušit
-          </button>
+          </Link>
 
           <button
             type="button"
-            onClick={() => {
-              document.body.style.overflow = "hidden";
-              setShowSummary(true);
-            }}
+            onClick={() => setShowSummary(true)}
             className={cls(
-              "flex-[1.15] rounded-full px-5 py-4 text-center text-[16px] font-extrabold transition",
+              "min-w-0 flex-1 rounded-full px-4 py-3 text-center text-[15px] font-extrabold transition",
               cartCount > 0
                 ? "bg-[#b9dcae] text-white"
                 : "border border-[#dff2e5] bg-[#eef6ee] text-white"
             )}
           >
-            Objednávka • {cartCount} ks • {czk(cartTotal)}
+            <span className="block truncate">Objednávka • {cartCount} ks • {czk(cartTotal)}</span>
           </button>
         </div>
       </div>
