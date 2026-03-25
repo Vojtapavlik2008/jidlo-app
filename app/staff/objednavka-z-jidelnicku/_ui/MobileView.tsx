@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 import type { MenuDay, MenuItem, WeekOption } from "../page";
 
 type CustomerType = "zakaznik" | "fakturovany";
@@ -74,13 +82,11 @@ function buildCalendarDays(monthDate: Date) {
   return days;
 }
 
-function InfoIcon({ className = "" }: { className?: string }) {
+function InfoIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-      <path d="M12 10.2V16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="12" cy="7.2" r="1.2" fill="currentColor" />
-    </svg>
+    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#bde7c8] bg-[#eef8f1] text-[11px] font-extrabold text-[#0b7c4d]">
+      i
+    </span>
   );
 }
 
@@ -90,7 +96,7 @@ function IconButton({
   disabled,
   title,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
   title?: string;
@@ -180,6 +186,7 @@ export default function MobileView({
 }: Props) {
   const [weekMenuOpen, setWeekMenuOpen] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
+  const [allergenOpenId, setAllergenOpenId] = useState<string | null>(null);
 
   const weekMenuRef = useRef<HTMLDivElement | null>(null);
   const calWrapRef = useRef<HTMLDivElement | null>(null);
@@ -243,6 +250,20 @@ export default function MobileView({
   };
 
   const shortDayTabs = ["Po", "Út", "St", "Čt", "Pá", "So"];
+
+  const rowCardBase =
+    "rounded-[22px] border px-3 py-3 shadow-[0_8px_22px_rgba(27,54,39,0.03)] transition";
+  const rowCard = "border-[#bde7c8] bg-white";
+  const rowCardActive = "border-[#8ec8a1] bg-[#e8f6eb]";
+
+  const addBtn =
+    "rounded-full px-3 py-2 text-[12px] font-extrabold text-[#0b7c4d] ring-1 ring-[#78d3a0] bg-white hover:bg-[#f5fbf7] transition";
+
+  const priceBtn =
+    "rounded-[16px] border border-[#bde7c8] bg-[#f3faf5] px-3 py-2 text-[14px] font-extrabold text-[#0b7c4d]";
+
+  const qtyBtn =
+    "h-9 w-9 rounded-[12px] bg-white text-[20px] font-extrabold text-[#0b7c4d] ring-1 ring-[#78d3a0] hover:bg-[#f5fbf7] transition";
 
   return (
     <div className="md:hidden px-3 pb-4">
@@ -561,79 +582,77 @@ export default function MobileView({
             </div>
           </div>
 
-          <div className="mt-3 space-y-3">
+          <div className="mt-3 grid gap-2.5">
             {menuLoading ? (
-              <div className={panel}>
-                <div className="text-[13px] font-semibold text-gray-500">Načítám menu…</div>
+              <div className="rounded-[22px] border border-[#bde7c8] bg-white px-4 py-4 text-sm font-semibold text-gray-600">
+                Načítám menu…
               </div>
             ) : menuError ? (
-              <div className="rounded-[22px] bg-red-50 p-3 ring-1 ring-red-200">
-                <div className="text-[13px] font-semibold text-red-600">{menuError}</div>
+              <div className="rounded-[22px] border border-[#bde7c8] bg-white px-4 py-4 text-sm font-semibold text-red-600">
+                {menuError}
               </div>
             ) : activeItems.length === 0 ? (
-              <div className={panel}>
-                <div className="text-[13px] font-semibold text-gray-500">
-                  Na tento den není v menu nic zadané.
-                </div>
+              <div className="rounded-[22px] border border-[#bde7c8] bg-white px-4 py-4 text-sm font-semibold text-gray-600">
+                Na tento den není v menu nic zadané.
               </div>
             ) : (
-              activeItems.map((item) => {
-                const qty = cartQty(item.foodId, item.dayKey);
+              activeItems.map((it) => {
+                const q = cartQty(it.foodId, it.dayKey);
+                const allergens = it.allergens ?? "";
 
                 return (
                   <div
-                    key={item.id}
-                    className={cls(
-                      "rounded-[22px] bg-white p-3 ring-2 transition",
-                      qty > 0 ? "bg-green-50/40 ring-green-300" : "ring-green-200/70"
-                    )}
+                    key={it.id}
+                    className={cls(rowCardBase, q > 0 ? rowCardActive : rowCard)}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-[16px] font-extrabold text-gray-900">
-                          {item.name}
+                    <div className="grid grid-cols-[1fr_auto_auto] items-start gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-start gap-2">
+                          <div className="line-clamp-2 min-w-0 flex-1 text-[15px] font-extrabold leading-[1.25] text-gray-900">
+                            {it.name}
+                          </div>
+
+                          <button
+                            type="button"
+                            className="mt-[1px] shrink-0"
+                            onClick={() => setAllergenOpenId(it.id)}
+                            aria-label="Zobrazit alergeny"
+                          >
+                            <InfoIcon />
+                          </button>
                         </div>
-                        <div className="mt-1 truncate text-[11px] font-extrabold text-green-700">
-                          {item.subtitle || "—"}
+
+                        <div className="mt-1 text-[12px] font-extrabold text-[#1d8f52]">
+                          {it.subtitle || "Bez kategorie"}
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        title={item.allergens ? `Alergeny: ${item.allergens}` : "Alergeny"}
-                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-50 text-green-700 ring-1 ring-green-200/80"
-                      >
-                        <InfoIcon className="h-4.5 w-4.5" />
-                      </button>
+                      <div className={priceBtn}>{czk(it.price)}</div>
 
-                      <div className="shrink-0 whitespace-nowrap rounded-[16px] bg-white px-4 py-2 text-[14px] font-extrabold text-green-800 ring-1 ring-green-200/80">
-                        {czk(item.price)}
-                      </div>
-
-                      {qty <= 0 ? (
+                      {q === 0 ? (
                         <button
                           type="button"
-                          onClick={() => addToCart(item)}
-                          className="shrink-0 rounded-[16px] bg-white px-4 py-2 text-[14px] font-extrabold text-green-800 ring-1 ring-green-200/80 transition hover:bg-green-50"
+                          className={addBtn}
+                          onClick={() => addToCart(it)}
                         >
                           Přidat
                         </button>
                       ) : (
-                        <div className="flex shrink-0 items-center gap-2">
+                        <div className="flex items-center gap-1">
                           <button
                             type="button"
-                            onClick={() => subFromCart(item)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-[22px] font-extrabold text-green-800 ring-1 ring-green-200/80"
+                            className={qtyBtn}
+                            onClick={() => subFromCart(it)}
                           >
                             −
                           </button>
-                          <div className="min-w-[18px] text-center text-[16px] font-extrabold text-gray-900">
-                            {qty}
+                          <div className="min-w-[18px] text-center text-[14px] font-extrabold text-gray-900">
+                            {q}
                           </div>
                           <button
                             type="button"
-                            onClick={() => addToCart(item)}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-[20px] font-extrabold text-green-800 ring-1 ring-green-200/80"
+                            className={qtyBtn}
+                            onClick={() => addToCart(it)}
                           >
                             +
                           </button>
@@ -645,11 +664,11 @@ export default function MobileView({
               })
             )}
           </div>
-        </div>
 
-        {saveMsg ? (
-          <div className="px-1 text-[13px] font-semibold text-green-700">{saveMsg}</div>
-        ) : null}
+          {saveMsg ? (
+            <div className="mt-3 px-1 text-[13px] font-semibold text-green-700">{saveMsg}</div>
+          ) : null}
+        </div>
       </section>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e7eee8] bg-white/96 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
@@ -677,6 +696,49 @@ export default function MobileView({
           </button>
         </div>
       </div>
+
+      {allergenOpenId ? (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[70] bg-black/40"
+            onClick={() => setAllergenOpenId(null)}
+          />
+          <div className="fixed inset-0 z-[80] overflow-auto px-3 py-6">
+            <div className="mx-auto w-full max-w-md rounded-[28px] bg-white p-4 shadow-[0_22px_70px_rgba(0,0,0,0.2)] ring-1 ring-black/10">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[18px] font-extrabold text-gray-900">Alergeny</div>
+                </div>
+
+                <button
+                  type="button"
+                  className="rounded-full bg-white px-3 py-2 text-[13px] font-extrabold text-gray-800 ring-1 ring-black/10 hover:bg-gray-50"
+                  onClick={() => setAllergenOpenId(null)}
+                >
+                  Zavřít
+                </button>
+              </div>
+
+              {(() => {
+                const row = activeItems.find((x) => String(x.id) === String(allergenOpenId));
+                const allergens = row?.allergens ?? "";
+
+                return (
+                  <div className="mt-4 rounded-[22px] border border-[#bde7c8] bg-[#f5fbf7] p-4">
+                    <div className="text-[15px] font-extrabold text-gray-900">
+                      {row?.name ?? "Jídlo"}
+                    </div>
+                    <div className="mt-2 text-sm font-semibold text-gray-600">
+                      {allergens ? `Alergeny: ${allergens}` : "Alergeny nejsou zadané."}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
