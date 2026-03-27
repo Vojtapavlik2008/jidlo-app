@@ -129,6 +129,14 @@ function formatDayLabelLong(iso: string) {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   return `${wd} ${dd}.${mm}.`;
 }
+function formatDayLabelCompact(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  const wd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" })
+    .format(d)
+    .replace(".", "")
+    .toLowerCase();
+  return `${wd} ${d.getDate()}.${d.getMonth() + 1}.`;
+}
 function formatCartDay(iso: string) {
   const d = new Date(iso + "T00:00:00");
   const wd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" })
@@ -138,6 +146,10 @@ function formatCartDay(iso: string) {
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   return `${wd} ${dd}.${mm}.`;
+}
+function isPastOrToday(iso: string) {
+  const todayIso = toISODateLocal(new Date());
+  return iso <= todayIso;
 }
 
 /** ===================== Allergen map ===================== */
@@ -205,23 +217,6 @@ type SystemItemRow = {
   sort_order: number | null;
   is_active: boolean | null;
 };
-
-function getTodayHoursFromRows(rows: SystemItemRow[]) {
-  const d = new Date();
-  const day = d.getDay();
-
-  let key = "sun";
-  if (day === 1) key = "mon";
-  else if (day === 2) key = "tue";
-  else if (day === 3) key = "wed";
-  else if (day === 4) key = "thu";
-  else if (day === 5) key = "fri";
-  else if (day === 6) key = "sat";
-
-  const row = rows.find((x) => x.item_key === key && x.is_active);
-  if (!row?.value_text) return null;
-  return `dnes ${row.value_text}`;
-}
 
 /** ===================== Auth Modal ===================== */
 function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -1811,16 +1806,6 @@ export default function MobileView({
     [systemItems]
   );
 
-  const shopHoursToday = useMemo(
-    () => getTodayHoursFromRows(shopHoursRows),
-    [shopHoursRows]
-  );
-
-  const canteenHoursToday = useMemo(
-    () => getTodayHoursFromRows(canteenHoursRows),
-    [canteenHoursRows]
-  );
-
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 60_000);
@@ -1853,11 +1838,13 @@ export default function MobileView({
 
   useEffect(() => {
     const todayIso = toISODateLocal(new Date());
-    setSelectedDate(tabDays.includes(todayIso) ? todayIso : tabDays[0]);
+    setSelectedDate((prev) => (tabDays.includes(prev) ? prev : tabDays.includes(todayIso) ? todayIso : tabDays[0]));
   }, [tabDays]);
 
   const zavreno = isSunday(selectedDate);
   const selectedDayLabel = formatDayLabelLong(selectedDate);
+  const selectedDayCompact = formatDayLabelCompact(selectedDate);
+  const rangeLabel = tabDays.length ? formatRangeShort(tabDays[0], tabDays[tabDays.length - 1]) : "";
 
   const [menuByDate, setMenuByDate] = useState<Record<string, MenuRow[]>>({});
   const [loadingMenu, setLoadingMenu] = useState(false);
@@ -2010,76 +1997,88 @@ export default function MobileView({
     );
   }
 
-  function SectionTitle() {
-    if (activeSection === "daily") {
-      return (
-        <div className="space-y-2">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[20px] font-extrabold text-green-700 leading-tight">
-                Denní menu
-              </div>
-              <div className="text-[13px] font-semibold text-gray-500">
-                pro aktuální den ({selectedDayLabel})
-              </div>
+  function SectionHeaderDaily() {
+    return (
+      <div className="rounded-[26px] border border-[#dbeee2] bg-white px-4 py-3 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-[20px] font-extrabold text-green-700 leading-none">Denní menu</span>
+              <span className="text-[14px] font-bold text-gray-600">{selectedDayCompact}</span>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setDayPickerOpen(true)}
-              className="shrink-0 rounded-2xl px-3 py-2 text-[12px] font-extrabold bg-white ring-1 ring-black/10 hover:bg-gray-50"
-            >
-              Vybrat den
-            </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setDayPickerOpen(true)}
+            className="shrink-0 text-[13px] font-semibold text-gray-500 underline underline-offset-2"
+          >
+            Vybrat den
+          </button>
         </div>
-      );
-    }
+      </div>
+    );
+  }
 
-    if (activeSection === "order") {
-      return (
-        <div className="space-y-2">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[20px] font-extrabold text-green-700 leading-tight">
-                Objednávka jídel
-              </div>
-              <div className="text-[13px] font-semibold text-gray-500">
-                {selectedDayLabel}
-              </div>
-            </div>
+  function SectionHeaderOrder() {
+    return (
+      <div className="rounded-[26px] border border-[#dbeee2] bg-white px-4 py-3 shadow-sm">
+        <div className="text-[20px] font-extrabold text-green-700 leading-none">Objednávka jídel</div>
 
-            <button
-              type="button"
-              onClick={() => setDayPickerOpen(true)}
-              className="shrink-0 rounded-2xl px-3 py-2 text-[12px] font-extrabold bg-white ring-1 ring-black/10 hover:bg-gray-50"
-            >
-              Vybrat den
-            </button>
+        <div className="mt-3 grid grid-cols-[40px_1fr_40px] items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setWeekOffset(0)}
+            disabled={weekOffset === 0}
+            className="h-10 rounded-2xl bg-white ring-1 ring-black/10 font-extrabold text-gray-700 disabled:opacity-35"
+          >
+            ‹
+          </button>
+
+          <div className="rounded-2xl bg-[#f7fbf8] px-3 py-2 text-center ring-1 ring-green-200/80">
+            <div className="text-[13px] font-extrabold text-green-800">{rangeLabel}</div>
           </div>
-        </div>
-      );
-    }
 
-    if (activeSection === "jirka") {
-      return (
-        <div>
-          <div className="text-[20px] font-extrabold text-green-700 leading-tight">Otevírací doba</div>
-          <div className="text-[13px] font-semibold text-gray-500">Jídelna a obchod</div>
+          <button
+            type="button"
+            onClick={() => setWeekOffset(1)}
+            disabled={weekOffset === 1}
+            className="h-10 rounded-2xl bg-white ring-1 ring-black/10 font-extrabold text-gray-700 disabled:opacity-35"
+          >
+            ›
+          </button>
         </div>
-      );
-    }
 
-    if (activeSection === "about") {
-      return (
-        <div>
-          <div className="text-[20px] font-extrabold text-green-700 leading-tight">O nás</div>
-          <div className="text-[13px] font-semibold text-gray-500">Základní informace o Jiřce</div>
+        <div className="mt-3 grid grid-cols-6 gap-1.5">
+          {tabDays.map((d) => {
+            const active = d === selectedDate;
+            const disabled = isPastOrToday(d);
+
+            return (
+              <button
+                key={d}
+                type="button"
+                disabled={disabled}
+                onClick={() => setSelectedDate(d)}
+                className={[
+                  "rounded-2xl px-2 py-2 text-center ring-1 transition",
+                  disabled
+                    ? "bg-gray-50 text-gray-300 ring-gray-200 cursor-not-allowed"
+                    : active
+                    ? "bg-green-600 text-white ring-green-600"
+                    : "bg-white text-gray-800 ring-black/10 hover:bg-gray-50",
+                ].join(" ")}
+              >
+                <div className="text-[11px] font-extrabold">{formatDayShort(d)}</div>
+                <div className="mt-0.5 text-[10px] font-semibold opacity-80">
+                  {new Date(d + "T00:00:00").getDate()}.{new Date(d + "T00:00:00").getMonth() + 1}.
+                </div>
+              </button>
+            );
+          })}
         </div>
-      );
-    }
-
-    return null;
+      </div>
+    );
   }
 
   function MenuList({ mode }: { mode: "daily" | "order" }) {
@@ -2104,25 +2103,22 @@ export default function MobileView({
           const price = r.jidla?.cena ?? 0;
           const category = r.jidla?.kategorie ?? "";
           const allergenList = allergenNamesFromColumn(r.jidla?.alergeny ?? "");
+          const orderDisabled = isPastOrToday(selectedDate) || zavreno;
 
           return (
             <div
               key={k}
               className={[
-                "rounded-3xl px-3 py-3 ring-1 transition",
+                "rounded-[24px] border px-3 py-3 shadow-sm transition",
                 qty > 0 && mode === "order"
-                  ? "bg-green-50 ring-green-300/70"
-                  : "bg-white ring-black/10 hover:bg-gray-50",
+                  ? "border-green-300/80 bg-green-50"
+                  : "border-black/10 bg-white",
               ].join(" ")}
             >
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-start gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[15px] font-extrabold text-[#1f2f56] leading-snug break-words">
-                        {title}
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="truncate text-[15px] font-extrabold text-[#1f2f56]">{title}</div>
 
                     <button
                       type="button"
@@ -2139,13 +2135,11 @@ export default function MobileView({
                     </button>
                   </div>
 
-                  <div className="mt-1 text-[12px] font-semibold text-[#08a652]">
-                    {category}
-                  </div>
+                  <div className="mt-1 text-[12px] font-semibold text-gray-500">{category}</div>
                 </div>
 
-                <div className="shrink-0 flex flex-col items-end gap-2">
-                  <div className="text-[15px] font-extrabold text-[#067647] whitespace-nowrap">
+                <div className="shrink-0 flex items-center gap-3 self-stretch">
+                  <div className="flex h-full min-w-[54px] items-center justify-center text-[15px] font-extrabold text-[#067647] whitespace-nowrap">
                     {price} Kč
                   </div>
 
@@ -2153,11 +2147,17 @@ export default function MobileView({
                     qty === 0 ? (
                       <button
                         type="button"
+                        disabled={orderDisabled}
                         onClick={() => {
-                          if (zavreno) return;
+                          if (orderDisabled) return;
                           addOne(selectedDate, row);
                         }}
-                        className="rounded-2xl px-3 py-2 text-[12px] font-extrabold text-green-700 bg-white ring-1 ring-green-600/70 hover:bg-green-600 hover:text-white"
+                        className={[
+                          "rounded-2xl px-3 py-2 text-[12px] font-extrabold ring-1",
+                          orderDisabled
+                            ? "bg-gray-50 text-gray-300 ring-gray-200 cursor-not-allowed"
+                            : "bg-white text-green-700 ring-green-600/70 hover:bg-green-600 hover:text-white",
+                        ].join(" ")}
                       >
                         Přidat
                       </button>
@@ -2191,56 +2191,52 @@ export default function MobileView({
   }
 
   function JirkaSection() {
+    const photoSources = ["/fotky/obchod-1.jpg", "/fotky/obchod-2.jpg", "/fotky/jidelna-1.jpg"];
+
     return (
-      <div className="space-y-3">
-        <div className="rounded-3xl bg-[#f7fbf8] p-4 ring-1 ring-green-100">
-          <div className="text-[16px] font-extrabold text-green-700">Jídelna</div>
-          <div className="mt-2 space-y-2">
-            {loadingSystemItems ? (
-              <div className="text-[13px] font-semibold text-gray-500">Načítám…</div>
-            ) : canteenHoursRows.length === 0 ? (
-              <div className="text-[13px] font-semibold text-gray-500">Otevírací doba zatím není vyplněná.</div>
-            ) : (
-              canteenHoursRows.map((row) => (
-                <div
-                  key={`canteen-${row.id}`}
-                  className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 ring-1 ring-green-100"
-                >
-                  <div className="text-[14px] font-extrabold text-[#1f2f56]">{row.label ?? "Den"}</div>
-                  <div className="text-[14px] font-semibold text-gray-700">{row.value_text ?? "—"}</div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-3xl bg-[#f7fbf8] p-4 ring-1 ring-green-100">
-          <div className="text-[16px] font-extrabold text-green-700">Obchod</div>
-          <div className="mt-2 space-y-2">
-            {loadingSystemItems ? (
-              <div className="text-[13px] font-semibold text-gray-500">Načítám…</div>
-            ) : shopHoursRows.length === 0 ? (
-              <div className="text-[13px] font-semibold text-gray-500">Otevírací doba zatím není vyplněná.</div>
-            ) : (
-              shopHoursRows.map((row) => (
-                <div
-                  key={`shop-${row.id}`}
-                  className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 ring-1 ring-green-100"
-                >
-                  <div className="text-[14px] font-extrabold text-[#1f2f56]">{row.label ?? "Den"}</div>
-                  <div className="text-[14px] font-semibold text-gray-700">{row.value_text ?? "—"}</div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
+      <div className="space-y-4">
         <div className="grid grid-cols-1 gap-3">
-          {["/fotky/obchod-1.jpg", "/fotky/obchod-2.jpg", "/fotky/jidelna-1.jpg"].map((src) => (
-            <div key={src} className="overflow-hidden rounded-3xl bg-white ring-1 ring-black/10 shadow-sm">
-              <img src={src} alt="Jiřka" className="h-48 w-full object-cover" />
+          {photoSources.map((src) => (
+            <div key={src} className="overflow-hidden rounded-[24px] bg-white ring-1 ring-black/10 shadow-sm">
+              <img src={src} alt="Jiřka" className="h-44 w-full object-cover" />
             </div>
           ))}
+        </div>
+
+        <div className="rounded-[24px] border border-[#dbeee2] bg-white px-4 py-3">
+          <div className="text-[16px] font-extrabold text-green-700">Jídelna</div>
+          <div className="mt-2 space-y-1.5">
+            {loadingSystemItems ? (
+              <div className="text-[13px] text-gray-500">Načítám…</div>
+            ) : canteenHoursRows.length === 0 ? (
+              <div className="text-[13px] text-gray-500">Otevírací doba zatím není vyplněná.</div>
+            ) : (
+              canteenHoursRows.map((row) => (
+                <div key={`canteen-${row.id}`} className="text-[13px] text-gray-700">
+                  <span className="font-extrabold text-[#1f2f56]">{row.label ?? "Den"}:</span>{" "}
+                  <span className="font-semibold">{row.value_text ?? "—"}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-[24px] border border-[#dbeee2] bg-white px-4 py-3">
+          <div className="text-[16px] font-extrabold text-green-700">Obchod</div>
+          <div className="mt-2 space-y-1.5">
+            {loadingSystemItems ? (
+              <div className="text-[13px] text-gray-500">Načítám…</div>
+            ) : shopHoursRows.length === 0 ? (
+              <div className="text-[13px] text-gray-500">Otevírací doba zatím není vyplněná.</div>
+            ) : (
+              shopHoursRows.map((row) => (
+                <div key={`shop-${row.id}`} className="text-[13px] text-gray-700">
+                  <span className="font-extrabold text-[#1f2f56]">{row.label ?? "Den"}:</span>{" "}
+                  <span className="font-semibold">{row.value_text ?? "—"}</span>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     );
@@ -2249,7 +2245,7 @@ export default function MobileView({
   function AboutSection() {
     return (
       <div className="space-y-3">
-        <div className="rounded-3xl bg-white p-4 ring-1 ring-black/10 shadow-sm">
+        <div className="rounded-[24px] bg-white p-4 ring-1 ring-black/10 shadow-sm">
           <div className="text-[15px] font-extrabold text-green-700">Jiřka</div>
           <div className="mt-2 text-[14px] leading-6 text-gray-700 whitespace-pre-line">
             {loadingSystemItems
@@ -2258,17 +2254,17 @@ export default function MobileView({
           </div>
         </div>
 
-        <div className="rounded-3xl bg-green-50 p-4 ring-1 ring-green-100">
+        <div className="rounded-[24px] bg-green-50 p-4 ring-1 ring-green-100">
           <div className="text-[13px] font-extrabold uppercase tracking-wide text-green-700">Adresa</div>
           <div className="mt-1 text-[14px] font-semibold text-gray-700">Havlíčkova 72, 29001 Poděbrady</div>
         </div>
 
-        <div className="rounded-3xl bg-white p-4 ring-1 ring-black/10 shadow-sm">
+        <div className="rounded-[24px] bg-white p-4 ring-1 ring-black/10 shadow-sm">
           <div className="text-[13px] font-extrabold uppercase tracking-wide text-green-700">IČO</div>
           <div className="mt-1 text-[14px] font-semibold text-gray-700">Doplníme později</div>
         </div>
 
-        <div className="rounded-3xl bg-white p-4 ring-1 ring-black/10 shadow-sm">
+        <div className="rounded-[24px] bg-white p-4 ring-1 ring-black/10 shadow-sm">
           <div className="text-[13px] font-extrabold uppercase tracking-wide text-green-700">Kontakt</div>
           <div className="mt-1 text-[14px] font-semibold text-gray-700">Doplníme později</div>
         </div>
@@ -2276,42 +2272,8 @@ export default function MobileView({
     );
   }
 
-  const showFixedCartBar = activeSection === "order";
-
-  function FixedCartBar() {
-    if (!showFixedCartBar) return null;
-
-    return (
-      <div className="fixed left-0 right-0 z-40" style={{ bottom: 72 }}>
-        <div className="max-w-md mx-auto px-3">
-          <div className="rounded-2xl bg-white shadow-lg ring-1 ring-black/10 px-3 py-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <div className="text-[11px] font-semibold text-gray-600">Košík</div>
-                <div className="text-[13px] font-extrabold text-gray-900">
-                  {cartCount} ks · {total} Kč
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setCartOpen(true)}
-                disabled={cartCount === 0}
-                className="rounded-2xl px-4 py-2.5 text-[13px] font-extrabold bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
-              >
-                Pokračovat →
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const contentPadBottom = showFixedCartBar ? "pb-[152px]" : "pb-24";
-
   return (
-    <div className={`min-h-[100dvh] bg-white ${contentPadBottom}`}>
+    <div className="min-h-[100dvh] bg-white pb-24">
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
       <AllergensModal open={algOpen} onClose={() => setAlgOpen(false)} title={algTitle} allergens={algList} />
 
@@ -2333,7 +2295,7 @@ export default function MobileView({
         credit={credit}
       />
 
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-100">
+      <div className="sticky top-0 z-40 bg-white">
         <div className="max-w-md mx-auto px-3 pt-3 pb-2">
           <div className="flex items-start gap-3">
             <Image src="/logo.png" alt="Jiřka" width={54} height={54} className="h-[54px] w-[54px] object-contain" />
@@ -2350,15 +2312,24 @@ export default function MobileView({
               </div>
             </div>
           </div>
+
+          <div className="mt-3 h-[3px] rounded-full bg-green-600/85" />
         </div>
       </div>
 
       <div className="max-w-md mx-auto px-3 py-3 space-y-3">
-        <SectionTitle />
+        {activeSection === "daily" && <SectionHeaderDaily />}
+        {activeSection === "order" && <SectionHeaderOrder />}
 
         {(activeSection === "daily" || activeSection === "order") && zavreno ? (
           <div className="rounded-2xl bg-red-50 ring-2 ring-red-200/60 p-3 text-red-700 font-semibold">
             V neděli je zavřeno.
+          </div>
+        ) : null}
+
+        {activeSection === "order" && isPastOrToday(selectedDate) ? (
+          <div className="rounded-2xl bg-neutral-50 ring-1 ring-black/10 p-3 text-[13px] font-semibold text-gray-600">
+            Objednávat lze jen na budoucí dny.
           </div>
         ) : null}
 
@@ -2367,8 +2338,6 @@ export default function MobileView({
         {activeSection === "jirka" && <JirkaSection />}
         {activeSection === "about" && <AboutSection />}
       </div>
-
-      <FixedCartBar />
 
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200">
         <div className="max-w-md mx-auto grid grid-cols-5 text-[11px] font-semibold text-gray-600">
