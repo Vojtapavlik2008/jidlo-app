@@ -149,7 +149,9 @@ function formatWeekdayOnlyLong(iso: string) {
 }
 
 function formatDateShortNoLeadingZero(iso: string) {
+  if (!iso) return "";
   const d = new Date(iso + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return "";
   return `${d.getDate()}.${d.getMonth() + 1}.`;
 }
 
