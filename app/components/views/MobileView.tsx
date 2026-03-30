@@ -133,7 +133,10 @@ function formatDayShort(iso: string) {
 }
 
 function formatCartDay(iso: string) {
+  if (!iso) return "";
   const d = new Date(iso + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return "";
+
   const wd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" })
     .format(d)
     .replace(".", "")
