@@ -76,6 +76,7 @@ export async function createOrder(params: {
 function digitsOnly(s: string) {
   return (s ?? "").replace(/\D/g, "");
 }
+
 function formatPhoneCz(raw: string) {
   const d = digitsOnly(raw).slice(0, 9);
   const a = d.slice(0, 3);
@@ -83,6 +84,7 @@ function formatPhoneCz(raw: string) {
   const c = d.slice(6, 9);
   return [a, b, c].filter(Boolean).join(" ").trim();
 }
+
 function toISODateLocal(d: Date) {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
@@ -91,10 +93,12 @@ function toISODateLocal(d: Date) {
   const dd = String(x.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
 }
+
 function isSunday(iso: string) {
   const d = new Date(iso + "T00:00:00");
   return d.getDay() === 0;
 }
+
 function baseMondayAutoNextWeekend(now: Date) {
   const x = new Date(now);
   x.setHours(0, 0, 0, 0);
@@ -102,9 +106,11 @@ function baseMondayAutoNextWeekend(now: Date) {
   const diffToMonday = day === 0 ? 6 : day - 1;
   const monday = new Date(x);
   monday.setDate(monday.getDate() - diffToMonday);
+
   if (day === 6 || day === 0) monday.setDate(monday.getDate() + 7);
   return monday;
 }
+
 function formatRangeShort(fromIso: string, toIso: string) {
   const f = new Date(fromIso + "T00:00:00");
   const t = new Date(toIso + "T00:00:00");
@@ -114,11 +120,13 @@ function formatRangeShort(fromIso: string, toIso: string) {
   const tMm = String(t.getMonth() + 1).padStart(2, "0");
   return `${fDd}.${fMm}.–${tDd}.${tMm}.`;
 }
+
 function formatDayShort(iso: string) {
   const d = new Date(iso + "T00:00:00");
   const map = ["Ne", "Po", "Út", "St", "Čt", "Pá", "So"];
   return map[d.getDay()];
 }
+
 function formatCartDay(iso: string) {
   const d = new Date(iso + "T00:00:00");
   const wd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" })
@@ -129,20 +137,19 @@ function formatCartDay(iso: string) {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   return `${wd} ${dd}.${mm}.`;
 }
-function isPastOrToday(iso: string) {
-  const todayIso = toISODateLocal(new Date());
-  return iso <= todayIso;
-}
+
 function formatWeekdayOnlyLong(iso: string) {
   const d = new Date(iso + "T00:00:00");
   return new Intl.DateTimeFormat("cs-CZ", { weekday: "long" })
     .format(d)
     .replace(/^\w/, (c) => c.toUpperCase());
 }
+
 function formatDateShortNoLeadingZero(iso: string) {
   const d = new Date(iso + "T00:00:00");
   return `${d.getDate()}.${d.getMonth() + 1}.`;
 }
+
 function formatSelectedDaySmart(iso: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -157,6 +164,39 @@ function formatSelectedDaySmart(iso: string) {
   if (diffDays === 1) return `Zítra · ${dateTxt}`;
 
   return `${formatWeekdayOnlyLong(iso)} · ${dateTxt}`;
+}
+
+function isTodayIso(iso: string) {
+  return iso === toISODateLocal(new Date());
+}
+
+function isPastDay(iso: string) {
+  return iso < toISODateLocal(new Date());
+}
+
+function canAddToCartForDay(iso: string) {
+  const todayIso = toISODateLocal(new Date());
+
+  if (isSunday(iso)) return false;
+  if (iso < todayIso) return false;
+
+  if (iso === todayIso) {
+    const now = new Date();
+    const minutes = now.getHours() * 60 + now.getMinutes();
+    return minutes < 13 * 60;
+  }
+
+  return true;
+}
+
+function orderDayHint(iso: string) {
+  const todayIso = toISODateLocal(new Date());
+
+  if (isSunday(iso)) return "V neděli je zavřeno.";
+  if (iso < todayIso) return "Objednávat lze jen na dnešek do 13:00 nebo na budoucí dny.";
+  if (iso === todayIso && !canAddToCartForDay(iso)) return "Na dnešek šlo objednat jen do 13:00.";
+
+  return null;
 }
 
 /** ===================== Allergen map ===================== */
@@ -274,12 +314,10 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
         return;
       }
       const uid = data.user?.id;
-      if (uid) {
-        if (fullName.trim() || phone.trim() || address.trim()) {
-          try {
-            await upsertProfile(uid);
-          } catch {}
-        }
+      if (uid && (fullName.trim() || phone.trim() || address.trim())) {
+        try {
+          await upsertProfile(uid);
+        } catch {}
       }
       onClose();
     } catch (e: any) {
@@ -293,7 +331,10 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
     setBusy(true);
     setMsg(null);
     try {
-      const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+      });
       if (error) {
         setMsg(error.message);
         return;
@@ -321,7 +362,9 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
       <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
       <div className="relative w-full max-w-md rounded-3xl bg-white p-4 shadow-2xl ring-1 ring-black/10">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-base font-extrabold text-green-700">{tab === "login" ? "Přihlášení" : "Registrace"}</div>
+          <div className="text-base font-extrabold text-green-700">
+            {tab === "login" ? "Přihlášení" : "Registrace"}
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -407,7 +450,9 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
                   autoComplete="tel"
                   className="w-full rounded-2xl bg-white px-3 py-2.5 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
                 />
-                {!phoneOk ? <div className="mt-1 text-[11px] font-bold text-red-600">Telefon musí mít 9 číslic.</div> : null}
+                {!phoneOk ? (
+                  <div className="mt-1 text-[11px] font-bold text-red-600">Telefon musí mít 9 číslic.</div>
+                ) : null}
               </label>
 
               <label className="block">
@@ -629,6 +674,12 @@ function CartSheet({
 
   const didAutofillRef = useRef(false);
 
+  type DayTime = { from: string; to: string } | null;
+
+  const [timeOpen, setTimeOpen] = useState(false);
+  const [sameTimeForAll, setSameTimeForAll] = useState(false);
+  const [activeTimeDay, setActiveTimeDay] = useState<string | null>(null);
+
   useEffect(() => {
     if (open) return;
     setStep("cart");
@@ -724,6 +775,143 @@ function CartSheet({
     "rounded-2xl px-4 py-3 text-[13px] font-extrabold bg-white ring-1 ring-black/10 hover:bg-gray-50";
   const qtyBtn =
     "h-8 w-8 rounded-xl bg-white ring-1 ring-black/10 text-gray-900 font-extrabold hover:bg-gray-50 active:scale-[0.98] disabled:opacity-40";
+
+  const cartDays = useMemo(() => Array.from(new Set(cart.map((it) => it.datum))).sort(), [cart]);
+
+  const timeSlots = useMemo(() => {
+    const toMin = (t: string) => {
+      const [h, m] = t.split(":").map(Number);
+      return h * 60 + m;
+    };
+    const toStr = (n: number) => {
+      const h = String(Math.floor(n / 60)).padStart(2, "0");
+      const m = String(n % 60).padStart(2, "0");
+      return `${h}:${m}`;
+    };
+    const start = toMin("10:00");
+    const end = toMin("13:30");
+    const step = 30;
+    const out: { from: string; to: string; label: string }[] = [];
+    for (let t = start; t + step <= end; t += step) {
+      const from = toStr(t);
+      const to = toStr(t + step);
+      out.push({ from, to, label: `${from}–${to}` });
+    }
+    return out;
+  }, []);
+
+  useEffect(() => {
+    if (!timeOpen) return;
+    const first = cartDays[0] ?? null;
+    setActiveTimeDay((prev) => (prev && cartDays.includes(prev) ? prev : first));
+    if (cartDays.length <= 1) setSameTimeForAll(false);
+  }, [timeOpen, cartDays]);
+
+  function pickTime(slot: { from: string; to: string }) {
+    if (!activeTimeDay) return;
+
+    const current = (timesByDay as any)?.[activeTimeDay] as DayTime;
+    const isSame = !!current && current.from === slot.from && current.to === slot.to;
+
+    if (sameTimeForAll && cartDays.length > 1) {
+      setTimesByDay((prev: any) => {
+        const next = { ...(prev ?? {}) };
+        for (const d of cartDays) next[d] = isSame ? null : { from: slot.from, to: slot.to };
+        return next;
+      });
+      return;
+    }
+
+    setTimesByDay((prev: any) => {
+      const next = { ...(prev ?? {}) };
+      next[activeTimeDay] = isSame ? null : { from: slot.from, to: slot.to };
+      return next;
+    });
+  }
+
+  const timeSummary = useMemo(() => {
+    if (cartDays.length === 0) return "Vybrat čas";
+    const pickedDays = cartDays.filter((d) => (timesByDay as any)?.[d]);
+    if (pickedDays.length === 0) return "Vybrat čas";
+
+    if (cartDays.length === 1) {
+      const d = cartDays[0];
+      const t = (timesByDay as any)?.[d] as DayTime;
+      if (!t) return "Vybrat čas";
+      return `${formatCartDay(d)} ${t.from}–${t.to}`;
+    }
+
+    if (sameTimeForAll) {
+      const d = pickedDays[0];
+      const t = (timesByDay as any)?.[d] as DayTime;
+      if (!t) return "Vybrat čas";
+      return `Všechny dny ${t.from}–${t.to}`;
+    }
+
+    const d0 = pickedDays[0];
+    const t0 = (timesByDay as any)?.[d0] as DayTime;
+    if (!t0) return "Vybrat čas";
+    return `${formatCartDay(d0)} ${t0.from}–${t0.to}${pickedDays.length > 1 ? ` +${pickedDays.length - 1}` : ""}`;
+  }, [cartDays, timesByDay, sameTimeForAll]);
+
+  const evalScrollHint = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const moreDown = el.scrollTop + el.clientHeight < el.scrollHeight - 2;
+    setCanScrollDown(moreDown);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(evalScrollHint, 50);
+    return () => clearTimeout(t);
+  }, [open, cartCount, step]);
+
+  async function submitOrder() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      if (!authed) {
+        setMsg("Nejdřív se přihlas.");
+        onNeedLogin();
+        return;
+      }
+
+      if (!name.trim() || digitsOnly(phone).length !== 9) {
+        setMsg("Vyplň jméno a telefon (9 číslic).");
+        return;
+      }
+      if (deliveryMode === "delivery" && !address.trim()) {
+        setMsg("Vyplň adresu pro doručení.");
+        return;
+      }
+
+      if (payment === "credit" && credit < payTotal) {
+        setMsg("Nemáš dostatečný kredit.");
+        return;
+      }
+
+      const id = await createOrder({
+        full_name: name,
+        phone,
+        address,
+        note,
+        delivery_mode: deliveryMode,
+        packaging_mode: packagingMode,
+        payment_method: payment,
+        times_by_day: timesByDay,
+        cart,
+      });
+
+      setOrderId(id);
+      clearCart();
+      setStep("done");
+    } catch (e: any) {
+      setMsg(e?.message ?? "Nepovedlo se odeslat objednávku.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function PickerSheet({
     open,
@@ -866,153 +1054,11 @@ function CartSheet({
     [pill]
   );
 
-  type DayTime = { from: string; to: string } | null;
-
-  const [timeOpen, setTimeOpen] = useState(false);
-  const [sameTimeForAll, setSameTimeForAll] = useState(false);
-  const [activeTimeDay, setActiveTimeDay] = useState<string | null>(null);
-
-  const cartDays = useMemo(() => Array.from(new Set(cart.map((it) => it.datum))).sort(), [cart]);
-
-  const timeSlots = useMemo(() => {
-    const toMin = (t: string) => {
-      const [h, m] = t.split(":").map(Number);
-      return h * 60 + m;
-    };
-    const toStr = (n: number) => {
-      const h = String(Math.floor(n / 60)).padStart(2, "0");
-      const m = String(n % 60).padStart(2, "0");
-      return `${h}:${m}`;
-    };
-    const start = toMin("10:00");
-    const end = toMin("13:30");
-    const step = 30;
-    const out: { from: string; to: string; label: string }[] = [];
-    for (let t = start; t + step <= end; t += step) {
-      const from = toStr(t);
-      const to = toStr(t + step);
-      out.push({ from, to, label: `${from}–${to}` });
-    }
-    return out;
-  }, []);
-
-  useEffect(() => {
-    if (!timeOpen) return;
-    const first = cartDays[0] ?? null;
-    setActiveTimeDay((prev) => (prev && cartDays.includes(prev) ? prev : first));
-    if (cartDays.length <= 1) setSameTimeForAll(false);
-  }, [timeOpen, cartDays]);
-
-  function pickTime(slot: { from: string; to: string }) {
-    if (!activeTimeDay) return;
-
-    const current = (timesByDay as any)?.[activeTimeDay] as DayTime;
-    const isSame = !!current && current.from === slot.from && current.to === slot.to;
-
-    if (sameTimeForAll && cartDays.length > 1) {
-      setTimesByDay((prev: any) => {
-        const next = { ...(prev ?? {}) };
-        for (const d of cartDays) next[d] = isSame ? null : { from: slot.from, to: slot.to };
-        return next;
-      });
-      return;
-    }
-
-    setTimesByDay((prev: any) => {
-      const next = { ...(prev ?? {}) };
-      next[activeTimeDay] = isSame ? null : { from: slot.from, to: slot.to };
-      return next;
-    });
-  }
-
-  const timeSummary = useMemo(() => {
-    if (cartDays.length === 0) return "Vybrat čas";
-    const pickedDays = cartDays.filter((d) => (timesByDay as any)?.[d]);
-    if (pickedDays.length === 0) return "Vybrat čas";
-
-    if (cartDays.length === 1) {
-      const d = cartDays[0];
-      const t = (timesByDay as any)?.[d] as DayTime;
-      if (!t) return "Vybrat čas";
-      return `${formatCartDay(d)} ${t.from}–${t.to}`;
-    }
-
-    if (sameTimeForAll) {
-      const d = pickedDays[0];
-      const t = (timesByDay as any)?.[d] as DayTime;
-      if (!t) return "Vybrat čas";
-      return `Všechny dny ${t.from}–${t.to}`;
-    }
-
-    const d0 = pickedDays[0];
-    const t0 = (timesByDay as any)?.[d0] as DayTime;
-    if (!t0) return "Vybrat čas";
-    return `${formatCartDay(d0)} ${t0.from}–${t0.to}${pickedDays.length > 1 ? ` +${pickedDays.length - 1}` : ""}`;
-  }, [cartDays, timesByDay, sameTimeForAll]);
-
-  const evalScrollHint = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const moreDown = el.scrollTop + el.clientHeight < el.scrollHeight - 2;
-    setCanScrollDown(moreDown);
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    const t = setTimeout(evalScrollHint, 50);
-    return () => clearTimeout(t);
-  }, [open, cartCount, step]);
-
-  async function submitOrder() {
-    setBusy(true);
-    setMsg(null);
-    try {
-      if (!authed) {
-        setMsg("Nejdřív se přihlas.");
-        onNeedLogin();
-        return;
-      }
-
-      if (!name.trim() || digitsOnly(phone).length !== 9) {
-        setMsg("Vyplň jméno a telefon (9 číslic).");
-        return;
-      }
-      if (deliveryMode === "delivery" && !address.trim()) {
-        setMsg("Vyplň adresu pro doručení.");
-        return;
-      }
-
-      if (payment === "credit" && credit < payTotal) {
-        setMsg("Nemáš dostatečný kredit.");
-        return;
-      }
-
-      const id = await createOrder({
-        full_name: name,
-        phone,
-        address,
-        note,
-        delivery_mode: deliveryMode,
-        packaging_mode: packagingMode,
-        payment_method: payment,
-        times_by_day: timesByDay,
-        cart,
-      });
-
-      setOrderId(id);
-      clearCart();
-      setStep("done");
-    } catch (e: any) {
-      setMsg(e?.message ?? "Nepovedlo se odeslat objednávku.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   if (!open) return null;
 
   const packagingLabel =
     packagingMode === "plastic" ? "Plastová krabička" : packagingMode === "rekrabicka" ? "REkrabička" : "Jídlonosič";
+
   const paymentLabel =
     payment === "cash"
       ? "Hotově"
@@ -1114,7 +1160,10 @@ function CartSheet({
                       e.stopPropagation();
                       setPackInfoTitle("REkrabička");
                       setPackInfoImg("/baleni/rekrabicka.png");
-                      setPackInfoLines(["Záloha 80 Kč za každé hlavní jídlo (1 krabička = 1 jídlo).", "Polévka +7 Kč."]);
+                      setPackInfoLines([
+                        "Záloha 80 Kč za každé hlavní jídlo (1 krabička = 1 jídlo).",
+                        "Polévka +7 Kč.",
+                      ]);
                       setPackInfoOpen(true);
                     }}
                     className={infoBtn}
@@ -1313,7 +1362,14 @@ function CartSheet({
                   onClick={() => setPickOpen("delivery")}
                 />
 
-                <RowInput label="Jméno" value={name} onChange={setName} placeholder="Vojtěch Pavlík" autoComplete="name" />
+                <RowInput
+                  label="Jméno"
+                  value={name}
+                  onChange={setName}
+                  placeholder="Vojtěch Pavlík"
+                  autoComplete="name"
+                />
+
                 <RowInput
                   label="Telefon"
                   value={phone}
@@ -1364,18 +1420,21 @@ function CartSheet({
                       <span>Jídla</span>
                       <span className="font-extrabold">{itemsTotal} Kč</span>
                     </div>
+
                     {deliveryMode === "delivery" && cartCount > 0 ? (
                       <div className="flex items-center justify-between text-[13px] text-gray-700">
                         <span>Doprava</span>
                         <span className="font-extrabold">10 Kč</span>
                       </div>
                     ) : null}
+
                     {packagingFee > 0 ? (
                       <div className="flex items-center justify-between text-[13px] text-gray-700">
                         <span>Balení</span>
                         <span className="font-extrabold">{packagingFee} Kč</span>
                       </div>
                     ) : null}
+
                     <div className="mt-2 flex items-center justify-between border-t border-green-200/60 pt-2">
                       <span className="text-[12px] font-bold text-gray-600">Celkem</span>
                       <span className="text-[16px] font-extrabold text-green-700">{payTotal} Kč</span>
@@ -1713,11 +1772,14 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
       if (el.contains(target)) return;
       setMenuOpen(false);
     };
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMenuOpen(false);
     };
+
     document.addEventListener("pointerdown", onDoc);
     document.addEventListener("keydown", onKey);
+
     return () => {
       document.removeEventListener("pointerdown", onDoc);
       document.removeEventListener("keydown", onKey);
@@ -1841,7 +1903,10 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
 
   const baseMondayISO = useMemo(() => toISODateLocal(baseMondayAutoNextWeekend(new Date())), [tick]);
   const [weekOffset, setWeekOffset] = useState<0 | 1>(0);
-  useEffect(() => setWeekOffset(0), [baseMondayISO]);
+
+  useEffect(() => {
+    setWeekOffset(0);
+  }, [baseMondayISO]);
 
   const days = useMemo(() => {
     const base = new Date(baseMondayISO + "T00:00:00");
@@ -1858,19 +1923,23 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
 
   const tabDays = useMemo(() => days.slice(0, 6), [days]);
 
-  const [selectedDate, setSelectedDate] = useState<string>(() => {
-    const todayIso = toISODateLocal(new Date());
-    return tabDays.includes(todayIso) ? todayIso : tabDays[0];
-  });
+  const [selectedDate, setSelectedDate] = useState<string>("");
 
   useEffect(() => {
     const todayIso = toISODateLocal(new Date());
-    setSelectedDate((prev) => (tabDays.includes(prev) ? prev : tabDays.includes(todayIso) ? todayIso : tabDays[0]));
-  }, [tabDays]);
+
+    setSelectedDate((prev) => {
+      if (prev && tabDays.includes(prev)) {
+        if (prev === todayIso) return prev;
+        if (tabDays.includes(todayIso) && todayIso > prev) return todayIso;
+        return prev;
+      }
+      return tabDays.includes(todayIso) ? todayIso : tabDays[0] ?? "";
+    });
+  }, [tabDays, tick]);
 
   const zavreno = isSunday(selectedDate);
   const rangeLabel = tabDays.length ? formatRangeShort(tabDays[0], tabDays[tabDays.length - 1]) : "";
-  const smartSelectedLabel = formatSelectedDaySmart(selectedDate);
   const weekText = weekOffset === 0 ? "Tento týden" : "Příští týden";
 
   const [menuByDate, setMenuByDate] = useState<Record<string, MenuRow[]>>({});
@@ -2035,7 +2104,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
             onClick={() => setDayPickerOpen(true)}
             className="pt-1 text-right text-[14px] font-bold text-gray-700 underline decoration-1 underline-offset-4"
           >
-            {smartSelectedLabel}
+            {formatSelectedDaySmart(selectedDate)}
           </button>
         </div>
       </div>
@@ -2047,7 +2116,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
       <div className="space-y-3 px-1 pt-1">
         <div className="text-[24px] font-extrabold leading-none text-green-700">Objednávka jídel</div>
 
-        <div className="rounded-[26px] border border-[#dbeee2] bg-white px-4 py-3 shadow-sm">
+        <div className="rounded-[26px] border border-[#dbeee2] bg-white px-4 py-3 shadow-sm ring-1 ring-green-100/70">
           <div className="grid grid-cols-[40px_1fr_40px] items-center gap-2">
             <button
               type="button"
@@ -2061,13 +2130,10 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
             <button
               type="button"
               onClick={() => setDayPickerOpen(true)}
-              className="rounded-2xl bg-[#f7fbf8] px-3 py-2 text-center ring-1 ring-green-200/80"
+              className="rounded-2xl bg-[#f7fbf8] px-3 py-2 text-center ring-1 ring-green-200/80 transition hover:bg-[#eef8f1]"
             >
               <div className="text-[11px] font-bold uppercase tracking-wide text-green-700">{weekText}</div>
               <div className="mt-0.5 text-[13px] font-extrabold text-[#1f2f56]">{rangeLabel}</div>
-              <div className="mt-1 text-[12px] font-semibold text-gray-600 underline underline-offset-2">
-                {smartSelectedLabel}
-              </div>
             </button>
 
             <button
@@ -2083,7 +2149,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
           <div className="mt-3 grid grid-cols-6 gap-1.5">
             {tabDays.map((d) => {
               const active = d === selectedDate;
-              const disabled = isPastOrToday(d);
+              const disabled = isPastDay(d);
 
               return (
                 <button
@@ -2132,7 +2198,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
           const price = r.jidla?.cena ?? 0;
           const category = r.jidla?.kategorie ?? "";
           const allergenList = allergenNamesFromColumn(r.jidla?.alergeny ?? "");
-          const orderDisabled = isPastOrToday(selectedDate) || zavreno;
+          const orderDisabled = !canAddToCartForDay(selectedDate);
           const isFlashing = flashKey === k;
 
           return (
@@ -2140,9 +2206,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
               key={k}
               className={[
                 "rounded-[24px] border px-3 py-3 shadow-sm transition duration-200",
-                qty > 0 && mode === "order"
-                  ? "border-green-300/80 bg-green-50"
-                  : "border-black/10 bg-white",
+                qty > 0 && mode === "order" ? "border-green-300/80 bg-green-50" : "border-black/10 bg-white",
                 isFlashing ? "scale-[1.01]" : "scale-100",
               ].join(" ")}
             >
@@ -2166,6 +2230,8 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
                       i
                     </button>
                   </div>
+
+                  {!!category ? <div className="mt-0.5 text-[12px] font-medium text-gray-500">{category}</div> : null}
                 </div>
 
                 <div className="flex shrink-0 items-center gap-3 self-stretch">
@@ -2206,6 +2272,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
                         <button
                           type="button"
                           onClick={() => {
+                            if (orderDisabled) return;
                             addOne(selectedDate, row);
                             setFlashKey(k);
                             window.setTimeout(() => setFlashKey((prev) => (prev === k ? null : prev)), 220);
@@ -2286,7 +2353,8 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
           <div className="mt-2 whitespace-pre-line text-[14px] leading-6 text-gray-700">
             {loadingSystemItems
               ? "Načítám text…"
-              : aboutTextRow?.value_text || "Sem si potom doplníš článek o Jiřce, historii, nabídce a dalších informacích."}
+              : aboutTextRow?.value_text ||
+                "Sem si potom doplníš článek o Jiřce, historii, nabídce a dalších informacích."}
           </div>
         </div>
 
@@ -2311,6 +2379,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
   return (
     <div className="min-h-[100dvh] bg-white pb-40">
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
+
       <AllergensModal
         open={algOpen}
         onClose={() => setAlgOpen(false)}
@@ -2337,36 +2406,34 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
         credit={credit}
       />
 
-      <div className="sticky top-0 z-40 bg-white">
-        <div className="mx-auto max-w-md px-3 pb-2 pt-3">
+      <div className="sticky top-0 z-40 border-b border-black/5 bg-white/95 backdrop-blur">
+        <div className="mx-auto max-w-md px-3 pb-2 pt-2">
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
               <Image
-                src="/logo-na-mobil.PNG"
+                src="/logo-na-mobil.png"
                 alt="Jiřka"
-                width={190}
-                height={70}
-                className="h-auto w-[155px] object-contain"
+                width={230}
+                height={95}
+                className="h-auto w-[172px] object-contain"
                 priority
               />
-              <div className="mt-1 text-[12px] font-semibold text-gray-500">
-                rozvoz obědu po Poděbradech
+              <div className="-mt-1 pl-1 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
+                rozvoz obědů po Poděbradech
               </div>
             </div>
 
-            <div className="flex flex-col items-end gap-2">
+            <div className="flex shrink-0 flex-col items-end gap-2 pt-1">
               <div className="flex items-center gap-2">
                 <StaffShortcut />
                 <UserArea />
               </div>
             </div>
           </div>
-
-          <div className="mt-3 h-[4px] rounded-full bg-green-600" />
         </div>
       </div>
 
-      <div className="mx-auto max-w-md space-y-3 px-3 py-3">
+      <div className="mx-auto max-w-md space-y-3 px-3 pb-3 pt-2">
         {activeSection === "daily" && <SectionHeaderDaily />}
         {activeSection === "order" && <SectionHeaderOrder />}
 
@@ -2376,9 +2443,9 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
           </div>
         ) : null}
 
-        {activeSection === "order" && isPastOrToday(selectedDate) ? (
+        {activeSection === "order" && orderDayHint(selectedDate) ? (
           <div className="rounded-2xl bg-neutral-50 p-3 text-[13px] font-semibold text-gray-600 ring-1 ring-black/10">
-            Objednávat lze jen na budoucí dny.
+            {orderDayHint(selectedDate)}
           </div>
         ) : null}
 
@@ -2393,24 +2460,27 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
           <div className="mx-auto max-w-md px-3">
             <button
               type="button"
-              onClick={() => {
-                if (cartCount <= 0) return;
-                openCart();
-              }}
+              onClick={() => openCart()}
               className={[
-                "w-full rounded-[22px] px-4 py-3 text-left shadow-lg transition",
-                cartCount > 0 ? "bg-green-600 text-white" : "bg-gray-200 text-gray-500",
+                "w-full rounded-[24px] border px-4 py-3 text-left shadow-xl transition active:scale-[0.99]",
+                cartCount > 0
+                  ? "border-green-600 bg-green-600 text-white"
+                  : "border-[#dbeee2] bg-white text-gray-900 hover:bg-gray-50",
               ].join(" ")}
             >
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wide opacity-90">Objednávka</div>
-                  <div className="text-[14px] font-extrabold">
-                    {cartCount > 0 ? `${cartCount} položek` : "Zatím nic vybráno"}
+                <div className="min-w-0">
+                  <div className={`text-[16px] font-extrabold ${cartCount > 0 ? "text-white" : "text-[#1f2f56]"}`}>
+                    Objednávka
+                  </div>
+                  <div className={`mt-0.5 text-[12px] font-semibold ${cartCount > 0 ? "text-white/85" : "text-gray-500"}`}>
+                    {cartCount > 0 ? `${cartCount} ks v košíku` : "Zatím nic vybráno"}
                   </div>
                 </div>
 
-                <div className="text-[16px] font-extrabold">{cartCount > 0 ? `${total} Kč` : "0 Kč"}</div>
+                <div className={`shrink-0 text-[18px] font-extrabold ${cartCount > 0 ? "text-white" : "text-green-700"}`}>
+                  {total} Kč
+                </div>
               </div>
             </button>
           </div>
@@ -2427,6 +2497,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
             { id: "about", label: "O nás", icon: "ℹ️" },
           ].map((x) => {
             const isActive = activeSection === x.id || (x.id === "cart" && cartOpen);
+
             return (
               <button
                 key={x.id}
