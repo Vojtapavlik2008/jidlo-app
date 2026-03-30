@@ -112,8 +112,13 @@ function baseMondayAutoNextWeekend(now: Date) {
 }
 
 function formatRangeShort(fromIso: string, toIso: string) {
+  if (!fromIso || !toIso) return "";
+
   const f = new Date(fromIso + "T00:00:00");
   const t = new Date(toIso + "T00:00:00");
+
+  if (Number.isNaN(f.getTime()) || Number.isNaN(t.getTime())) return "";
+
   const fDd = String(f.getDate()).padStart(2, "0");
   const fMm = String(f.getMonth() + 1).padStart(2, "0");
   const tDd = String(t.getDate()).padStart(2, "0");
