@@ -1902,68 +1902,72 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
     let alive = true;
 
     async function loadMenu() {
-      if (!days.length) return;
-      setLoadingMenu(true);
-      setErr(null);
+  if (!days.length) return;
+  setLoadingMenu(true);
+  setErr(null);
 
-      const { data, error } = await supabase
-        .from("menu_den")
-        .select("datum, poradi, jidlo_id, jidla:jidlo_id(nazev, cena, kategorie, alergeny, aktivni)")
-        .in("datum", days)
-        .order("datum", { ascending: true })
-        .order("poradi", { ascending: true });
+  const { data, error } = await supabase
+    .from("menu_den")
+    .select("datum, poradi, jidlo_id, jidla:jidlo_id(nazev, cena, kategorie, alergeny, aktivni)")
+    .in("datum", days)
+    .order("datum", { ascending: true })
+    .order("poradi", { ascending: true });
 
-      if (!alive) return;
+  if (!alive) return;
 
-      if (error) {
-        console.error("Mobile loadMenu error:", error);
-        setErr(error.message);
-        setMenuByDate({});
-        setLoadingMenu(false);
-        return;
-      }
+  if (error) {
+    console.error("Mobile loadMenu error:", error);
+    setErr(error.message);
+    setMenuByDate({});
+    setLoadingMenu(false);
+    return;
+  }
 
-      const rows = (data ?? [])
-        .map((r: {
-          datum: string;
-          poradi: number | null;
-          jidlo_id: string | null;
-          jidla: {
-            nazev: string;
-            cena: number | null;
-            kategorie: string | null;
-            alergeny?: string | null;
-            aktivni?: boolean | null;
-          } | null;
-        }) => ({
-          datum: r.datum,
-          poradi: Number(r.poradi ?? 0),
-          jidlo_id: r.jidlo_id,
-          jidla: r.jidla,
-        }))
-        .filter((r) => !!r.jidlo_id && !!r.jidla && (r.jidla.aktivni ?? true))
-        .map((r) => ({
-          datum: r.datum,
-          poradi: r.poradi,
-          jidlo_id: r.jidlo_id as string,
-          jidla: {
-            nazev: r.jidla?.nazev ?? "",
-            cena: r.jidla?.cena ?? null,
-            kategorie: r.jidla?.kategorie ?? null,
-            alergeny: r.jidla?.alergeny ?? null,
-          },
-        })) as MenuRow[];
+  type RawMenuRow = {
+    datum: string;
+    poradi: number | null;
+    jidlo_id: string | null;
+    jidla: {
+      nazev: string;
+      cena: number | null;
+      kategorie: string | null;
+      alergeny?: string | null;
+      aktivni?: boolean | null;
+    } | null;
+  };
 
-      const map: Record<string, MenuRow[]> = {};
-      for (const d of days) map[d] = [];
-      for (const r of rows) {
-        if (!map[r.datum]) map[r.datum] = [];
-        map[r.datum].push(r);
-      }
+  const rawRows = (data ?? []) as RawMenuRow[];
 
-      setMenuByDate(map);
-      setLoadingMenu(false);
-    }
+  const rows: MenuRow[] = rawRows
+    .map((r) => ({
+      datum: r.datum,
+      poradi: Number(r.poradi ?? 0),
+      jidlo_id: r.jidlo_id,
+      jidla: r.jidla,
+    }))
+    .filter((r) => !!r.jidlo_id && !!r.jidla && (r.jidla.aktivni ?? true))
+    .map((r) => ({
+      datum: r.datum,
+      poradi: r.poradi,
+      jidlo_id: r.jidlo_id as string,
+      jidla: {
+        nazev: r.jidla!.nazev,
+        cena: r.jidla!.cena,
+        kategorie: r.jidla!.kategorie,
+        alergeny: r.jidla!.alergeny ?? null,
+      },
+    }));
+
+  const map: Record<string, MenuRow[]> = {};
+  for (const d of days) map[d] = [];
+  for (const r of rows) {
+    if (!map[r.datum]) map[r.datum] = [];
+    map[r.datum].push(r);
+  }
+
+  setMenuByDate(map);
+  setLoadingMenu(false);
+}
 
     loadMenu();
     return () => {
