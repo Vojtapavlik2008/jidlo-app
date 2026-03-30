@@ -7,7 +7,6 @@ import { useOrder } from "@/app/components/order/order-context";
 import MobileView from "@/app/components/views/MobileView";
 import DesktopView from "@/app/components/views/DesktopView";
 
-import MobileSummary from "@/app/components/order/MobileSummary";
 import DesktopSummary from "@/app/components/order/DesktopSummary";
 import DesktopCheckout from "@/app/components/order/DesktopCheckout";
 
@@ -16,13 +15,13 @@ export default function Page() {
   const [cartOpen, setCartOpen] = useState(false);
   const { cartStep } = useOrder();
 
+  if (isMobile) {
+    return <MobileView />;
+  }
+
   return (
     <>
-      {isMobile ? (
-        <MobileView onOpenCart={() => setCartOpen(true)} />
-      ) : (
-        <DesktopView onOpenCart={() => setCartOpen(true)} />
-      )}
+      <DesktopView onOpenCart={() => setCartOpen(true)} />
 
       {cartOpen && (
         <div className="fixed inset-0 z-[9999]">
@@ -43,24 +42,14 @@ export default function Page() {
                 </button>
 
                 <div className="text-xl font-extrabold">
-                  {isMobile
-                    ? "Souhrn objednávky"
-                    : cartStep === "checkout"
-                    ? "Dokončení objednávky"
-                    : "Souhrn objednávky"}
+                  {cartStep === "checkout" ? "Dokončení objednávky" : "Souhrn objednávky"}
                 </div>
 
                 <div className="w-[96px]" />
               </div>
 
               <div className="p-5">
-                {isMobile ? (
-                  <MobileSummary />
-                ) : cartStep === "checkout" ? (
-                  <DesktopCheckout />
-                ) : (
-                  <DesktopSummary />
-                )}
+                {cartStep === "checkout" ? <DesktopCheckout /> : <DesktopSummary />}
               </div>
             </div>
           </div>
