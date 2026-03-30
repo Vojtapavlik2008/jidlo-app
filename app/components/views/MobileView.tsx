@@ -1940,7 +1940,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
 
   const tabDays = useMemo(() => days.slice(0, 6), [days]);
 
-  const [selectedDate, setSelectedDate] = useState<string>("");
+ const [selectedDate, setSelectedDate] = useState<string>(toISODateLocal(new Date()));
 
   useEffect(() => {
     const todayIso = toISODateLocal(new Date());
