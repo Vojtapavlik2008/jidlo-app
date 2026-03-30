@@ -119,24 +119,6 @@ function formatDayShort(iso: string) {
   const map = ["Ne", "Po", "Út", "St", "Čt", "Pá", "So"];
   return map[d.getDay()];
 }
-function formatDayLabelLong(iso: string) {
-  const d = new Date(iso + "T00:00:00");
-  const wd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" })
-    .format(d)
-    .replace(".", "")
-    .toLowerCase();
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  return `${wd} ${dd}.${mm}.`;
-}
-function formatDayLabelCompact(iso: string) {
-  const d = new Date(iso + "T00:00:00");
-  const wd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" })
-    .format(d)
-    .replace(".", "")
-    .toLowerCase();
-  return `${wd} ${d.getDate()}.${d.getMonth() + 1}.`;
-}
 function formatCartDay(iso: string) {
   const d = new Date(iso + "T00:00:00");
   const wd = new Intl.DateTimeFormat("cs-CZ", { weekday: "short" })
@@ -150,6 +132,31 @@ function formatCartDay(iso: string) {
 function isPastOrToday(iso: string) {
   const todayIso = toISODateLocal(new Date());
   return iso <= todayIso;
+}
+function formatWeekdayOnlyLong(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  return new Intl.DateTimeFormat("cs-CZ", { weekday: "long" })
+    .format(d)
+    .replace(/^\w/, (c) => c.toUpperCase());
+}
+function formatDateShortNoLeadingZero(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  return `${d.getDate()}.${d.getMonth() + 1}.`;
+}
+function formatSelectedDaySmart(iso: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const target = new Date(iso + "T00:00:00");
+  target.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.round((target.getTime() - today.getTime()) / 86400000);
+  const dateTxt = formatDateShortNoLeadingZero(iso);
+
+  if (diffDays === 0) return `Dnes · ${dateTxt}`;
+  if (diffDays === 1) return `Zítra · ${dateTxt}`;
+
+  return `${formatWeekdayOnlyLong(iso)} · ${dateTxt}`;
 }
 
 /** ===================== Allergen map ===================== */
@@ -308,13 +315,13 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
       <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
-      <div className="relative w-full max-w-md rounded-3xl bg-white shadow-2xl ring-1 ring-black/10 p-4">
+      <div className="relative w-full max-w-md rounded-3xl bg-white p-4 shadow-2xl ring-1 ring-black/10">
         <div className="flex items-center justify-between gap-2">
           <div className="text-base font-extrabold text-green-700">{tab === "login" ? "Přihlášení" : "Registrace"}</div>
           <button
             type="button"
             onClick={onClose}
-            className="h-10 w-10 rounded-2xl bg-white ring-1 ring-black/10 hover:bg-gray-50 font-extrabold"
+            className="h-10 w-10 rounded-2xl bg-white font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
           >
             ✕
           </button>
@@ -349,26 +356,26 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
         <div className="mt-3 space-y-2.5">
           <label className="block">
-            <div className="text-[11px] font-extrabold text-gray-600 mb-1">Email</div>
+            <div className="mb-1 text-[11px] font-extrabold text-gray-600">Email</div>
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@domena.cz"
               inputMode="email"
               autoComplete="email"
-              className="w-full rounded-2xl bg-white ring-1 ring-black/10 px-3 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-green-600"
+              className="w-full rounded-2xl bg-white px-3 py-2.5 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
             />
           </label>
 
           <label className="block">
-            <div className="text-[11px] font-extrabold text-gray-600 mb-1">Heslo</div>
+            <div className="mb-1 text-[11px] font-extrabold text-gray-600">Heslo</div>
             <input
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               type="password"
               autoComplete={tab === "login" ? "current-password" : "new-password"}
-              className="w-full rounded-2xl bg-white ring-1 ring-black/10 px-3 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-green-600"
+              className="w-full rounded-2xl bg-white px-3 py-2.5 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
             />
             <div className="mt-1 text-[11px] text-gray-500">Min. 6 znaků.</div>
           </label>
@@ -376,44 +383,44 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
           {tab === "register" ? (
             <>
               <label className="block">
-                <div className="text-[11px] font-extrabold text-gray-600 mb-1">Jméno a příjmení</div>
+                <div className="mb-1 text-[11px] font-extrabold text-gray-600">Jméno a příjmení</div>
                 <input
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Vojtěch Pavlík"
                   autoComplete="name"
-                  className="w-full rounded-2xl bg-white ring-1 ring-black/10 px-3 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-green-600"
+                  className="w-full rounded-2xl bg-white px-3 py-2.5 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
                 />
               </label>
 
               <label className="block">
-                <div className="text-[11px] font-extrabold text-gray-600 mb-1">Telefon</div>
+                <div className="mb-1 text-[11px] font-extrabold text-gray-600">Telefon</div>
                 <input
                   value={phone}
                   onChange={(e) => setPhone(formatPhoneCz(e.target.value))}
                   placeholder="777 777 777"
                   inputMode="numeric"
                   autoComplete="tel"
-                  className="w-full rounded-2xl bg-white ring-1 ring-black/10 px-3 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-green-600"
+                  className="w-full rounded-2xl bg-white px-3 py-2.5 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
                 />
                 {!phoneOk ? <div className="mt-1 text-[11px] font-bold text-red-600">Telefon musí mít 9 číslic.</div> : null}
               </label>
 
               <label className="block">
-                <div className="text-[11px] font-extrabold text-gray-600 mb-1">Adresa</div>
+                <div className="mb-1 text-[11px] font-extrabold text-gray-600">Adresa</div>
                 <input
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="Ulice 1, Praha"
                   autoComplete="street-address"
-                  className="w-full rounded-2xl bg-white ring-1 ring-black/10 px-3 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-green-600"
+                  className="w-full rounded-2xl bg-white px-3 py-2.5 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
                 />
               </label>
             </>
           ) : null}
 
           {msg ? (
-            <div className="rounded-2xl bg-neutral-50 text-neutral-700 ring-1 ring-black/10 px-3 py-2 text-[12px] font-bold">
+            <div className="rounded-2xl bg-neutral-50 px-3 py-2 text-[12px] font-bold text-neutral-700 ring-1 ring-black/10">
               {msg}
             </div>
           ) : null}
@@ -422,7 +429,7 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
             type="button"
             onClick={tab === "login" ? doLogin : doRegister}
             disabled={busy || !email.trim() || password.length < 6 || (tab === "register" && !phoneOk)}
-            className="w-full rounded-2xl px-4 py-3 text-sm font-extrabold bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+            className="w-full rounded-2xl bg-green-600 px-4 py-3 text-sm font-extrabold text-white hover:bg-green-700 disabled:opacity-50"
           >
             {busy ? "Počkej…" : tab === "login" ? "Přihlásit" : "Vytvořit účet"}
           </button>
@@ -438,52 +445,59 @@ function AllergensModal({
   onClose,
   title,
   allergens,
+  category,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   allergens: string[];
+  category?: string | null;
 }) {
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[220] flex items-center justify-center p-4">
       <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
-      <div className="relative w-full max-w-md rounded-3xl bg-white shadow-2xl ring-1 ring-black/10 overflow-hidden">
-        <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-gray-100">
-          <div className="text-[14px] font-extrabold text-gray-900">Alergeny</div>
+      <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/10">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 pb-2 pt-3">
+          <div className="text-[15px] font-extrabold text-gray-900">Informace o jídle</div>
           <button
             type="button"
             onClick={onClose}
-            className="h-10 w-10 rounded-2xl bg-white ring-1 ring-black/10 hover:bg-gray-50 font-extrabold"
+            className="h-10 w-10 rounded-2xl bg-white font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
           >
             ✕
           </button>
         </div>
 
-        <div className="px-4 pb-4 max-h-[70dvh] overflow-auto">
-          <div className="mt-3 text-[13px] font-extrabold text-gray-900">{title}</div>
+        <div className="max-h-[70dvh] overflow-auto px-4 pb-4">
+          <div className="mt-3 text-[16px] font-extrabold text-[#1f2f56]">{title}</div>
 
-          {allergens.length === 0 ? (
-            <div className="mt-2 rounded-2xl bg-neutral-50 ring-1 ring-black/10 p-3 text-[13px] text-gray-700">
-              Nejsou uvedené alergeny.
-            </div>
-          ) : (
-            <div className="mt-2 rounded-2xl bg-white ring-1 ring-black/10 p-3">
-              <div className="space-y-2">
+          <div className="mt-3 rounded-2xl bg-white p-3 ring-1 ring-black/10">
+            <div className="text-[12px] font-extrabold uppercase tracking-wide text-gray-500">Alergeny</div>
+
+            {allergens.length === 0 ? (
+              <div className="mt-2 text-[13px] text-gray-700">Nejsou uvedené alergeny.</div>
+            ) : (
+              <div className="mt-2 space-y-1.5">
                 {allergens.map((a, idx) => (
                   <div key={idx} className="text-[13px] text-gray-800">
                     • {a}
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          <div className="mt-3 rounded-2xl bg-white p-3 ring-1 ring-black/10">
+            <div className="text-[12px] font-extrabold uppercase tracking-wide text-gray-500">Kategorie</div>
+            <div className="mt-2 text-[13px] text-gray-800">{category?.trim() || "Neuvedeno"}</div>
+          </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="mt-3 w-full rounded-2xl px-4 py-3 text-[13px] font-extrabold bg-green-600 text-white hover:bg-green-700"
+            className="mt-4 w-full rounded-2xl bg-green-600 px-4 py-3 text-[13px] font-extrabold text-white hover:bg-green-700"
           >
             Zavřít
           </button>
@@ -512,13 +526,13 @@ function PackagingInfoModal({
   return (
     <div className="fixed inset-0 z-[270] flex items-center justify-center p-4">
       <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
-      <div className="relative w-full max-w-md rounded-3xl bg-white shadow-2xl ring-1 ring-black/10 overflow-hidden">
-        <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-gray-100">
+      <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/10">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 pb-2 pt-3">
           <div className="text-[14px] font-extrabold text-gray-900">{title}</div>
           <button
             type="button"
             onClick={onClose}
-            className="h-10 w-10 rounded-2xl bg-white ring-1 ring-black/10 hover:bg-gray-50 font-extrabold"
+            className="h-10 w-10 rounded-2xl bg-white font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
           >
             ✕
           </button>
@@ -526,7 +540,7 @@ function PackagingInfoModal({
 
         <div className="p-4">
           <div className="flex items-start gap-3">
-            <div className="h-14 w-14 rounded-2xl bg-white ring-1 ring-black/10 overflow-hidden flex items-center justify-center shrink-0">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white ring-1 ring-black/10">
               <Image src={imgSrc} alt={title} width={56} height={56} />
             </div>
 
@@ -545,7 +559,7 @@ function PackagingInfoModal({
           <button
             type="button"
             onClick={onClose}
-            className="mt-4 w-full rounded-2xl px-4 py-3 text-[13px] font-extrabold bg-green-600 text-white hover:bg-green-700"
+            className="mt-4 w-full rounded-2xl bg-green-600 px-4 py-3 text-[13px] font-extrabold text-white hover:bg-green-700"
           >
             Zavřít
           </button>
@@ -727,19 +741,19 @@ function CartSheet({
     return (
       <div className="fixed inset-0 z-[260] flex items-center justify-center p-4">
         <button type="button" className="absolute inset-0 bg-black/40" onClick={onClose} aria-label="Zavřít" />
-        <div className="relative w-full max-w-md max-h-[80dvh] rounded-3xl bg-white shadow-2xl ring-1 ring-black/10 overflow-hidden">
-          <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-gray-100">
+        <div className="relative max-h-[80dvh] w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/10">
+          <div className="flex items-center justify-between border-b border-gray-100 px-4 pb-2 pt-3">
             <div className="text-[14px] font-extrabold text-gray-900">{title}</div>
             <button
               type="button"
               onClick={onClose}
-              className="h-10 w-10 rounded-2xl bg-white ring-1 ring-black/10 hover:bg-gray-50 font-extrabold"
+              className="h-10 w-10 rounded-2xl bg-white font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
             >
               ✕
             </button>
           </div>
 
-          <div className="p-3 space-y-2 overflow-auto max-h-[70dvh]">
+          <div className="max-h-[70dvh] space-y-2 overflow-auto p-3">
             {options.map((o) => {
               const active = o.id === value;
               return (
@@ -751,7 +765,7 @@ function CartSheet({
                     onClose();
                   }}
                   className={[
-                    "w-full text-left rounded-2xl px-4 py-3 ring-1 transition",
+                    "w-full rounded-2xl px-4 py-3 text-left ring-1 transition",
                     active ? "bg-green-50 ring-green-300/70" : "bg-white ring-black/10 hover:bg-gray-50",
                   ].join(" ")}
                 >
@@ -760,7 +774,7 @@ function CartSheet({
                       <div className="text-[13px] font-extrabold text-gray-900">{o.label}</div>
                       {o.sub ? <div className="text-[12px] text-gray-500">{o.sub}</div> : null}
                     </div>
-                    <div className="shrink-0 text-green-700 font-extrabold">{active ? "✓" : ""}</div>
+                    <div className="shrink-0 font-extrabold text-green-700">{active ? "✓" : ""}</div>
                   </div>
                 </button>
               );
@@ -779,7 +793,7 @@ function CartSheet({
           <button
             type="button"
             onClick={onClick}
-            className="min-w-[170px] max-w-[220px] truncate rounded-2xl px-3 py-2 text-[12px] font-extrabold bg-green-50 text-green-800 ring-1 ring-green-200 hover:bg-green-100"
+            className="min-w-[170px] max-w-[220px] truncate rounded-2xl bg-green-50 px-3 py-2 text-[12px] font-extrabold text-green-800 ring-1 ring-green-200 hover:bg-green-100"
             title={value}
           >
             {value} <span className="ml-1 opacity-70">▾</span>
@@ -808,14 +822,14 @@ function CartSheet({
     }) => (
       <div className={pill + " p-3"}>
         <div className="flex items-center justify-between gap-3">
-          <div className="text-[12px] font-extrabold text-gray-700 shrink-0">{label}</div>
+          <div className="shrink-0 text-[12px] font-extrabold text-gray-700">{label}</div>
           <input
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
             inputMode={inputMode}
             autoComplete={autoComplete}
-            className="w-[210px] max-w-[210px] rounded-2xl bg-white ring-1 ring-black/10 px-3 py-2.5 text-[13px] font-semibold outline-none focus:ring-2 focus:ring-green-600"
+            className="w-[210px] max-w-[210px] rounded-2xl bg-white px-3 py-2.5 text-[13px] font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
           />
         </div>
       </div>
@@ -841,7 +855,7 @@ function CartSheet({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="mt-2 w-full min-h-[70px] rounded-2xl bg-white ring-1 ring-black/10 px-3 py-3 text-[13px] font-semibold outline-none focus:ring-2 focus:ring-green-600"
+          className="mt-2 min-h-[70px] w-full rounded-2xl bg-white px-3 py-3 text-[13px] font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
         />
       </div>
     ),
@@ -993,7 +1007,6 @@ function CartSheet({
 
   if (!open) return null;
 
-  const deliveryLabel = deliveryMode === "delivery" ? "Doručení" : "Osobní odběr";
   const packagingLabel =
     packagingMode === "plastic" ? "Plastová krabička" : packagingMode === "rekrabicka" ? "REkrabička" : "Jídlonosič";
   const paymentLabel =
@@ -1033,19 +1046,19 @@ function CartSheet({
     return (
       <div className="fixed inset-0 z-[260] flex items-center justify-center p-4">
         <button type="button" className="absolute inset-0 bg-black/40" onClick={() => setPickOpen(null)} />
-        <div className="relative w-full max-w-md max-h-[80dvh] rounded-3xl bg-white shadow-2xl ring-1 ring-black/10 overflow-hidden">
-          <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-gray-100">
+        <div className="relative max-h-[80dvh] w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/10">
+          <div className="flex items-center justify-between border-b border-gray-100 px-4 pb-2 pt-3">
             <div className="text-[14px] font-extrabold text-gray-900">Balení</div>
             <button
               type="button"
               onClick={() => setPickOpen(null)}
-              className="h-10 w-10 rounded-2xl bg-white ring-1 ring-black/10 hover:bg-gray-50 font-extrabold"
+              className="h-10 w-10 rounded-2xl bg-white font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
             >
               ✕
             </button>
           </div>
 
-          <div className="p-3 space-y-2 overflow-auto max-h-[70dvh]">
+          <div className="max-h-[70dvh] space-y-2 overflow-auto p-3">
             <div
               role="button"
               tabIndex={0}
@@ -1073,7 +1086,7 @@ function CartSheet({
                   >
                     i
                   </button>
-                  {packagingMode === "plastic" ? <div className="text-green-700 font-extrabold">✓</div> : null}
+                  {packagingMode === "plastic" ? <div className="font-extrabold text-green-700">✓</div> : null}
                 </div>
               </div>
             </div>
@@ -1105,7 +1118,7 @@ function CartSheet({
                   >
                     i
                   </button>
-                  {packagingMode === "rekrabicka" ? <div className="text-green-700 font-extrabold">✓</div> : null}
+                  {packagingMode === "rekrabicka" ? <div className="font-extrabold text-green-700">✓</div> : null}
                 </div>
               </div>
             </div>
@@ -1137,7 +1150,7 @@ function CartSheet({
                   >
                     i
                   </button>
-                  {packagingMode === "own" ? <div className="text-green-700 font-extrabold">✓</div> : null}
+                  {packagingMode === "own" ? <div className="font-extrabold text-green-700">✓</div> : null}
                 </div>
               </div>
             </div>
@@ -1147,7 +1160,7 @@ function CartSheet({
             <button
               type="button"
               onClick={() => setPickOpen(null)}
-              className="w-full rounded-2xl px-4 py-3 text-[13px] font-extrabold bg-white ring-1 ring-black/10 hover:bg-gray-50"
+              className="w-full rounded-2xl bg-white px-4 py-3 text-[13px] font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
             >
               Zavřít
             </button>
@@ -1161,8 +1174,8 @@ function CartSheet({
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
       <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
 
-      <div className="relative w-full max-w-md rounded-3xl bg-white shadow-2xl ring-1 ring-black/10 overflow-hidden">
-        <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-gray-100">
+      <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/10">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 pb-2 pt-3">
           <div className="text-[14px] font-extrabold text-gray-900">
             {step === "cart" && "Košík"}
             {step === "checkout" && "Dokončení"}
@@ -1172,7 +1185,7 @@ function CartSheet({
           <button
             type="button"
             onClick={onClose}
-            className="h-10 w-10 rounded-2xl bg-white ring-1 ring-black/10 hover:bg-gray-50 font-extrabold"
+            className="h-10 w-10 rounded-2xl bg-white font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
           >
             ✕
           </button>
@@ -1180,18 +1193,18 @@ function CartSheet({
 
         {step === "cart" ? (
           <div className="relative">
-            <div ref={scrollRef} onScroll={evalScrollHint} className="px-4 pt-3 pb-28 max-h-[70dvh] overflow-auto">
+            <div ref={scrollRef} onScroll={evalScrollHint} className="max-h-[70dvh] overflow-auto px-4 pb-28 pt-3">
               {cartCount === 0 ? (
-                <div className="rounded-2xl bg-neutral-50 ring-1 ring-black/10 p-3 text-[13px] text-gray-600">
+                <div className="rounded-2xl bg-neutral-50 p-3 text-[13px] text-gray-600 ring-1 ring-black/10">
                   Košík je prázdný.
                 </div>
               ) : (
                 <div className="space-y-2">
                   {grouped.map((g) => (
                     <div key={g.datum} className={pillSoft + " p-3"}>
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="mb-2 flex items-center justify-between">
                         <div className="text-[12px] font-extrabold text-gray-700">{formatCartDay(g.datum)}</div>
-                        <div className="text-[11px] font-extrabold text-green-700 bg-white/80 ring-1 ring-green-200/70 px-2 py-1 rounded-full">
+                        <div className="rounded-full bg-white/80 px-2 py-1 text-[11px] font-extrabold text-green-700 ring-1 ring-green-200/70">
                           {g.items.reduce((s, it) => s + it.qty, 0)} ks
                         </div>
                       </div>
@@ -1208,10 +1221,10 @@ function CartSheet({
                           return (
                             <div
                               key={it.key}
-                              className="flex items-center gap-2 py-2 border-b border-green-200/50 last:border-b-0"
+                              className="flex items-center gap-2 border-b border-green-200/50 py-2 last:border-b-0"
                             >
                               <div className="min-w-0 flex-1">
-                                <div className="text-[14px] font-extrabold text-gray-900 leading-snug break-words">
+                                <div className="break-words text-[14px] font-extrabold leading-snug text-gray-900">
                                   {it.nazev}
                                 </div>
                                 <div className="mt-0.5 text-[12px] text-gray-500">
@@ -1220,7 +1233,7 @@ function CartSheet({
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-1.5 shrink-0">
+                              <div className="flex shrink-0 items-center gap-1.5">
                                 <button type="button" onClick={() => removeOne(it.datum, row)} className={qtyBtn}>
                                   −
                                 </button>
@@ -1240,17 +1253,17 @@ function CartSheet({
             </div>
 
             {canScrollDown ? (
-              <div className="pointer-events-none absolute left-0 right-0 bottom-[84px]">
+              <div className="pointer-events-none absolute bottom-[84px] left-0 right-0">
                 <div className="h-10 bg-gradient-to-t from-white to-transparent" />
-                <div className="flex justify-center -mt-6">
-                  <div className="h-10 w-10 rounded-full bg-white/90 ring-1 ring-black/10 shadow flex items-center justify-center text-gray-700">
+                <div className="-mt-6 flex justify-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow ring-1 ring-black/10">
                     ↓
                   </div>
                 </div>
               </div>
             ) : null}
 
-            <div className="absolute left-0 right-0 bottom-0 bg-white border-t border-gray-100">
+            <div className="absolute bottom-0 left-0 right-0 border-t border-gray-100 bg-white">
               <div className="px-4 py-3">
                 <div className={pill + " p-3"}>
                   <div className="flex items-center justify-between gap-3">
@@ -1282,9 +1295,9 @@ function CartSheet({
 
         {step === "checkout" ? (
           <div className="relative">
-            <div className="px-4 pt-3 pb-44 max-h-[75dvh] overflow-auto">
+            <div className="max-h-[75dvh] overflow-auto px-4 pb-44 pt-3">
               {!authed ? (
-                <div className="rounded-2xl bg-yellow-50 text-yellow-800 ring-1 ring-yellow-200 p-3 text-[13px] font-bold">
+                <div className="rounded-2xl bg-yellow-50 p-3 text-[13px] font-bold text-yellow-800 ring-1 ring-yellow-200">
                   Pro dokončení se musíš přihlásit.
                 </div>
               ) : null}
@@ -1328,7 +1341,7 @@ function CartSheet({
                     <button
                       type="button"
                       onClick={() => setTimeOpen(true)}
-                      className="min-w-[170px] max-w-[220px] truncate rounded-2xl px-3 py-2 text-[12px] font-extrabold bg-green-50 text-green-800 ring-1 ring-green-200 hover:bg-green-100"
+                      className="min-w-[170px] max-w-[220px] truncate rounded-2xl bg-green-50 px-3 py-2 text-[12px] font-extrabold text-green-800 ring-1 ring-green-200 hover:bg-green-100"
                       title={timeSummary}
                       disabled={cartCount === 0}
                     >
@@ -1342,24 +1355,24 @@ function CartSheet({
 
                 {cartCount > 0 ? (
                   <div className={pillSoft + " p-3"}>
-                    <div className="text-[12px] font-extrabold text-gray-700 mb-2">Rekapitulace</div>
-                    <div className="text-[13px] text-gray-700 flex items-center justify-between">
+                    <div className="mb-2 text-[12px] font-extrabold text-gray-700">Rekapitulace</div>
+                    <div className="flex items-center justify-between text-[13px] text-gray-700">
                       <span>Jídla</span>
                       <span className="font-extrabold">{itemsTotal} Kč</span>
                     </div>
-                    {deliveryFee > 0 ? (
-                      <div className="text-[13px] text-gray-700 flex items-center justify-between">
+                    {deliveryMode === "delivery" && cartCount > 0 ? (
+                      <div className="flex items-center justify-between text-[13px] text-gray-700">
                         <span>Doprava</span>
-                        <span className="font-extrabold">{deliveryFee} Kč</span>
+                        <span className="font-extrabold">10 Kč</span>
                       </div>
                     ) : null}
                     {packagingFee > 0 ? (
-                      <div className="text-[13px] text-gray-700 flex items-center justify-between">
+                      <div className="flex items-center justify-between text-[13px] text-gray-700">
                         <span>Balení</span>
                         <span className="font-extrabold">{packagingFee} Kč</span>
                       </div>
                     ) : null}
-                    <div className="mt-2 pt-2 border-t border-green-200/60 flex items-center justify-between">
+                    <div className="mt-2 flex items-center justify-between border-t border-green-200/60 pt-2">
                       <span className="text-[12px] font-bold text-gray-600">Celkem</span>
                       <span className="text-[16px] font-extrabold text-green-700">{payTotal} Kč</span>
                     </div>
@@ -1367,14 +1380,14 @@ function CartSheet({
                 ) : null}
 
                 {msg ? (
-                  <div className="rounded-2xl bg-neutral-50 text-neutral-700 ring-1 ring-black/10 px-3 py-2 text-[12px] font-bold">
+                  <div className="rounded-2xl bg-neutral-50 px-3 py-2 text-[12px] font-bold text-neutral-700 ring-1 ring-black/10">
                     {msg}
                   </div>
                 ) : null}
               </div>
             </div>
 
-            <div className="absolute left-0 right-0 bottom-0 bg-white border-t border-gray-100">
+            <div className="absolute bottom-0 left-0 right-0 border-t border-gray-100 bg-white">
               <div className="px-4 py-3">
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={() => setStep("cart")} className={btnGhost}>
@@ -1392,7 +1405,7 @@ function CartSheet({
                 </div>
 
                 {!authed ? (
-                  <button type="button" onClick={onNeedLogin} className={btnGhost + " w-full mt-2"}>
+                  <button type="button" onClick={onNeedLogin} className={btnGhost + " mt-2 w-full"}>
                     Přihlásit se
                   </button>
                 ) : null}
@@ -1446,8 +1459,8 @@ function CartSheet({
               aria-label="Zavřít"
             />
 
-            <div className="relative w-full max-w-md rounded-3xl bg-white shadow-2xl ring-1 ring-black/10 overflow-hidden">
-              <div className="px-4 pt-3 pb-2 flex items-start justify-between border-b border-gray-100">
+            <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/10">
+              <div className="flex items-start justify-between border-b border-gray-100 px-4 pb-2 pt-3">
                 <div>
                   <div className="text-[18px] font-extrabold text-gray-900">Čas doručení</div>
                   <div className="text-[12px] font-semibold text-gray-600">10:00 – 13:30 (po 30 min) • (volitelné)</div>
@@ -1456,13 +1469,13 @@ function CartSheet({
                 <button
                   type="button"
                   onClick={() => setTimeOpen(false)}
-                  className="h-10 w-10 rounded-2xl bg-white ring-1 ring-black/10 hover:bg-gray-50 font-extrabold"
+                  className="h-10 w-10 rounded-2xl bg-white font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="p-4 space-y-3">
+              <div className="space-y-3 p-4">
                 <div className="flex flex-wrap gap-2">
                   {cartDays.map((d) => {
                     const active = d === activeTimeDay;
@@ -1485,7 +1498,7 @@ function CartSheet({
                 </div>
 
                 {cartDays.length > 1 ? (
-                  <label className="flex items-center gap-2 text-[13px] font-semibold text-gray-700 select-none">
+                  <label className="flex select-none items-center gap-2 text-[13px] font-semibold text-gray-700">
                     <input
                       type="checkbox"
                       checked={sameTimeForAll}
@@ -1508,8 +1521,8 @@ function CartSheet({
                         className={[
                           "rounded-2xl px-3 py-3 text-[14px] font-extrabold ring-1 transition",
                           active
-                            ? "bg-green-50 ring-green-300/70 text-green-800"
-                            : "bg-white ring-black/10 hover:bg-gray-50 text-gray-900",
+                            ? "bg-green-50 text-green-800 ring-green-300/70"
+                            : "bg-white text-gray-900 ring-black/10 hover:bg-gray-50",
                         ].join(" ")}
                         disabled={!activeTimeDay}
                       >
@@ -1519,11 +1532,11 @@ function CartSheet({
                   })}
                 </div>
 
-                <div className="pt-2 flex justify-end">
+                <div className="flex justify-end pt-2">
                   <button
                     type="button"
                     onClick={() => setTimeOpen(false)}
-                    className="rounded-2xl px-6 py-3 text-[13px] font-extrabold bg-green-600 text-white hover:bg-green-700"
+                    className="rounded-2xl bg-green-600 px-6 py-3 text-[13px] font-extrabold text-white hover:bg-green-700"
                   >
                     Hotovo
                   </button>
@@ -1535,7 +1548,7 @@ function CartSheet({
 
         {step === "done" ? (
           <div className="px-4 pb-4">
-            <div className="mt-3 rounded-2xl bg-green-50 text-green-800 ring-1 ring-green-200 p-4">
+            <div className="mt-3 rounded-2xl bg-green-50 p-4 text-green-800 ring-1 ring-green-200">
               <div className="text-[15px] font-extrabold">Objednávka odeslaná ✅</div>
               {orderId ? <div className="mt-1 text-[12px] font-bold text-green-900/80">ID: {orderId}</div> : null}
               <div className="mt-1 text-[13px] font-semibold">Děkujeme! Brzy ji připravíme.</div>
@@ -1572,20 +1585,22 @@ function DayPickerModal({
   if (!open) return null;
 
   const rangeLabel = tabDays.length ? formatRangeShort(tabDays[0], tabDays[tabDays.length - 1]) : "";
+  const weekText = weekOffset === 0 ? "Tento týden" : "Příští týden";
 
   return (
     <div className="fixed inset-0 z-[230] flex items-center justify-center p-4">
       <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
-      <div className="relative w-full max-w-sm rounded-3xl bg-white shadow-2xl ring-1 ring-black/10 overflow-hidden">
-        <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-gray-100">
+      <div className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/10">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 pb-2 pt-3">
           <div>
             <div className="text-[15px] font-extrabold text-gray-900">Vybrat den</div>
+            <div className="mt-0.5 text-[12px] font-semibold text-green-700">{weekText}</div>
             <div className="text-[12px] font-semibold text-gray-500">{rangeLabel}</div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="h-10 w-10 rounded-2xl bg-white ring-1 ring-black/10 hover:bg-gray-50 font-extrabold"
+            className="h-10 w-10 rounded-2xl bg-white font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
           >
             ✕
           </button>
@@ -1597,26 +1612,27 @@ function DayPickerModal({
               type="button"
               onClick={() => setWeekOffset(0)}
               disabled={weekOffset === 0}
-              className="h-11 rounded-2xl bg-white ring-1 ring-black/10 font-extrabold disabled:opacity-40"
+              className="h-11 rounded-2xl bg-white font-extrabold ring-1 ring-black/10 disabled:opacity-40"
             >
               ‹
             </button>
 
-            <div className="rounded-2xl bg-green-50 ring-1 ring-green-200 px-3 py-3 text-center">
-              <div className="text-[13px] font-extrabold text-green-800">{rangeLabel}</div>
+            <div className="rounded-2xl bg-[#f6fbf7] px-3 py-3 text-center ring-1 ring-green-200/80">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-green-700">{weekText}</div>
+              <div className="mt-0.5 text-[13px] font-extrabold text-[#1f2f56]">{rangeLabel}</div>
             </div>
 
             <button
               type="button"
               onClick={() => setWeekOffset(1)}
               disabled={weekOffset === 1}
-              className="h-11 rounded-2xl bg-white ring-1 ring-black/10 font-extrabold disabled:opacity-40"
+              className="h-11 rounded-2xl bg-white font-extrabold ring-1 ring-black/10 disabled:opacity-40"
             >
               ›
             </button>
           </div>
 
-          <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="mt-3 space-y-2">
             {tabDays.map((d) => {
               const active = d === selectedDate;
               return (
@@ -1628,12 +1644,13 @@ function DayPickerModal({
                     onClose();
                   }}
                   className={[
-                    "rounded-2xl px-3 py-3 text-[13px] font-extrabold ring-1 transition",
-                    active ? "bg-green-600 text-white ring-green-600" : "bg-white ring-black/10 hover:bg-gray-50 text-gray-900",
+                    "w-full rounded-2xl px-4 py-3 text-left ring-1 transition",
+                    active
+                      ? "bg-green-600 text-white ring-green-600"
+                      : "bg-white text-gray-900 ring-black/10 hover:bg-gray-50",
                   ].join(" ")}
                 >
-                  <div>{formatDayShort(d)}</div>
-                  <div className="mt-0.5 text-[11px] opacity-80">{formatDayLabelLong(d).split(" ").slice(1).join(" ")}</div>
+                  <div className="text-[13px] font-extrabold">{formatSelectedDaySmart(d)}</div>
                 </button>
               );
             })}
@@ -1645,11 +1662,7 @@ function DayPickerModal({
 }
 
 /** ===================== Main MobileView ===================== */
-export default function MobileView({
-  onOpenCart,
-}: {
-  onOpenCart: () => void;
-}) {
+export default function MobileView() {
   const router = useRouter();
 
   type Section = "daily" | "order" | "cart" | "jirka" | "about";
@@ -1669,8 +1682,10 @@ export default function MobileView({
   const [algOpen, setAlgOpen] = useState(false);
   const [algTitle, setAlgTitle] = useState("");
   const [algList, setAlgList] = useState<string[]>([]);
+  const [algCategory, setAlgCategory] = useState<string | null>("");
 
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
+  const [flashKey, setFlashKey] = useState<string | null>(null);
 
   const { cart, cartCount, total, keyFor, addOne, removeOne } = useOrder();
 
@@ -1842,9 +1857,9 @@ export default function MobileView({
   }, [tabDays]);
 
   const zavreno = isSunday(selectedDate);
-  const selectedDayLabel = formatDayLabelLong(selectedDate);
-  const selectedDayCompact = formatDayLabelCompact(selectedDate);
   const rangeLabel = tabDays.length ? formatRangeShort(tabDays[0], tabDays[tabDays.length - 1]) : "";
+  const smartSelectedLabel = formatSelectedDaySmart(selectedDate);
+  const weekText = weekOffset === 0 ? "Tento týden" : "Příští týden";
 
   const [menuByDate, setMenuByDate] = useState<Record<string, MenuRow[]>>({});
   const [loadingMenu, setLoadingMenu] = useState(false);
@@ -1920,7 +1935,7 @@ export default function MobileView({
         <button
           type="button"
           onClick={() => setAuthOpen(true)}
-          className="rounded-2xl px-3 py-2 text-[12px] font-extrabold bg-green-600 text-white hover:bg-green-700"
+          className="rounded-2xl bg-green-600 px-3 py-2 text-[12px] font-extrabold text-white hover:bg-green-700"
         >
           Přihlásit
         </button>
@@ -1934,7 +1949,7 @@ export default function MobileView({
         <button
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
-          className="max-w-[150px] truncate rounded-2xl px-3 py-2 text-[12px] font-extrabold bg-white ring-1 ring-black/10 hover:bg-gray-50"
+          className="max-w-[150px] truncate rounded-2xl bg-white px-3 py-2 text-[12px] font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
           title={name}
         >
           <span className="truncate">
@@ -1945,14 +1960,14 @@ export default function MobileView({
         </button>
 
         {menuOpen ? (
-          <div className="absolute right-0 top-[46px] w-64 rounded-2xl bg-white shadow-xl ring-1 ring-black/10 overflow-hidden z-[120]">
+          <div className="absolute right-0 top-[46px] z-[120] w-64 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-black/10">
             <button
               type="button"
               onClick={() => {
                 setMenuOpen(false);
                 router.push("/profil");
               }}
-              className="w-full text-left px-4 py-3 text-sm font-extrabold hover:bg-gray-50"
+              className="w-full px-4 py-3 text-left text-sm font-extrabold hover:bg-gray-50"
             >
               Nastavení profilu
             </button>
@@ -1963,7 +1978,7 @@ export default function MobileView({
                 setMenuOpen(false);
                 router.push("/kredit");
               }}
-              className="w-full text-left px-4 py-3 text-sm font-extrabold hover:bg-gray-50"
+              className="w-full px-4 py-3 text-left text-sm font-extrabold hover:bg-gray-50"
             >
               Dobít kredit
             </button>
@@ -1973,7 +1988,7 @@ export default function MobileView({
             <button
               type="button"
               onClick={signOut}
-              className="w-full text-left px-4 py-3 text-sm font-extrabold text-red-600 hover:bg-red-50"
+              className="w-full px-4 py-3 text-left text-sm font-extrabold text-red-600 hover:bg-red-50"
             >
               Odhlásit
             </button>
@@ -1990,7 +2005,7 @@ export default function MobileView({
       <button
         type="button"
         onClick={() => router.push("/staff")}
-        className="rounded-2xl px-3 py-2 text-[12px] font-extrabold bg-green-50 text-green-800 ring-1 ring-green-200 hover:bg-green-100"
+        className="rounded-2xl bg-green-50 px-3 py-2 text-[12px] font-extrabold text-green-800 ring-1 ring-green-200 hover:bg-green-100"
       >
         Rozcestník
       </button>
@@ -1999,21 +2014,16 @@ export default function MobileView({
 
   function SectionHeaderDaily() {
     return (
-      <div className="rounded-[26px] border border-[#dbeee2] bg-white px-4 py-3 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="text-[20px] font-extrabold text-green-700 leading-none">Denní menu</span>
-              <span className="text-[14px] font-bold text-gray-600">{selectedDayCompact}</span>
-            </div>
-          </div>
+      <div className="px-1 pt-1">
+        <div className="flex items-start justify-between gap-3">
+          <div className="text-[24px] font-extrabold leading-none text-green-700">Denní menu</div>
 
           <button
             type="button"
             onClick={() => setDayPickerOpen(true)}
-            className="shrink-0 text-[13px] font-semibold text-gray-500 underline underline-offset-2"
+            className="pt-1 text-right text-[14px] font-bold text-gray-700 underline decoration-1 underline-offset-4"
           >
-            Vybrat den
+            {smartSelectedLabel}
           </button>
         </div>
       </div>
@@ -2022,60 +2032,67 @@ export default function MobileView({
 
   function SectionHeaderOrder() {
     return (
-      <div className="rounded-[26px] border border-[#dbeee2] bg-white px-4 py-3 shadow-sm">
-        <div className="text-[20px] font-extrabold text-green-700 leading-none">Objednávka jídel</div>
+      <div className="space-y-3 px-1 pt-1">
+        <div className="text-[24px] font-extrabold leading-none text-green-700">Objednávka jídel</div>
 
-        <div className="mt-3 grid grid-cols-[40px_1fr_40px] items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setWeekOffset(0)}
-            disabled={weekOffset === 0}
-            className="h-10 rounded-2xl bg-white ring-1 ring-black/10 font-extrabold text-gray-700 disabled:opacity-35"
-          >
-            ‹
-          </button>
+        <div className="rounded-[26px] border border-[#dbeee2] bg-white px-4 py-3 shadow-sm">
+          <div className="grid grid-cols-[40px_1fr_40px] items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setWeekOffset(0)}
+              disabled={weekOffset === 0}
+              className="h-10 rounded-2xl bg-white font-extrabold text-gray-700 ring-1 ring-black/10 disabled:opacity-35"
+            >
+              ‹
+            </button>
 
-          <div className="rounded-2xl bg-[#f7fbf8] px-3 py-2 text-center ring-1 ring-green-200/80">
-            <div className="text-[13px] font-extrabold text-green-800">{rangeLabel}</div>
+            <button
+              type="button"
+              onClick={() => setDayPickerOpen(true)}
+              className="rounded-2xl bg-[#f7fbf8] px-3 py-2 text-center ring-1 ring-green-200/80"
+            >
+              <div className="text-[11px] font-bold uppercase tracking-wide text-green-700">{weekText}</div>
+              <div className="mt-0.5 text-[13px] font-extrabold text-[#1f2f56]">{rangeLabel}</div>
+              <div className="mt-1 text-[12px] font-semibold text-gray-600 underline underline-offset-2">
+                {smartSelectedLabel}
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setWeekOffset(1)}
+              disabled={weekOffset === 1}
+              className="h-10 rounded-2xl bg-white font-extrabold text-gray-700 ring-1 ring-black/10 disabled:opacity-35"
+            >
+              ›
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setWeekOffset(1)}
-            disabled={weekOffset === 1}
-            className="h-10 rounded-2xl bg-white ring-1 ring-black/10 font-extrabold text-gray-700 disabled:opacity-35"
-          >
-            ›
-          </button>
-        </div>
+          <div className="mt-3 grid grid-cols-6 gap-1.5">
+            {tabDays.map((d) => {
+              const active = d === selectedDate;
+              const disabled = isPastOrToday(d);
 
-        <div className="mt-3 grid grid-cols-6 gap-1.5">
-          {tabDays.map((d) => {
-            const active = d === selectedDate;
-            const disabled = isPastOrToday(d);
-
-            return (
-              <button
-                key={d}
-                type="button"
-                disabled={disabled}
-                onClick={() => setSelectedDate(d)}
-                className={[
-                  "rounded-2xl px-2 py-2 text-center ring-1 transition",
-                  disabled
-                    ? "bg-gray-50 text-gray-300 ring-gray-200 cursor-not-allowed"
-                    : active
-                    ? "bg-green-600 text-white ring-green-600"
-                    : "bg-white text-gray-800 ring-black/10 hover:bg-gray-50",
-                ].join(" ")}
-              >
-                <div className="text-[11px] font-extrabold">{formatDayShort(d)}</div>
-                <div className="mt-0.5 text-[10px] font-semibold opacity-80">
-                  {new Date(d + "T00:00:00").getDate()}.{new Date(d + "T00:00:00").getMonth() + 1}.
-                </div>
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => setSelectedDate(d)}
+                  className={[
+                    "rounded-2xl px-2 py-2 text-center ring-1 transition",
+                    disabled
+                      ? "cursor-not-allowed bg-gray-50 text-gray-300 ring-gray-200"
+                      : active
+                      ? "bg-green-600 text-white ring-green-600"
+                      : "bg-white text-gray-800 ring-black/10 hover:bg-gray-50",
+                  ].join(" ")}
+                >
+                  <div className="text-[11px] font-extrabold">{formatDayShort(d)}</div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
@@ -2104,15 +2121,17 @@ export default function MobileView({
           const category = r.jidla?.kategorie ?? "";
           const allergenList = allergenNamesFromColumn(r.jidla?.alergeny ?? "");
           const orderDisabled = isPastOrToday(selectedDate) || zavreno;
+          const isFlashing = flashKey === k;
 
           return (
             <div
               key={k}
               className={[
-                "rounded-[24px] border px-3 py-3 shadow-sm transition",
+                "rounded-[24px] border px-3 py-3 shadow-sm transition duration-200",
                 qty > 0 && mode === "order"
                   ? "border-green-300/80 bg-green-50"
                   : "border-black/10 bg-white",
+                isFlashing ? "scale-[1.01]" : "scale-100",
               ].join(" ")}
             >
               <div className="flex items-center gap-3">
@@ -2125,21 +2144,20 @@ export default function MobileView({
                       onClick={() => {
                         setAlgTitle(title);
                         setAlgList(allergenList);
+                        setAlgCategory(category);
                         setAlgOpen(true);
                       }}
-                      className="shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#7ac796] bg-white text-[11px] font-extrabold text-[#067647]"
-                      aria-label="Alergeny"
-                      title="Alergeny"
+                      className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#7ac796] bg-white text-[11px] font-extrabold text-[#067647]"
+                      aria-label="Informace"
+                      title="Informace"
                     >
                       i
                     </button>
                   </div>
-
-                  <div className="mt-1 text-[12px] font-semibold text-gray-500">{category}</div>
                 </div>
 
-                <div className="shrink-0 flex items-center gap-3 self-stretch">
-                  <div className="flex h-full min-w-[54px] items-center justify-center text-[15px] font-extrabold text-[#067647] whitespace-nowrap">
+                <div className="flex shrink-0 items-center gap-3 self-stretch">
+                  <div className="flex h-full min-w-[58px] items-center justify-center whitespace-nowrap text-[15px] font-extrabold text-[#067647]">
                     {price} Kč
                   </div>
 
@@ -2151,11 +2169,13 @@ export default function MobileView({
                         onClick={() => {
                           if (orderDisabled) return;
                           addOne(selectedDate, row);
+                          setFlashKey(k);
+                          window.setTimeout(() => setFlashKey((prev) => (prev === k ? null : prev)), 220);
                         }}
                         className={[
-                          "rounded-2xl px-3 py-2 text-[12px] font-extrabold ring-1",
+                          "rounded-2xl px-3 py-2 text-[12px] font-extrabold ring-1 transition",
                           orderDisabled
-                            ? "bg-gray-50 text-gray-300 ring-gray-200 cursor-not-allowed"
+                            ? "cursor-not-allowed bg-gray-50 text-gray-300 ring-gray-200"
                             : "bg-white text-green-700 ring-green-600/70 hover:bg-green-600 hover:text-white",
                         ].join(" ")}
                       >
@@ -2166,15 +2186,19 @@ export default function MobileView({
                         <button
                           type="button"
                           onClick={() => removeOne(selectedDate, row)}
-                          className="h-8 w-8 rounded-xl bg-white ring-1 ring-black/10 text-gray-900 font-extrabold hover:bg-gray-50"
+                          className="h-8 w-8 rounded-xl bg-white font-extrabold text-gray-900 ring-1 ring-black/10 hover:bg-gray-50"
                         >
                           −
                         </button>
                         <div className="w-6 text-center text-[12px] font-extrabold">{qty}</div>
                         <button
                           type="button"
-                          onClick={() => addOne(selectedDate, row)}
-                          className="h-8 w-8 rounded-xl bg-white ring-1 ring-black/10 text-gray-900 font-extrabold hover:bg-gray-50"
+                          onClick={() => {
+                            addOne(selectedDate, row);
+                            setFlashKey(k);
+                            window.setTimeout(() => setFlashKey((prev) => (prev === k ? null : prev)), 220);
+                          }}
+                          className="h-8 w-8 rounded-xl bg-white font-extrabold text-gray-900 ring-1 ring-black/10 hover:bg-gray-50"
                         >
                           +
                         </button>
@@ -2197,7 +2221,7 @@ export default function MobileView({
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-3">
           {photoSources.map((src) => (
-            <div key={src} className="overflow-hidden rounded-[24px] bg-white ring-1 ring-black/10 shadow-sm">
+            <div key={src} className="overflow-hidden rounded-[24px] bg-white shadow-sm ring-1 ring-black/10">
               <img src={src} alt="Jiřka" className="h-44 w-full object-cover" />
             </div>
           ))}
@@ -2245,9 +2269,9 @@ export default function MobileView({
   function AboutSection() {
     return (
       <div className="space-y-3">
-        <div className="rounded-[24px] bg-white p-4 ring-1 ring-black/10 shadow-sm">
+        <div className="rounded-[24px] bg-white p-4 shadow-sm ring-1 ring-black/10">
           <div className="text-[15px] font-extrabold text-green-700">Jiřka</div>
-          <div className="mt-2 text-[14px] leading-6 text-gray-700 whitespace-pre-line">
+          <div className="mt-2 whitespace-pre-line text-[14px] leading-6 text-gray-700">
             {loadingSystemItems
               ? "Načítám text…"
               : aboutTextRow?.value_text || "Sem si potom doplníš článek o Jiřce, historii, nabídce a dalších informacích."}
@@ -2259,12 +2283,12 @@ export default function MobileView({
           <div className="mt-1 text-[14px] font-semibold text-gray-700">Havlíčkova 72, 29001 Poděbrady</div>
         </div>
 
-        <div className="rounded-[24px] bg-white p-4 ring-1 ring-black/10 shadow-sm">
+        <div className="rounded-[24px] bg-white p-4 shadow-sm ring-1 ring-black/10">
           <div className="text-[13px] font-extrabold uppercase tracking-wide text-green-700">IČO</div>
           <div className="mt-1 text-[14px] font-semibold text-gray-700">Doplníme později</div>
         </div>
 
-        <div className="rounded-[24px] bg-white p-4 ring-1 ring-black/10 shadow-sm">
+        <div className="rounded-[24px] bg-white p-4 shadow-sm ring-1 ring-black/10">
           <div className="text-[13px] font-extrabold uppercase tracking-wide text-green-700">Kontakt</div>
           <div className="mt-1 text-[14px] font-semibold text-gray-700">Doplníme později</div>
         </div>
@@ -2273,9 +2297,15 @@ export default function MobileView({
   }
 
   return (
-    <div className="min-h-[100dvh] bg-white pb-24">
+    <div className="min-h-[100dvh] bg-white pb-40">
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
-      <AllergensModal open={algOpen} onClose={() => setAlgOpen(false)} title={algTitle} allergens={algList} />
+      <AllergensModal
+        open={algOpen}
+        onClose={() => setAlgOpen(false)}
+        title={algTitle}
+        allergens={algList}
+        category={algCategory}
+      />
 
       <DayPickerModal
         open={dayPickerOpen}
@@ -2296,13 +2326,20 @@ export default function MobileView({
       />
 
       <div className="sticky top-0 z-40 bg-white">
-        <div className="max-w-md mx-auto px-3 pt-3 pb-2">
+        <div className="mx-auto max-w-md px-3 pb-2 pt-3">
           <div className="flex items-start gap-3">
-            <Image src="/logo.png" alt="Jiřka" width={54} height={54} className="h-[54px] w-[54px] object-contain" />
-
-            <div className="min-w-0 flex-1 pt-0.5">
-              <div className="text-[24px] font-extrabold leading-none text-green-700">Jiřka</div>
-              <div className="mt-1 text-[12px] font-semibold text-gray-500">zdravá výživa</div>
+            <div className="min-w-0 flex-1">
+              <Image
+                src="/logo-na-mobil.PNG"
+                alt="Jiřka"
+                width={190}
+                height={70}
+                className="h-auto w-[155px] object-contain"
+                priority
+              />
+              <div className="mt-1 text-[12px] font-semibold text-gray-500">
+                rozvoz obědu po Poděbradech
+              </div>
             </div>
 
             <div className="flex flex-col items-end gap-2">
@@ -2313,22 +2350,22 @@ export default function MobileView({
             </div>
           </div>
 
-          <div className="mt-3 h-[3px] rounded-full bg-green-600/85" />
+          <div className="mt-3 h-[4px] rounded-full bg-green-600" />
         </div>
       </div>
 
-      <div className="max-w-md mx-auto px-3 py-3 space-y-3">
+      <div className="mx-auto max-w-md space-y-3 px-3 py-3">
         {activeSection === "daily" && <SectionHeaderDaily />}
         {activeSection === "order" && <SectionHeaderOrder />}
 
         {(activeSection === "daily" || activeSection === "order") && zavreno ? (
-          <div className="rounded-2xl bg-red-50 ring-2 ring-red-200/60 p-3 text-red-700 font-semibold">
+          <div className="rounded-2xl bg-red-50 p-3 font-semibold text-red-700 ring-2 ring-red-200/60">
             V neděli je zavřeno.
           </div>
         ) : null}
 
         {activeSection === "order" && isPastOrToday(selectedDate) ? (
-          <div className="rounded-2xl bg-neutral-50 ring-1 ring-black/10 p-3 text-[13px] font-semibold text-gray-600">
+          <div className="rounded-2xl bg-neutral-50 p-3 text-[13px] font-semibold text-gray-600 ring-1 ring-black/10">
             Objednávat lze jen na budoucí dny.
           </div>
         ) : null}
@@ -2339,8 +2376,37 @@ export default function MobileView({
         {activeSection === "about" && <AboutSection />}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200">
-        <div className="max-w-md mx-auto grid grid-cols-5 text-[11px] font-semibold text-gray-600">
+      {activeSection === "order" ? (
+        <div className="fixed bottom-[68px] left-0 right-0 z-40">
+          <div className="mx-auto max-w-md px-3">
+            <button
+              type="button"
+              onClick={() => {
+                if (cartCount <= 0) return;
+                setCartOpen(true);
+              }}
+              className={[
+                "w-full rounded-[22px] px-4 py-3 text-left shadow-lg transition",
+                cartCount > 0 ? "bg-green-600 text-white" : "bg-gray-200 text-gray-500",
+              ].join(" ")}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wide opacity-90">Objednávka</div>
+                  <div className="text-[14px] font-extrabold">
+                    {cartCount > 0 ? `${cartCount} položek` : "Zatím nic vybráno"}
+                  </div>
+                </div>
+
+                <div className="text-[16px] font-extrabold">{cartCount > 0 ? `${total} Kč` : "0 Kč"}</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white">
+        <div className="mx-auto grid max-w-md grid-cols-5 text-[11px] font-semibold text-gray-600">
           {[
             { id: "daily", label: "Menu", icon: "📋" },
             { id: "order", label: "Objednat", icon: "🍽️" },
@@ -2355,7 +2421,6 @@ export default function MobileView({
                 onClick={() => {
                   if (x.id === "cart") {
                     setCartOpen(true);
-                    onOpenCart();
                     return;
                   }
                   setActiveSection(x.id as Section);
@@ -2365,7 +2430,7 @@ export default function MobileView({
                 <span className="relative text-lg leading-none">
                   {x.icon}
                   {x.id === "cart" && cartCount > 0 ? (
-                    <span className="absolute -top-2 -right-3 min-w-[18px] h-[18px] px-1 rounded-full bg-green-600 text-white text-[11px] font-extrabold flex items-center justify-center">
+                    <span className="absolute -right-3 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-green-600 px-1 text-[11px] font-extrabold text-white">
                       {cartCount}
                     </span>
                   ) : null}
