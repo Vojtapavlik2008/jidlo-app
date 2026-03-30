@@ -151,10 +151,14 @@ function formatDateShortNoLeadingZero(iso: string) {
 }
 
 function formatSelectedDaySmart(iso: string) {
+  if (!iso) return "";
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const target = new Date(iso + "T00:00:00");
+  if (Number.isNaN(target.getTime())) return "";
+
   target.setHours(0, 0, 0, 0);
 
   const diffDays = Math.round((target.getTime() - today.getTime()) / 86400000);
