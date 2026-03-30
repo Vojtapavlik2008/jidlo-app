@@ -249,7 +249,7 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   }, [open]);
 
   async function upsertProfile(userId: string) {
-    const payload = {
+    const payload: any = {
       id: userId,
       full_name: fullName.trim() || null,
       phone: digitsOnly(phone).slice(0, 9) || null,
@@ -274,16 +274,16 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
         return;
       }
       const uid = data.user?.id;
-      if (uid && (fullName.trim() || phone.trim() || address.trim())) {
-        try {
-          await upsertProfile(uid);
-        } catch {
-          // ignore profile upsert error on login
+      if (uid) {
+        if (fullName.trim() || phone.trim() || address.trim()) {
+          try {
+            await upsertProfile(uid);
+          } catch {}
         }
       }
       onClose();
-    } catch (e: unknown) {
-      setMsg(e instanceof Error ? e.message : "Chyba při přihlášení");
+    } catch (e: any) {
+      setMsg(e?.message ?? "Chyba při přihlášení");
     } finally {
       setBusy(false);
     }
@@ -304,8 +304,8 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
       setMsg("Hotovo. Pokud máš potvrzení emailem, zkontroluj email. Pak se přihlas.");
       setTab("login");
       setPassword("");
-    } catch (e: unknown) {
-      setMsg(e instanceof Error ? e.message : "Chyba při registraci");
+    } catch (e: any) {
+      setMsg(e?.message ?? "Chyba při registraci");
     } finally {
       setBusy(false);
     }
@@ -660,14 +660,12 @@ function CartSheet({
         setName((prev) => (prev.trim() ? prev : String(p.full_name ?? "")));
         setPhone((prev) => {
           if (digitsOnly(prev).length === 9) return prev;
-          const raw = String((p as { phone?: string } | null)?.phone ?? "");
+          const raw = String((p as any)?.phone ?? "");
           if (!raw) return prev;
           return formatPhoneCz(raw);
         });
-        setAddress((prev) => (prev.trim() ? prev : String((p as { address?: string } | null)?.address ?? "")));
-      } catch {
-        // ignore autofill failure
-      }
+        setAddress((prev) => (prev.trim() ? prev : String((p as any)?.address ?? "")));
+      } catch {}
     })();
 
     return () => {
@@ -679,7 +677,7 @@ function CartSheet({
     const m = new Map<string, CartItem[]>();
     cart.forEach((it) => {
       if (!m.has(it.datum)) m.set(it.datum, []);
-      m.get(it.datum)?.push(it);
+      m.get(it.datum)!.push(it);
     });
     const days = Array.from(m.keys()).sort();
     return days.map((d) => ({
@@ -692,8 +690,8 @@ function CartSheet({
   const deliveryFee = deliveryMode === "delivery" && cartCount > 0 ? 10 : 0;
 
   function isSoupItem(it: CartItem) {
-    const itemWithCategory = it as CartItem & { kategorie?: string; category?: string };
-    const cat = itemWithCategory.kategorie ?? itemWithCategory.category ?? "";
+    const anyIt = it as any;
+    const cat = (anyIt?.kategorie ?? anyIt?.category ?? "") as string;
     if (cat && /pol[eě]v/i.test(cat)) return true;
     return /pol[eě]v/i.test(it.nazev);
   }
@@ -908,20 +906,20 @@ function CartSheet({
   function pickTime(slot: { from: string; to: string }) {
     if (!activeTimeDay) return;
 
-    const current = timesByDay[activeTimeDay] as DayTime;
+    const current = (timesByDay as any)?.[activeTimeDay] as DayTime;
     const isSame = !!current && current.from === slot.from && current.to === slot.to;
 
     if (sameTimeForAll && cartDays.length > 1) {
-      setTimesByDay((prev) => {
-        const next = { ...prev };
+      setTimesByDay((prev: any) => {
+        const next = { ...(prev ?? {}) };
         for (const d of cartDays) next[d] = isSame ? null : { from: slot.from, to: slot.to };
         return next;
       });
       return;
     }
 
-    setTimesByDay((prev) => {
-      const next = { ...prev };
+    setTimesByDay((prev: any) => {
+      const next = { ...(prev ?? {}) };
       next[activeTimeDay] = isSame ? null : { from: slot.from, to: slot.to };
       return next;
     });
@@ -929,25 +927,25 @@ function CartSheet({
 
   const timeSummary = useMemo(() => {
     if (cartDays.length === 0) return "Vybrat čas";
-    const pickedDays = cartDays.filter((d) => timesByDay[d]);
+    const pickedDays = cartDays.filter((d) => (timesByDay as any)?.[d]);
     if (pickedDays.length === 0) return "Vybrat čas";
 
     if (cartDays.length === 1) {
       const d = cartDays[0];
-      const t = timesByDay[d] as DayTime;
+      const t = (timesByDay as any)?.[d] as DayTime;
       if (!t) return "Vybrat čas";
       return `${formatCartDay(d)} ${t.from}–${t.to}`;
     }
 
     if (sameTimeForAll) {
       const d = pickedDays[0];
-      const t = timesByDay[d] as DayTime;
+      const t = (timesByDay as any)?.[d] as DayTime;
       if (!t) return "Vybrat čas";
       return `Všechny dny ${t.from}–${t.to}`;
     }
 
     const d0 = pickedDays[0];
-    const t0 = timesByDay[d0] as DayTime;
+    const t0 = (timesByDay as any)?.[d0] as DayTime;
     if (!t0) return "Vybrat čas";
     return `${formatCartDay(d0)} ${t0.from}–${t0.to}${pickedDays.length > 1 ? ` +${pickedDays.length - 1}` : ""}`;
   }, [cartDays, timesByDay, sameTimeForAll]);
@@ -1004,8 +1002,8 @@ function CartSheet({
       setOrderId(id);
       clearCart();
       setStep("done");
-    } catch (e: unknown) {
-      setMsg(e instanceof Error ? e.message : "Nepovedlo se odeslat objednávku.");
+    } catch (e: any) {
+      setMsg(e?.message ?? "Nepovedlo se odeslat objednávku.");
     } finally {
       setBusy(false);
     }
@@ -1072,12 +1070,6 @@ function CartSheet({
                 setPackagingMode("plastic");
                 setPickOpen(null);
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  setPackagingMode("plastic");
-                  setPickOpen(null);
-                }
-              }}
               className={optionCls(packagingMode === "plastic")}
             >
               <div className="flex items-center justify-between gap-3">
@@ -1110,12 +1102,6 @@ function CartSheet({
                 setPackagingMode("rekrabicka");
                 setPickOpen(null);
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  setPackagingMode("rekrabicka");
-                  setPickOpen(null);
-                }
-              }}
               className={optionCls(packagingMode === "rekrabicka")}
             >
               <div className="flex items-center justify-between gap-3">
@@ -1147,12 +1133,6 @@ function CartSheet({
               onClick={() => {
                 setPackagingMode("own");
                 setPickOpen(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  setPackagingMode("own");
-                  setPickOpen(null);
-                }
               }}
               className={optionCls(packagingMode === "own")}
             >
@@ -1534,7 +1514,7 @@ function CartSheet({
 
                 <div className="grid grid-cols-2 gap-2">
                   {timeSlots.map((s) => {
-                    const cur = activeTimeDay ? (timesByDay[activeTimeDay] as DayTime) : null;
+                    const cur = activeTimeDay ? ((timesByDay as any)?.[activeTimeDay] as DayTime) : null;
                     const active = !!cur && cur.from === s.from && cur.to === s.to;
 
                     return (
@@ -1703,6 +1683,14 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
 
   const [cartOpen, setCartOpen] = useState(false);
 
+  const openCart = useCallback(() => {
+    if (onOpenCart) {
+      onOpenCart();
+      return;
+    }
+    setCartOpen(true);
+  }, [onOpenCart]);
+
   const [algOpen, setAlgOpen] = useState(false);
   const [algTitle, setAlgTitle] = useState("");
   const [algList, setAlgList] = useState<string[]>([]);
@@ -1715,14 +1703,6 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
 
   const [systemItems, setSystemItems] = useState<SystemItemRow[]>([]);
   const [loadingSystemItems, setLoadingSystemItems] = useState(true);
-
-  function openCart() {
-    if (onOpenCart) {
-      onOpenCart();
-      return;
-    }
-    setCartOpen(true);
-  }
 
   useEffect(() => {
     const onDoc = (e: PointerEvent) => {
@@ -1758,8 +1738,8 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
         if (!alive) return;
 
         setUserName((p?.full_name ?? "").toString());
-        setCredit(Number((p as { kredit?: number } | null)?.kredit ?? 0) || 0);
-        setRole(((p as { role?: string } | null)?.role ?? "") === "staff" ? "staff" : "customer");
+        setCredit(Number((p as any)?.kredit ?? 0) || 0);
+        setRole(((p as any)?.role as any) === "staff" ? "staff" : "customer");
       } catch (e) {
         console.error(e);
       }
@@ -1775,8 +1755,8 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
           if (!alive) return;
 
           setUserName((p?.full_name ?? "").toString());
-          setCredit(Number((p as { kredit?: number } | null)?.kredit ?? 0) || 0);
-          setRole(((p as { role?: string } | null)?.role ?? "") === "staff" ? "staff" : "customer");
+          setCredit(Number((p as any)?.kredit ?? 0) || 0);
+          setRole(((p as any)?.role as any) === "staff" ? "staff" : "customer");
           setMenuOpen(false);
         } catch (e) {
           console.error(e);
@@ -1787,8 +1767,8 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
     const onProfileUpdated = async () => {
       const p = await getMyProfile();
       setUserName((p?.full_name ?? "").toString());
-      setCredit(Number((p as { kredit?: number } | null)?.kredit ?? 0) || 0);
-      setRole(((p as { role?: string } | null)?.role ?? "") === "staff" ? "staff" : "customer");
+      setCredit(Number((p as any)?.kredit ?? 0) || 0);
+      setRole(((p as any)?.role as any) === "staff" ? "staff" : "customer");
     };
 
     window.addEventListener("profile-updated", onProfileUpdated);
@@ -1878,20 +1858,19 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
 
   const tabDays = useMemo(() => days.slice(0, 6), [days]);
 
-  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const todayIso = toISODateLocal(new Date());
+    return tabDays.includes(todayIso) ? todayIso : tabDays[0];
+  });
 
   useEffect(() => {
     const todayIso = toISODateLocal(new Date());
-    setSelectedDate((prev) => {
-      if (prev && tabDays.includes(prev)) return prev;
-      if (tabDays.includes(todayIso)) return todayIso;
-      return tabDays[0] ?? "";
-    });
+    setSelectedDate((prev) => (tabDays.includes(prev) ? prev : tabDays.includes(todayIso) ? todayIso : tabDays[0]));
   }, [tabDays]);
 
-  const zavreno = selectedDate ? isSunday(selectedDate) : false;
+  const zavreno = isSunday(selectedDate);
   const rangeLabel = tabDays.length ? formatRangeShort(tabDays[0], tabDays[tabDays.length - 1]) : "";
-  const smartSelectedLabel = selectedDate ? formatSelectedDaySmart(selectedDate) : "";
+  const smartSelectedLabel = formatSelectedDaySmart(selectedDate);
   const weekText = weekOffset === 0 ? "Tento týden" : "Příští týden";
 
   const [menuByDate, setMenuByDate] = useState<Record<string, MenuRow[]>>({});
@@ -1902,72 +1881,57 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
     let alive = true;
 
     async function loadMenu() {
-  if (!days.length) return;
-  setLoadingMenu(true);
-  setErr(null);
+      if (!days?.length) return;
+      setLoadingMenu(true);
+      setErr(null);
 
-  const { data, error } = await supabase
-    .from("menu_den")
-    .select("datum, poradi, jidlo_id, jidla:jidlo_id(nazev, cena, kategorie, alergeny, aktivni)")
-    .in("datum", days)
-    .order("datum", { ascending: true })
-    .order("poradi", { ascending: true });
+      const { data, error } = await supabase
+        .from("menu_den")
+        .select("datum, poradi, jidlo_id, jidla:jidlo_id(nazev, cena, kategorie, alergeny, aktivni)")
+        .in("datum", days)
+        .order("datum", { ascending: true })
+        .order("poradi", { ascending: true });
 
-  if (!alive) return;
+      if (!alive) return;
 
-  if (error) {
-    console.error("Mobile loadMenu error:", error);
-    setErr(error.message);
-    setMenuByDate({});
-    setLoadingMenu(false);
-    return;
-  }
+      if (error) {
+        console.error("Mobile loadMenu error:", error);
+        setErr(error.message);
+        setMenuByDate({});
+        setLoadingMenu(false);
+        return;
+      }
 
-  type RawMenuRow = {
-    datum: string;
-    poradi: number | null;
-    jidlo_id: string | null;
-    jidla: {
-      nazev: string;
-      cena: number | null;
-      kategorie: string | null;
-      alergeny?: string | null;
-      aktivni?: boolean | null;
-    } | null;
-  };
+      const rows = (data ?? [])
+        .map((r: any) => ({
+          datum: r.datum as string,
+          poradi: Number(r.poradi ?? 0),
+          jidlo_id: r.jidlo_id as string | null,
+          jidla: r.jidla ?? null,
+        }))
+        .filter((r: any) => !!r.jidlo_id && !!r.jidla && (r.jidla.aktivni ?? true))
+        .map((r: any) => ({
+          datum: r.datum,
+          poradi: r.poradi,
+          jidlo_id: r.jidlo_id as string,
+          jidla: {
+            nazev: r.jidla.nazev as string,
+            cena: r.jidla.cena as number | null,
+            kategorie: r.jidla.kategorie as string | null,
+            alergeny: (r.jidla.alergeny ?? null) as string | null,
+          },
+        })) as MenuRow[];
 
-  const rawRows = (data ?? []) as RawMenuRow[];
+      const map: Record<string, MenuRow[]> = {};
+      for (const d of days) map[d] = [];
+      for (const r of rows) {
+        if (!map[r.datum]) map[r.datum] = [];
+        map[r.datum].push(r);
+      }
 
-  const rows: MenuRow[] = rawRows
-    .map((r) => ({
-      datum: r.datum,
-      poradi: Number(r.poradi ?? 0),
-      jidlo_id: r.jidlo_id,
-      jidla: r.jidla,
-    }))
-    .filter((r) => !!r.jidlo_id && !!r.jidla && (r.jidla.aktivni ?? true))
-    .map((r) => ({
-      datum: r.datum,
-      poradi: r.poradi,
-      jidlo_id: r.jidlo_id as string,
-      jidla: {
-        nazev: r.jidla!.nazev,
-        cena: r.jidla!.cena,
-        kategorie: r.jidla!.kategorie,
-        alergeny: r.jidla!.alergeny ?? null,
-      },
-    }));
-
-  const map: Record<string, MenuRow[]> = {};
-  for (const d of days) map[d] = [];
-  for (const r of rows) {
-    if (!map[r.datum]) map[r.datum] = [];
-    map[r.datum].push(r);
-  }
-
-  setMenuByDate(map);
-  setLoadingMenu(false);
-}
+      setMenuByDate(map);
+      setLoadingMenu(false);
+    }
 
     loadMenu();
     return () => {
@@ -1975,7 +1939,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
     };
   }, [days]);
 
-  const items = selectedDate ? (menuByDate[selectedDate] ?? []).filter((x) => x.jidla).slice(0, 50) : [];
+  const items = (menuByDate[selectedDate] ?? []).filter((x) => x.jidla).slice(0, 50);
 
   function UserArea() {
     if (!authed) {
@@ -2385,7 +2349,9 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
                 className="h-auto w-[155px] object-contain"
                 priority
               />
-              <div className="mt-1 text-[12px] font-semibold text-gray-500">rozvoz obědu po Poděbradech</div>
+              <div className="mt-1 text-[12px] font-semibold text-gray-500">
+                rozvoz obědu po Poděbradech
+              </div>
             </div>
 
             <div className="flex flex-col items-end gap-2">
@@ -2464,7 +2430,6 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
             return (
               <button
                 key={x.id}
-                type="button"
                 onClick={() => {
                   if (x.id === "cart") {
                     openCart();
