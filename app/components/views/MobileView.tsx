@@ -2453,7 +2453,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
           alt="Jiřka"
           width={230}
           height={95}
-          className="h-auto w-[132px] object-contain min-[560px]:w-[160px]"
+          className="-ml-4 -mt-4 h-auto w-[132px] object-contain min-[560px]:w-[160px]"
           priority
         />
       </div>
