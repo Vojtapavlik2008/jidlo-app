@@ -2453,9 +2453,13 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
           alt="Jiřka"
           width={230}
           height={95}
-          className="-ml-8 -mt-8 h-auto w-[200px] object-contain min-[560px]:w-[205px]"
+          className="-ml-2 -mt-4 h-auto w-[200px] object-contain min-[560px]:w-[220px]"
           priority
         />
+
+        <div className="-mt-6 ml-0 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
+          rozvoz obědů po Poděbradech
+        </div>
       </div>
 
       <div className="flex shrink-0 items-start gap-2 pt-1">
@@ -2464,14 +2468,9 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
       </div>
     </div>
 
-    <div className="-ml-2 -mt-4 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
-  rozvoz obědů po Poděbradech
-</div>
-
-<div className="mt-1 h-[3px] w-full rounded-full bg-green-600" />
+    <div className="mt-2 h-[3px] w-full rounded-full bg-green-600" />
   </div>
 </div>
-
 
       <div className="mx-auto w-full max-w-[680px] space-y-3 px-3 pb-3 pt-3">
         {activeSection === "daily" && <SectionHeaderDaily />}
