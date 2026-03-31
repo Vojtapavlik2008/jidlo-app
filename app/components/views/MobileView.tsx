@@ -1244,7 +1244,7 @@ function CartSheet({
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
       <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
 
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/10">
+      <div className="relative w-full max-w-[680px] overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/10">
         <div className="flex items-center justify-between border-b border-gray-100 px-4 pb-2 pt-3">
           <div className="text-[14px] font-extrabold text-gray-900">
             {step === "cart" && "Košík"}
@@ -1270,54 +1270,63 @@ function CartSheet({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {grouped.map((g) => (
-                    <div key={g.datum} className={pillSoft + " p-3"}>
-                      <div className="mb-2 flex items-center justify-between">
-                        <div className="text-[12px] font-extrabold text-gray-700">{formatCartDay(g.datum)}</div>
-                        <div className="rounded-full bg-white/80 px-2 py-1 text-[11px] font-extrabold text-green-700 ring-1 ring-green-200/70">
-                          {g.items.reduce((s, it) => s + it.qty, 0)} ks
+                  {grouped.map((g) => {
+                    const dayCount = g.items.reduce((s, it) => s + it.qty, 0);
+                    const dayTotal = g.items.reduce((s, it) => s + it.cena * it.qty, 0);
+
+                    return (
+                      <div key={g.datum} className={pillSoft + " p-3"}>
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                          <div className="rounded-xl bg-white px-2.5 py-1.5 text-[12px] font-extrabold text-[#1f2f56] ring-1 ring-black/10">
+                            {formatCartDay(g.datum)}
+                          </div>
+                          <div className="rounded-xl bg-white px-2.5 py-1.5 text-[12px] font-extrabold text-green-700 ring-1 ring-green-200/80">
+                            {dayCount} ks
+                          </div>
+                          <div className="rounded-xl bg-white px-2.5 py-1.5 text-[12px] font-extrabold text-green-700 ring-1 ring-green-200/80">
+                            {dayTotal} Kč
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          {g.items.map((it) => {
+                            const row: DbMenuRow = {
+                              datum: it.datum,
+                              poradi: 0,
+                              jidlo_id: it.jidlo_id,
+                              jidla: { nazev: it.nazev, cena: it.cena, kategorie: null },
+                            };
+
+                            return (
+                              <div
+                                key={it.key}
+                                className="flex items-center gap-2 border-b border-green-200/50 py-2 last:border-b-0"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="break-words text-[14px] font-extrabold leading-snug text-gray-900">
+                                    {it.nazev}
+                                  </div>
+                                  <div className="mt-0.5 text-[12px] font-bold text-green-700">
+                                    {it.cena * it.qty} Kč
+                                  </div>
+                                </div>
+
+                                <div className="flex shrink-0 items-center gap-1.5">
+                                  <button type="button" onClick={() => removeOne(it.datum, row)} className={qtyBtn}>
+                                    −
+                                  </button>
+                                  <div className="w-6 text-center text-[13px] font-extrabold">{it.qty}</div>
+                                  <button type="button" onClick={() => addOne(it.datum, row)} className={qtyBtn}>
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
-
-                      <div className="space-y-2">
-                        {g.items.map((it) => {
-                          const row: DbMenuRow = {
-                            datum: it.datum,
-                            poradi: 0,
-                            jidlo_id: it.jidlo_id,
-                            jidla: { nazev: it.nazev, cena: it.cena, kategorie: null },
-                          };
-
-                          return (
-                            <div
-                              key={it.key}
-                              className="flex items-center gap-2 border-b border-green-200/50 py-2 last:border-b-0"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <div className="break-words text-[14px] font-extrabold leading-snug text-gray-900">
-                                  {it.nazev}
-                                </div>
-                                <div className="mt-0.5 text-[12px] text-gray-500">
-                                  {it.cena} Kč · {it.qty}× ={" "}
-                                  <span className="font-extrabold text-green-700">{it.cena * it.qty} Kč</span>
-                                </div>
-                              </div>
-
-                              <div className="flex shrink-0 items-center gap-1.5">
-                                <button type="button" onClick={() => removeOne(it.datum, row)} className={qtyBtn}>
-                                  −
-                                </button>
-                                <div className="w-6 text-center text-[13px] font-extrabold">{it.qty}</div>
-                                <button type="button" onClick={() => addOne(it.datum, row)} className={qtyBtn}>
-                                  +
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1674,7 +1683,7 @@ function DayPickerModal({
         <div className="flex items-center justify-between border-b border-gray-100 px-4 pb-2 pt-3">
           <div>
             <div className="text-[15px] font-extrabold text-gray-900">Vybrat den</div>
-            <div className="mt-0.5 text-[12px] font-semibold text-green-700">{weekText}</div>
+            <div className="mt-0.5 text-[11px] font-semibold text-green-700">{weekText}</div>
             <div className="text-[12px] font-semibold text-gray-500">{rangeLabel}</div>
           </div>
           <button
@@ -1698,7 +1707,7 @@ function DayPickerModal({
             </button>
 
             <div className="rounded-2xl bg-[#f6fbf7] px-3 py-3 text-center ring-1 ring-green-200/80">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-green-700">{weekText}</div>
+              <div className="text-[10px] font-bold uppercase tracking-wide text-green-700">{weekText}</div>
               <div className="mt-0.5 text-[13px] font-extrabold text-[#1f2f56]">{rangeLabel}</div>
             </div>
 
@@ -1715,6 +1724,8 @@ function DayPickerModal({
           <div className="mt-3 space-y-2">
             {tabDays.map((d) => {
               const active = d === selectedDate;
+              const today = isTodayIso(d);
+
               return (
                 <button
                   key={d}
@@ -1727,10 +1738,19 @@ function DayPickerModal({
                     "w-full rounded-2xl px-4 py-3 text-left ring-1 transition",
                     active
                       ? "bg-green-600 text-white ring-green-600"
+                      : today
+                      ? "bg-white text-gray-900 ring-2 ring-green-500 hover:bg-gray-50"
                       : "bg-white text-gray-900 ring-black/10 hover:bg-gray-50",
                   ].join(" ")}
                 >
-                  <div className="text-[13px] font-extrabold">{formatSelectedDaySmart(d)}</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-[13px] font-extrabold">{formatSelectedDaySmart(d)}</div>
+                    {!active && today ? (
+                      <div className="rounded-full bg-green-50 px-2 py-1 text-[10px] font-extrabold text-green-700 ring-1 ring-green-200">
+                        Dnes
+                      </div>
+                    ) : null}
+                  </div>
                 </button>
               );
             })}
@@ -1940,7 +1960,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
 
   const tabDays = useMemo(() => days.slice(0, 6), [days]);
 
- const [selectedDate, setSelectedDate] = useState<string>(toISODateLocal(new Date()));
+  const [selectedDate, setSelectedDate] = useState<string>(toISODateLocal(new Date()));
 
   useEffect(() => {
     const todayIso = toISODateLocal(new Date());
@@ -2112,14 +2132,14 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
 
   function SectionHeaderDaily() {
     return (
-      <div className="px-1 pt-1">
+      <div className="px-0.5 pt-0.5">
         <div className="flex items-start justify-between gap-3">
-          <div className="text-[24px] font-extrabold leading-none text-green-700">Denní menu</div>
+          <div className="text-[23px] font-extrabold leading-none text-green-700">Denní menu</div>
 
           <button
             type="button"
             onClick={() => setDayPickerOpen(true)}
-            className="pt-1 text-right text-[14px] font-bold text-gray-700 underline decoration-1 underline-offset-4"
+            className="pt-1 text-right text-[13px] font-bold text-gray-700 underline decoration-1 underline-offset-4"
           >
             {formatSelectedDaySmart(selectedDate)}
           </button>
@@ -2130,11 +2150,11 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
 
   function SectionHeaderOrder() {
     return (
-      <div className="space-y-3 px-1 pt-1">
-        <div className="text-[24px] font-extrabold leading-none text-green-700">Objednávka jídel</div>
+      <div className="space-y-2.5 px-0.5 pt-0.5">
+        <div className="text-[23px] font-extrabold leading-none text-green-700">Objednávka jídel</div>
 
-        <div className="rounded-[26px] border border-[#dbeee2] bg-white px-4 py-3 shadow-sm ring-1 ring-green-100/70">
-          <div className="grid grid-cols-[40px_1fr_40px] items-center gap-2">
+        <div className="rounded-[24px] border border-[#dbeee2] bg-white px-3 py-3 shadow-sm ring-1 ring-green-100/70">
+          <div className="grid grid-cols-[38px_1fr_38px] items-center gap-2">
             <button
               type="button"
               onClick={() => setWeekOffset(0)}
@@ -2149,7 +2169,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
               onClick={() => setDayPickerOpen(true)}
               className="rounded-2xl bg-[#f7fbf8] px-3 py-2 text-center ring-1 ring-green-200/80 transition hover:bg-[#eef8f1]"
             >
-              <div className="text-[11px] font-bold uppercase tracking-wide text-green-700">{weekText}</div>
+              <div className="text-[9px] font-bold uppercase tracking-wide text-green-700">{weekText}</div>
               <div className="mt-0.5 text-[13px] font-extrabold text-[#1f2f56]">{rangeLabel}</div>
             </button>
 
@@ -2167,6 +2187,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
             {tabDays.map((d) => {
               const active = d === selectedDate;
               const disabled = isPastDay(d);
+              const today = isTodayIso(d);
 
               return (
                 <button
@@ -2180,6 +2201,8 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
                       ? "cursor-not-allowed bg-gray-50 text-gray-300 ring-gray-200"
                       : active
                       ? "bg-green-600 text-white ring-green-600"
+                      : today
+                      ? "bg-white text-gray-800 ring-2 ring-green-500 hover:bg-gray-50"
                       : "bg-white text-gray-800 ring-black/10 hover:bg-gray-50",
                   ].join(" ")}
                 >
@@ -2247,8 +2270,6 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
                       i
                     </button>
                   </div>
-
-                  {!!category ? <div className="mt-0.5 text-[12px] font-medium text-gray-500">{category}</div> : null}
                 </div>
 
                 <div className="flex shrink-0 items-center gap-3 self-stretch">
@@ -2315,10 +2336,10 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
 
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-3">
           {photoSources.map((src) => (
             <div key={src} className="overflow-hidden rounded-[24px] bg-white shadow-sm ring-1 ring-black/10">
-              <img src={src} alt="Jiřka" className="h-44 w-full object-cover" />
+              <img src={src} alt="Jiřka" className="h-44 w-full object-cover min-[560px]:h-36" />
             </div>
           ))}
         </div>
@@ -2424,33 +2445,33 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
       />
 
       <div className="sticky top-0 z-40 border-b border-black/5 bg-white/95 backdrop-blur">
-        <div className="mx-auto max-w-md px-3 pb-2 pt-2">
-          <div className="flex items-start gap-3">
+        <div className="mx-auto w-full max-w-[680px] px-3 pb-2 pt-2">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <Image
                 src="/logo-na-mobil.png"
                 alt="Jiřka"
                 width={230}
                 height={95}
-                className="h-auto w-[172px] object-contain"
+                className="h-auto w-[168px] object-contain min-[560px]:w-[188px]"
                 priority
               />
-              <div className="-mt-1 pl-1 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
+              <div className="pl-1 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
                 rozvoz obědů po Poděbradech
               </div>
             </div>
 
-            <div className="flex shrink-0 flex-col items-end gap-2 pt-1">
-              <div className="flex items-center gap-2">
-                <StaffShortcut />
-                <UserArea />
-              </div>
+            <div className="flex shrink-0 items-start gap-2 pt-1">
+              <StaffShortcut />
+              <UserArea />
             </div>
           </div>
+
+          <div className="mt-2 h-[3px] w-full rounded-full bg-green-600" />
         </div>
       </div>
 
-      <div className="mx-auto max-w-md space-y-3 px-3 pb-3 pt-2">
+      <div className="mx-auto w-full max-w-[680px] space-y-3 px-3 pb-3 pt-3">
         {activeSection === "daily" && <SectionHeaderDaily />}
         {activeSection === "order" && <SectionHeaderOrder />}
 
@@ -2474,25 +2495,20 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
 
       {activeSection === "order" ? (
         <div className="fixed bottom-[68px] left-0 right-0 z-40">
-          <div className="mx-auto max-w-md px-3">
+          <div className="mx-auto w-full max-w-[680px] px-3">
             <button
               type="button"
               onClick={() => openCart()}
               className={[
-                "w-full rounded-[24px] border px-4 py-3 text-left shadow-xl transition active:scale-[0.99]",
+                "w-full rounded-[22px] border px-4 py-3 text-left shadow-xl transition active:scale-[0.99]",
                 cartCount > 0
                   ? "border-green-600 bg-green-600 text-white"
                   : "border-[#dbeee2] bg-white text-gray-900 hover:bg-gray-50",
               ].join(" ")}
             >
               <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className={`text-[16px] font-extrabold ${cartCount > 0 ? "text-white" : "text-[#1f2f56]"}`}>
-                    Objednávka
-                  </div>
-                  <div className={`mt-0.5 text-[12px] font-semibold ${cartCount > 0 ? "text-white/85" : "text-gray-500"}`}>
-                    {cartCount > 0 ? `${cartCount} ks v košíku` : "Zatím nic vybráno"}
-                  </div>
+                <div className={`text-[16px] font-extrabold ${cartCount > 0 ? "text-white" : "text-[#1f2f56]"}`}>
+                  Objednávka
                 </div>
 
                 <div className={`shrink-0 text-[18px] font-extrabold ${cartCount > 0 ? "text-white" : "text-green-700"}`}>
@@ -2505,7 +2521,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
       ) : null}
 
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white">
-        <div className="mx-auto grid max-w-md grid-cols-5 text-[11px] font-semibold text-gray-600">
+        <div className="mx-auto grid w-full max-w-[680px] grid-cols-5 text-[11px] font-semibold text-gray-600">
           {[
             { id: "daily", label: "Menu", icon: "📋" },
             { id: "order", label: "Objednat", icon: "🍽️" },
