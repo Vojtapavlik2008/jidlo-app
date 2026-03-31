@@ -2472,9 +2472,6 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
   </div>
 </div>
 
-          <div className="mt-2 h-[3px] w-full rounded-full bg-green-600" />
-        </div>
-      </div>
 
       <div className="mx-auto w-full max-w-[680px] space-y-3 px-3 pb-3 pt-3">
         {activeSection === "daily" && <SectionHeaderDaily />}
