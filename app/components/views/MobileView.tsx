@@ -2444,7 +2444,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
         credit={credit}
       />
 
-   <div className="sticky top-0 z-40 border-b border-black/5 bg-white/95 backdrop-blur">
+<div className="sticky top-0 z-40 border-b border-black/5 bg-white/95 backdrop-blur">
   <div className="mx-auto w-full max-w-[680px] px-3 pb-2 pt-2">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
@@ -2453,7 +2453,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
           alt="Jiřka"
           width={230}
           height={95}
-          className="-ml-4 -mt-4 h-auto w-[132px] object-contain min-[560px]:w-[160px]"
+          className="-ml-4 -mt-4 h-auto w-[152px] object-contain min-[560px]:w-[178px]"
           priority
         />
       </div>
@@ -2464,7 +2464,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
       </div>
     </div>
 
-    <div className="mt-2 pl-1 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
+    <div className="-mt-1 pl-1 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
       rozvoz obědů po Poděbradech
     </div>
 
