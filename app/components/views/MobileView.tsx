@@ -2464,7 +2464,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
       </div>
     </div>
 
-    <div className="relative z-10 -mt-8 pl-10 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
+    <div className="relative z-10 -mt-9 pl-10 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
       rozvoz obědů po Poděbradech
     </div>
 
