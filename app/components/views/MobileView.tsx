@@ -159,7 +159,10 @@ function formatDateShortNoLeadingZero(iso: string) {
   return `${d.getDate()}.${d.getMonth() + 1}.`;
 }
 
-function formatSelectedDaySmart(iso: string, t: (k: string) => string) {
+function formatSelectedDaySmart(
+  iso: string,
+  t: (key: keyof typeof translations["cs"]) => string
+) {
   if (!iso) return "";
 
   const today = new Date();
@@ -177,30 +180,10 @@ function formatSelectedDaySmart(iso: string, t: (k: string) => string) {
   return `${formatWeekdayOnlyLong(iso)} · ${dateTxt}`;
 }
 
-function isTodayIso(iso: string) {
-  return iso === toISODateLocal(new Date());
-}
-
-function isPastDay(iso: string) {
-  return iso < toISODateLocal(new Date());
-}
-
-function canAddToCartForDay(iso: string) {
-  const todayIso = toISODateLocal(new Date());
-
-  if (isSunday(iso)) return false;
-  if (iso < todayIso) return false;
-
-  if (iso === todayIso) {
-    const now = new Date();
-    const minutes = now.getHours() * 60 + now.getMinutes();
-    return minutes < 13 * 60;
-  }
-
-  return true;
-}
-
-function orderDayHint(iso: string, t: (k: string) => string) {
+function orderDayHint(
+  iso: string,
+  t: (key: keyof typeof translations["cs"]) => string
+) {
   const todayIso = toISODateLocal(new Date());
 
   if (isSunday(iso)) return t("closedSunday");
