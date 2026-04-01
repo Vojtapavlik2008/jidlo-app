@@ -98,6 +98,29 @@ function isSunday(iso: string) {
   return d.getDay() === 0;
 }
 
+function isTodayIso(iso: string) {
+  return iso === toISODateLocal(new Date());
+}
+
+function isPastDay(iso: string) {
+  return iso < toISODateLocal(new Date());
+}
+
+function canAddToCartForDay(iso: string) {
+  const todayIso = toISODateLocal(new Date());
+
+  if (isSunday(iso)) return false;
+  if (iso < todayIso) return false;
+
+  if (iso === todayIso) {
+    const now = new Date();
+    const minutes = now.getHours() * 60 + now.getMinutes();
+    return minutes < 13 * 60;
+  }
+
+  return true;
+}
+
 function baseMondayAutoNextWeekend(now: Date) {
   const x = new Date(now);
   x.setHours(0, 0, 0, 0);
@@ -112,8 +135,10 @@ function baseMondayAutoNextWeekend(now: Date) {
 
 function formatRangeShort(fromIso: string, toIso: string) {
   if (!fromIso || !toIso) return "";
+
   const f = new Date(fromIso + "T00:00:00");
   const t = new Date(toIso + "T00:00:00");
+
   if (Number.isNaN(f.getTime()) || Number.isNaN(t.getTime())) return "";
 
   const fDd = String(f.getDate()).padStart(2, "0");
@@ -147,6 +172,7 @@ function formatWeekdayOnlyLong(iso: string) {
   if (!iso) return "";
   const d = new Date(iso + "T00:00:00");
   if (Number.isNaN(d.getTime())) return "";
+
   return new Intl.DateTimeFormat("cs-CZ", { weekday: "long" })
     .format(d)
     .replace(/^\w/, (c) => c.toUpperCase());
@@ -157,40 +183,6 @@ function formatDateShortNoLeadingZero(iso: string) {
   const d = new Date(iso + "T00:00:00");
   if (Number.isNaN(d.getTime())) return "";
   return `${d.getDate()}.${d.getMonth() + 1}.`;
-}
-
-function formatSelectedDaySmart(
-  iso: string,
-  t: (key: keyof typeof translations["cs"]) => string
-) {
-  if (!iso) return "";
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const target = new Date(iso + "T00:00:00");
-  if (Number.isNaN(target.getTime())) return "";
-  target.setHours(0, 0, 0, 0);
-
-  const diffDays = Math.round((target.getTime() - today.getTime()) / 86400000);
-  const dateTxt = formatDateShortNoLeadingZero(iso);
-
-  if (diffDays === 0) return `${t("today")} · ${dateTxt}`;
-  if (diffDays === 1) return `${t("tomorrow")} · ${dateTxt}`;
-  return `${formatWeekdayOnlyLong(iso)} · ${dateTxt}`;
-}
-
-function orderDayHint(
-  iso: string,
-  t: (key: keyof typeof translations["cs"]) => string
-) {
-  const todayIso = toISODateLocal(new Date());
-
-  if (isSunday(iso)) return t("closedSunday");
-  if (iso < todayIso) return t("orderOnlyTodayFuture");
-  if (iso === todayIso && !canAddToCartForDay(iso)) return t("todayUntil13");
-
-  return null;
 }
 
 function formatMoney(n: number) {
@@ -369,6 +361,42 @@ const translations = {
   },
 } as const;
 
+type LanguageCode = keyof typeof translations;
+
+function formatSelectedDaySmart(
+  iso: string,
+  t: (key: keyof typeof translations["cs"]) => string
+) {
+  if (!iso) return "";
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const target = new Date(iso + "T00:00:00");
+  if (Number.isNaN(target.getTime())) return "";
+  target.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.round((target.getTime() - today.getTime()) / 86400000);
+  const dateTxt = formatDateShortNoLeadingZero(iso);
+
+  if (diffDays === 0) return `${t("today")} · ${dateTxt}`;
+  if (diffDays === 1) return `${t("tomorrow")} · ${dateTxt}`;
+  return `${formatWeekdayOnlyLong(iso)} · ${dateTxt}`;
+}
+
+function orderDayHint(
+  iso: string,
+  t: (key: keyof typeof translations["cs"]) => string
+) {
+  const todayIso = toISODateLocal(new Date());
+
+  if (isSunday(iso)) return t("closedSunday");
+  if (iso < todayIso) return t("orderOnlyTodayFuture");
+  if (iso === todayIso && !canAddToCartForDay(iso)) return t("todayUntil13");
+
+  return null;
+}
+
 /** ===================== Allergens ===================== */
 const ALLERGENS: Record<number, string> = {
   1: "Obiloviny obsahující lepek",
@@ -449,8 +477,14 @@ type MobileViewProps = {
   onOpenCart?: () => void;
 };
 
-type LanguageCode = keyof typeof translations;
-type SettingsSection = "menu" | "personal" | "dark" | "notifications" | "language" | "topup" | "orders";
+type SettingsSection =
+  | "menu"
+  | "personal"
+  | "dark"
+  | "notifications"
+  | "language"
+  | "topup"
+  | "orders";
 
 /** ===================== Reusable UI ===================== */
 function CheckIcon({ show }: { show: boolean }) {
@@ -1177,7 +1211,21 @@ function SettingsModal({
         setSection("menu");
         onClose();
       }}
-      title={section === "menu" ? t("settings") : section === "personal" ? t("personalData") : section === "dark" ? t("darkMode") : section === "notifications" ? t("notifications") : section === "language" ? t("language") : section === "topup" ? t("topUpCredit") : t("orders")}
+      title={
+        section === "menu"
+          ? t("settings")
+          : section === "personal"
+          ? t("personalData")
+          : section === "dark"
+          ? t("darkMode")
+          : section === "notifications"
+          ? t("notifications")
+          : section === "language"
+          ? t("language")
+          : section === "topup"
+          ? t("topUpCredit")
+          : t("orders")
+      }
       darkMode={darkMode}
       maxWidth="max-w-lg"
     >
@@ -2182,7 +2230,6 @@ function CartSheet({
   const mapQuery = encodeURIComponent(address?.trim() || "Havlíčkova 72, Poděbrady");
 
   return (
-
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
       <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
 
