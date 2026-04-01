@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import type { HTMLAttributes } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getMyProfile } from "@/lib/auth";
@@ -216,6 +215,10 @@ function orderDayHint(iso: string) {
   return null;
 }
 
+function formatMoney(n: number) {
+  return `${Math.round(Number(n || 0))} Kč`;
+}
+
 /** ===================== Allergen map ===================== */
 const ALLERGENS: Record<number, string> = {
   1: "Obiloviny obsahující lepek",
@@ -282,9 +285,91 @@ type SystemItemRow = {
   is_active: boolean | null;
 };
 
+type OrderSummaryRow = {
+  id: string;
+  created_at: string | null;
+  total: number | null;
+  status: string | null;
+  delivery_mode: string | null;
+};
+
 type MobileViewProps = {
   onOpenCart?: () => void;
 };
+
+type LanguageCode = "cs" | "en" | "uk" | "de" | "es";
+
+/** ===================== Reusable UI ===================== */
+function CheckIcon({ show }: { show: boolean }) {
+  if (!show) return <span className="inline-flex h-5 w-5" />;
+  return (
+    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-[11px] font-extrabold text-white">
+      ✓
+    </span>
+  );
+}
+
+function Toggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={[
+        "relative inline-flex h-7 w-12 items-center rounded-full transition",
+        checked ? "bg-green-600" : "bg-gray-300",
+      ].join(" ")}
+      aria-pressed={checked}
+    >
+      <span
+        className={[
+          "inline-block h-5 w-5 transform rounded-full bg-white shadow transition",
+          checked ? "translate-x-6" : "translate-x-1",
+        ].join(" ")}
+      />
+    </button>
+  );
+}
+
+function BaseModal({
+  open,
+  onClose,
+  title,
+  children,
+  maxWidth = "max-w-md",
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+  maxWidth?: string;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[260] flex items-center justify-center p-4">
+      <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
+      <div className={`relative w-full ${maxWidth} overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/10`}>
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 pb-2 pt-3">
+          <div className="text-[15px] font-extrabold text-gray-900">{title}</div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-10 w-10 rounded-2xl bg-white font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
+          >
+            ✕
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 /** ===================== Auth Modal ===================== */
 function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -295,6 +380,8 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [password2, setPassword2] = useState("");
+  const [agree, setAgree] = useState(false);
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -362,6 +449,7 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
       setMsg("Hotovo. Pokud máš potvrzení emailem, zkontroluj email. Pak se přihlas.");
       setTab("login");
       setPassword("");
+      setPassword2("");
     } catch (e: any) {
       setMsg(e?.message ?? "Chyba při registraci");
     } finally {
@@ -371,8 +459,15 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   if (!open) return null;
 
-  const phoneDigits = digitsOnly(phone);
-  const phoneOk = tab === "login" ? true : phoneDigits.length === 9;
+  const emailOk = /\S+@\S+\.\S+/.test(email.trim());
+  const fullNameOk = fullName.trim().length >= 2;
+  const phoneOk = digitsOnly(phone).length === 9;
+  const addressOk = address.trim().length >= 5;
+  const passwordOk = password.length >= 6;
+  const password2Ok = password2 === password && password2.length >= 6;
+
+  const canRegister =
+    emailOk && fullNameOk && phoneOk && addressOk && passwordOk && password2Ok && agree;
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
@@ -421,66 +516,104 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
         <div className="mt-3 space-y-2.5">
           <label className="block">
             <div className="mb-1 text-[11px] font-extrabold text-gray-600">Email</div>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="email@domena.cz"
-              inputMode="email"
-              autoComplete="email"
-              className="w-full rounded-2xl bg-white px-3 py-2.5 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
-            />
+            <div className="flex items-center gap-2 rounded-2xl bg-white px-3 ring-1 ring-black/10 focus-within:ring-2 focus-within:ring-green-600">
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email@domena.cz"
+                inputMode="email"
+                autoComplete="email"
+                className="h-11 flex-1 bg-transparent text-sm font-semibold outline-none"
+              />
+              <CheckIcon show={emailOk} />
+            </div>
           </label>
 
           <label className="block">
             <div className="mb-1 text-[11px] font-extrabold text-gray-600">Heslo</div>
-            <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              type="password"
-              autoComplete={tab === "login" ? "current-password" : "new-password"}
-              className="w-full rounded-2xl bg-white px-3 py-2.5 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
-            />
-            <div className="mt-1 text-[11px] text-gray-500">Min. 6 znaků.</div>
+            <div className="flex items-center gap-2 rounded-2xl bg-white px-3 ring-1 ring-black/10 focus-within:ring-2 focus-within:ring-green-600">
+              <input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                type="password"
+                autoComplete={tab === "login" ? "current-password" : "new-password"}
+                className="h-11 flex-1 bg-transparent text-sm font-semibold outline-none"
+              />
+              <CheckIcon show={tab === "login" ? password.length > 0 : passwordOk} />
+            </div>
           </label>
 
           {tab === "register" ? (
             <>
               <label className="block">
                 <div className="mb-1 text-[11px] font-extrabold text-gray-600">Jméno a příjmení</div>
-                <input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Vojtěch Pavlík"
-                  autoComplete="name"
-                  className="w-full rounded-2xl bg-white px-3 py-2.5 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
-                />
+                <div className="flex items-center gap-2 rounded-2xl bg-white px-3 ring-1 ring-black/10 focus-within:ring-2 focus-within:ring-green-600">
+                  <input
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Vojtěch Pavlík"
+                    autoComplete="name"
+                    className="h-11 flex-1 bg-transparent text-sm font-semibold outline-none"
+                  />
+                  <CheckIcon show={fullNameOk} />
+                </div>
               </label>
 
               <label className="block">
                 <div className="mb-1 text-[11px] font-extrabold text-gray-600">Telefon</div>
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(formatPhoneCz(e.target.value))}
-                  placeholder="777 777 777"
-                  inputMode="numeric"
-                  autoComplete="tel"
-                  className="w-full rounded-2xl bg-white px-3 py-2.5 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
-                />
-                {!phoneOk ? (
-                  <div className="mt-1 text-[11px] font-bold text-red-600">Telefon musí mít 9 číslic.</div>
-                ) : null}
+                <div className="flex items-center gap-2 rounded-2xl bg-white px-3 ring-1 ring-black/10 focus-within:ring-2 focus-within:ring-green-600">
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(formatPhoneCz(e.target.value))}
+                    placeholder="777 777 777"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    className="h-11 flex-1 bg-transparent text-sm font-semibold outline-none"
+                  />
+                  <CheckIcon show={phoneOk} />
+                </div>
               </label>
 
               <label className="block">
                 <div className="mb-1 text-[11px] font-extrabold text-gray-600">Adresa</div>
+                <div className="flex items-center gap-2 rounded-2xl bg-white px-3 ring-1 ring-black/10 focus-within:ring-2 focus-within:ring-green-600">
+                  <input
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Ulice 1, Poděbrady"
+                    autoComplete="street-address"
+                    className="h-11 flex-1 bg-transparent text-sm font-semibold outline-none"
+                  />
+                  <CheckIcon show={addressOk} />
+                </div>
+              </label>
+
+              <label className="block">
+                <div className="mb-1 text-[11px] font-extrabold text-gray-600">Heslo znovu</div>
+                <div className="flex items-center gap-2 rounded-2xl bg-white px-3 ring-1 ring-black/10 focus-within:ring-2 focus-within:ring-green-600">
+                  <input
+                    value={password2}
+                    onChange={(e) => setPassword2(e.target.value)}
+                    placeholder="••••••••"
+                    type="password"
+                    autoComplete="new-password"
+                    className="h-11 flex-1 bg-transparent text-sm font-semibold outline-none"
+                  />
+                  <CheckIcon show={password2Ok} />
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 rounded-2xl bg-green-50 px-3 py-3 ring-1 ring-green-100">
                 <input
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Ulice 1, Praha"
-                  autoComplete="street-address"
-                  className="w-full rounded-2xl bg-white px-3 py-2.5 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
+                  type="checkbox"
+                  checked={agree}
+                  onChange={(e) => setAgree(e.target.checked)}
+                  className="mt-1"
                 />
+                <div className="text-[12px] font-semibold text-gray-700">
+                  Souhlasím s podmínkami a se zpracováním osobních údajů.
+                </div>
               </label>
             </>
           ) : null}
@@ -494,7 +627,7 @@ function AuthModal({ open, onClose }: { open: boolean; onClose: () => void }) {
           <button
             type="button"
             onClick={tab === "login" ? doLogin : doRegister}
-            disabled={busy || !email.trim() || password.length < 6 || (tab === "register" && !phoneOk)}
+            disabled={busy || !emailOk || !passwordOk || (tab === "register" && !canRegister)}
             className="w-full rounded-2xl bg-green-600 px-4 py-3 text-sm font-extrabold text-white hover:bg-green-700 disabled:opacity-50"
           >
             {busy ? "Počkej…" : tab === "login" ? "Přihlásit" : "Vytvořit účet"}
@@ -635,6 +768,672 @@ function PackagingInfoModal({
   );
 }
 
+/** ===================== Settings modals ===================== */
+function ChangePasswordModal({
+  open,
+  onClose,
+  email,
+}: {
+  open: boolean;
+  onClose: () => void;
+  email: string;
+}) {
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPassword2, setNewPassword2] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function savePassword() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      if (newPassword.length < 6) {
+        setMsg("Nové heslo musí mít alespoň 6 znaků.");
+        return;
+      }
+      if (newPassword !== newPassword2) {
+        setMsg("Nová hesla se neshodují.");
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
+
+      setMsg("Heslo bylo změněno.");
+      setOldPassword("");
+      setNewPassword("");
+      setNewPassword2("");
+    } catch (e: any) {
+      setMsg(e?.message ?? "Nepovedlo se změnit heslo.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function forgotPassword() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      if (!email) {
+        setMsg("Chybí email u profilu.");
+        return;
+      }
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: typeof window !== "undefined" ? `${window.location.origin}` : undefined,
+      });
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
+      setMsg("Na email byl odeslán odkaz pro obnovu hesla.");
+    } catch (e: any) {
+      setMsg(e?.message ?? "Nepovedlo se odeslat email.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <BaseModal open={open} onClose={onClose} title="Změnit heslo">
+      <div className="space-y-3 p-4">
+        <label className="block">
+          <div className="mb-1 text-[11px] font-extrabold text-gray-600">Staré heslo</div>
+          <input
+            value={oldPassword}
+            onChange={(e) => setOldPassword(e.target.value)}
+            type="password"
+            className="w-full rounded-2xl bg-white px-3 py-3 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
+          />
+        </label>
+
+        <label className="block">
+          <div className="mb-1 text-[11px] font-extrabold text-gray-600">Nové heslo</div>
+          <input
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            type="password"
+            className="w-full rounded-2xl bg-white px-3 py-3 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
+          />
+        </label>
+
+        <label className="block">
+          <div className="mb-1 text-[11px] font-extrabold text-gray-600">Nové heslo znovu</div>
+          <input
+            value={newPassword2}
+            onChange={(e) => setNewPassword2(e.target.value)}
+            type="password"
+            className="w-full rounded-2xl bg-white px-3 py-3 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
+          />
+        </label>
+
+        <button
+          type="button"
+          onClick={forgotPassword}
+          className="text-[12px] font-bold text-gray-600 underline underline-offset-4"
+        >
+          Zapomenuté heslo
+        </button>
+
+        {msg ? (
+          <div className="rounded-2xl bg-neutral-50 px-3 py-2 text-[12px] font-bold text-neutral-700 ring-1 ring-black/10">
+            {msg}
+          </div>
+        ) : null}
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-2xl bg-white px-4 py-3 text-[13px] font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
+          >
+            Zpět
+          </button>
+          <button
+            type="button"
+            onClick={savePassword}
+            disabled={busy}
+            className="flex-1 rounded-2xl bg-green-600 px-4 py-3 text-[13px] font-extrabold text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            Uložit
+          </button>
+        </div>
+      </div>
+    </BaseModal>
+  );
+}
+
+function NotificationsModal({
+  open,
+  onClose,
+  news,
+  setNews,
+  survey,
+  setSurvey,
+  review,
+  setReview,
+}: {
+  open: boolean;
+  onClose: () => void;
+  news: boolean;
+  setNews: (v: boolean) => void;
+  survey: boolean;
+  setSurvey: (v: boolean) => void;
+  review: boolean;
+  setReview: (v: boolean) => void;
+}) {
+  return (
+    <BaseModal open={open} onClose={onClose} title="Oznámení">
+      <div className="space-y-3 p-4">
+        <div className="rounded-2xl bg-white p-3 ring-1 ring-black/10">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[13px] font-extrabold text-gray-900">Novinky a akční nabídky</div>
+              <div className="mt-1 text-[12px] text-gray-500">E-mail</div>
+            </div>
+            <Toggle checked={news} onChange={setNews} />
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white p-3 ring-1 ring-black/10">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[13px] font-extrabold text-gray-900">Dotazník spokojenosti</div>
+              <div className="mt-1 text-[12px] text-gray-500">Ohodnoťte, jak se vám líbí Jiřka.</div>
+            </div>
+            <Toggle checked={survey} onChange={setSurvey} />
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white p-3 ring-1 ring-black/10">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[13px] font-extrabold text-gray-900">Hodnocení o zakoupeném produktu</div>
+              <div className="mt-1 text-[12px] text-gray-500">Krátké hodnocení po nákupu jídla.</div>
+            </div>
+            <Toggle checked={review} onChange={setReview} />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full rounded-2xl bg-green-600 px-4 py-3 text-[13px] font-extrabold text-white hover:bg-green-700"
+        >
+          Hotovo
+        </button>
+      </div>
+    </BaseModal>
+  );
+}
+
+function LanguageModal({
+  open,
+  onClose,
+  value,
+  onPick,
+}: {
+  open: boolean;
+  onClose: () => void;
+  value: LanguageCode;
+  onPick: (v: LanguageCode) => void;
+}) {
+  const items: { id: LanguageCode; label: string; flag: string }[] = [
+    { id: "cs", label: "Čeština", flag: "🇨🇿" },
+    { id: "en", label: "English", flag: "🇬🇧" },
+    { id: "uk", label: "Українська", flag: "🇺🇦" },
+    { id: "de", label: "Deutsch", flag: "🇩🇪" },
+    { id: "es", label: "Español", flag: "🇪🇸" },
+  ];
+
+  return (
+    <BaseModal open={open} onClose={onClose} title="Jazyk">
+      <div className="space-y-2 p-4">
+        {items.map((item) => {
+          const active = item.id === value;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => {
+                onPick(item.id);
+                onClose();
+              }}
+              className={[
+                "flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left ring-1 transition",
+                active ? "bg-green-50 ring-green-300/70" : "bg-white ring-black/10 hover:bg-gray-50",
+              ].join(" ")}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-xl">{item.flag}</span>
+                <span className="text-[13px] font-extrabold text-gray-900">{item.label}</span>
+              </div>
+              <span className="font-extrabold text-green-700">{active ? "✓" : ""}</span>
+            </button>
+          );
+        })}
+      </div>
+    </BaseModal>
+  );
+}
+
+function SettingsModal({
+  open,
+  onClose,
+  userName,
+  userEmail,
+  phone,
+  address,
+  onSaved,
+  darkMode,
+  setDarkMode,
+  onOpenPassword,
+  onOpenNotifications,
+  onOpenLanguage,
+  onOpenTopUp,
+  onOpenOrders,
+}: {
+  open: boolean;
+  onClose: () => void;
+  userName: string;
+  userEmail: string;
+  phone: string;
+  address: string;
+  onSaved: (payload: { full_name: string; phone: string; address: string }) => Promise<void>;
+  darkMode: boolean;
+  setDarkMode: (v: boolean) => void;
+  onOpenPassword: () => void;
+  onOpenNotifications: () => void;
+  onOpenLanguage: () => void;
+  onOpenTopUp: () => void;
+  onOpenOrders: () => void;
+}) {
+  const [name, setName] = useState(userName);
+  const [phoneLocal, setPhoneLocal] = useState(phone);
+  const [addressLocal, setAddressLocal] = useState(address);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setName(userName);
+    setPhoneLocal(phone);
+    setAddressLocal(address);
+    setMsg(null);
+  }, [open, userName, phone, address]);
+
+  async function save() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      await onSaved({
+        full_name: name.trim(),
+        phone: digitsOnly(phoneLocal).slice(0, 9),
+        address: addressLocal.trim(),
+      });
+      setMsg("Profil byl uložen.");
+    } catch (e: any) {
+      setMsg(e?.message ?? "Nepovedlo se uložit profil.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <BaseModal open={open} onClose={onClose} title="Nastavení profilu">
+      <div className="max-h-[78dvh] overflow-auto p-4">
+        <div className="space-y-3">
+          <label className="block">
+            <div className="mb-1 text-[11px] font-extrabold text-gray-600">Jméno a příjmení</div>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-2xl bg-white px-3 py-3 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
+            />
+          </label>
+
+          <label className="block">
+            <div className="mb-1 text-[11px] font-extrabold text-gray-600">Email</div>
+            <input
+              value={userEmail}
+              readOnly
+              className="w-full rounded-2xl bg-gray-50 px-3 py-3 text-sm font-semibold text-gray-500 outline-none ring-1 ring-black/10"
+            />
+          </label>
+
+          <label className="block">
+            <div className="mb-1 text-[11px] font-extrabold text-gray-600">Telefon</div>
+            <input
+              value={phoneLocal}
+              onChange={(e) => setPhoneLocal(formatPhoneCz(e.target.value))}
+              inputMode="numeric"
+              className="w-full rounded-2xl bg-white px-3 py-3 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
+            />
+          </label>
+
+          <label className="block">
+            <div className="mb-1 text-[11px] font-extrabold text-gray-600">Adresa</div>
+            <input
+              value={addressLocal}
+              onChange={(e) => setAddressLocal(e.target.value)}
+              className="w-full rounded-2xl bg-white px-3 py-3 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
+            />
+          </label>
+
+          <button
+            type="button"
+            onClick={onOpenPassword}
+            className="text-[12px] font-bold text-gray-600 underline underline-offset-4"
+          >
+            Změnit heslo
+          </button>
+
+          <div className="rounded-2xl bg-white p-3 ring-1 ring-black/10">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[13px] font-extrabold text-gray-900">Tmavý režim</div>
+                <div className="mt-1 text-[12px] text-gray-500">
+                  Přepnutí mezi světlým a tmavým vzhledem.
+                </div>
+              </div>
+              <Toggle checked={darkMode} onChange={setDarkMode} />
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onOpenNotifications}
+            className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-left ring-1 ring-black/10 hover:bg-gray-50"
+          >
+            <div>
+              <div className="text-[13px] font-extrabold text-gray-900">Oznámení</div>
+              <div className="mt-1 text-[12px] text-gray-500">Novinky, dotazníky a hodnocení</div>
+            </div>
+            <div className="font-extrabold text-gray-500">›</div>
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenTopUp}
+            className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-left ring-1 ring-black/10 hover:bg-gray-50"
+          >
+            <div>
+              <div className="text-[13px] font-extrabold text-gray-900">Dobít kredit</div>
+              <div className="mt-1 text-[12px] text-gray-500">Rychlé dobití kreditu</div>
+            </div>
+            <div className="font-extrabold text-gray-500">›</div>
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenLanguage}
+            className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-left ring-1 ring-black/10 hover:bg-gray-50"
+          >
+            <div>
+              <div className="text-[13px] font-extrabold text-gray-900">Jazyk</div>
+              <div className="mt-1 text-[12px] text-gray-500">Vyber jazyk zobrazení</div>
+            </div>
+            <div className="font-extrabold text-gray-500">›</div>
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenOrders}
+            className="flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-left ring-1 ring-black/10 hover:bg-gray-50"
+          >
+            <div>
+              <div className="text-[13px] font-extrabold text-gray-900">Objednávky</div>
+              <div className="mt-1 text-[12px] text-gray-500">Přehled posledních objednávek</div>
+            </div>
+            <div className="font-extrabold text-gray-500">›</div>
+          </button>
+
+          {msg ? (
+            <div className="rounded-2xl bg-neutral-50 px-3 py-2 text-[12px] font-bold text-neutral-700 ring-1 ring-black/10">
+              {msg}
+            </div>
+          ) : null}
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-2xl bg-white px-4 py-3 text-[13px] font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
+            >
+              Zpět
+            </button>
+            <button
+              type="button"
+              onClick={save}
+              disabled={busy}
+              className="flex-1 rounded-2xl bg-green-600 px-4 py-3 text-[13px] font-extrabold text-white hover:bg-green-700 disabled:opacity-50"
+            >
+              Uložit
+            </button>
+          </div>
+        </div>
+      </div>
+    </BaseModal>
+  );
+}
+
+function OrdersModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [rows, setRows] = useState<OrderSummaryRow[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        const uid = sess.session?.user?.id;
+        if (!uid) {
+          if (alive) setRows([]);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from("orders")
+          .select("id, created_at, total, status, delivery_mode")
+          .eq("user_id", uid)
+          .order("created_at", { ascending: false })
+          .limit(20);
+
+        if (!alive) return;
+
+        if (error) {
+          setRows([]);
+          return;
+        }
+
+        setRows((data ?? []) as OrderSummaryRow[]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [open]);
+
+  return (
+    <BaseModal open={open} onClose={onClose} title="Objednávky">
+      <div className="max-h-[75dvh] overflow-auto p-4">
+        {loading ? (
+          <div className="text-[13px] text-gray-500">Načítám…</div>
+        ) : rows.length === 0 ? (
+          <div className="rounded-2xl bg-neutral-50 p-3 text-[13px] text-gray-600 ring-1 ring-black/10">
+            Zatím tu nejsou žádné objednávky.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {rows.map((row) => (
+              <div key={row.id} className="rounded-2xl bg-white p-3 ring-1 ring-black/10">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-extrabold text-gray-900">Objednávka #{row.id.slice(0, 8)}</div>
+                    <div className="mt-1 text-[12px] text-gray-500">
+                      {row.created_at
+                        ? new Date(row.created_at).toLocaleString("cs-CZ")
+                        : "—"}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[13px] font-extrabold text-green-700">
+                      {formatMoney(Number(row.total ?? 0))}
+                    </div>
+                    <div className="mt-1 text-[11px] text-gray-500">
+                      {row.delivery_mode === "delivery" ? "Doručení" : "Osobní odběr"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-4 w-full rounded-2xl bg-green-600 px-4 py-3 text-[13px] font-extrabold text-white hover:bg-green-700"
+        >
+          Zavřít
+        </button>
+      </div>
+    </BaseModal>
+  );
+}
+
+function TopUpModal({
+  open,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: (amount: number, method: string) => void;
+}) {
+  const [amount, setAmount] = useState("500");
+  const [method, setMethod] = useState("card");
+
+  const n = Number(digitsOnly(amount) || 0);
+  const valid = n >= 500;
+
+  return (
+    <BaseModal open={open} onClose={onClose} title="Dobít kredit">
+      <div className="space-y-3 p-4">
+        <label className="block">
+          <div className="mb-1 text-[11px] font-extrabold text-gray-600">Zadat částku</div>
+          <input
+            value={amount}
+            onChange={(e) => setAmount(digitsOnly(e.target.value))}
+            inputMode="numeric"
+            min={500}
+            className="w-full rounded-2xl bg-white px-3 py-3 text-sm font-semibold outline-none ring-1 ring-black/10 focus:ring-2 focus:ring-green-600"
+            placeholder="Minimálně 500"
+          />
+          <div className="mt-1 text-[11px] text-gray-500">Minimálně 500 Kč</div>
+        </label>
+
+        <div className="rounded-2xl bg-white p-3 ring-1 ring-black/10">
+          <div className="mb-2 text-[11px] font-extrabold text-gray-600">Vybrat platbu</div>
+          <div className="space-y-2">
+            {[
+              { id: "card", label: "Zadat kartu" },
+              { id: "applepay", label: "Apple Pay" },
+              { id: "googlepay", label: "Google Pay" },
+            ].map((x) => {
+              const active = method === x.id;
+              return (
+                <button
+                  key={x.id}
+                  type="button"
+                  onClick={() => setMethod(x.id)}
+                  className={[
+                    "flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left ring-1 transition",
+                    active ? "bg-green-50 ring-green-300/70" : "bg-white ring-black/10 hover:bg-gray-50",
+                  ].join(" ")}
+                >
+                  <span className="text-[13px] font-extrabold text-gray-900">{x.label}</span>
+                  <span className="font-extrabold text-green-700">{active ? "✓" : ""}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-2xl bg-white px-4 py-3 text-[13px] font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
+          >
+            Zpět
+          </button>
+          <button
+            type="button"
+            disabled={!valid}
+            onClick={() => onConfirm(n, method)}
+            className="flex-1 rounded-2xl bg-green-600 px-4 py-3 text-[13px] font-extrabold text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            Zaplatit
+          </button>
+        </div>
+      </div>
+    </BaseModal>
+  );
+}
+
+function FakeGatewayModal({
+  open,
+  onClose,
+  onPay,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onPay: () => void;
+}) {
+  return (
+    <BaseModal open={open} onClose={onClose} title="Platba online">
+      <div className="space-y-4 p-4">
+        <div className="rounded-2xl bg-yellow-50 p-4 text-[13px] font-semibold text-yellow-800 ring-1 ring-yellow-200">
+          Později přidáme platební bránu.
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-2xl bg-white px-4 py-3 text-[13px] font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
+          >
+            Zpět
+          </button>
+          <button
+            type="button"
+            onClick={onPay}
+            className="flex-1 rounded-2xl bg-green-600 px-4 py-3 text-[13px] font-extrabold text-white hover:bg-green-700"
+          >
+            Zaplatit
+          </button>
+        </div>
+      </div>
+    </BaseModal>
+  );
+}
+
 /** ===================== Cart Sheet ===================== */
 function CartSheet({
   open,
@@ -649,6 +1448,8 @@ function CartSheet({
   onNeedLogin: () => void;
   credit: number;
 }) {
+  const router = useRouter();
+
   const {
     cart,
     cartCount,
@@ -689,6 +1490,8 @@ function CartSheet({
   const [packInfoImg, setPackInfoImg] = useState("");
   const [packInfoLines, setPackInfoLines] = useState<string[]>([]);
 
+  const [gatewayOpen, setGatewayOpen] = useState(false);
+
   const didAutofillRef = useRef(false);
 
   type DayTime = { from: string; to: string } | null;
@@ -707,6 +1510,7 @@ function CartSheet({
     setTimeOpen(false);
     setSameTimeForAll(false);
     setActiveTimeDay(null);
+    setGatewayOpen(false);
   }, [open]);
 
   useEffect(() => {
@@ -725,7 +1529,7 @@ function CartSheet({
         const p = await getMyProfile();
         if (!alive || !p) return;
 
-        setName((prev) => (prev.trim() ? prev : String(p.full_name ?? "")));
+        setName((prev) => (prev.trim() ? prev : String((p as any).full_name ?? "")));
         setPhone((prev) => {
           if (digitsOnly(prev).length === 9) return prev;
           const raw = String((p as any)?.phone ?? "");
@@ -884,6 +1688,33 @@ function CartSheet({
     return () => clearTimeout(t);
   }, [open, cartCount, step]);
 
+  async function finalizeOrder() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const id = await createOrder({
+        full_name: name,
+        phone,
+        address,
+        note,
+        delivery_mode: deliveryMode,
+        packaging_mode: packagingMode,
+        payment_method: payment,
+        times_by_day: timesByDay,
+        cart,
+      });
+
+      setOrderId(id);
+      clearCart();
+      setStep("done");
+      setGatewayOpen(false);
+    } catch (e: any) {
+      setMsg(e?.message ?? "Nepovedlo se odeslat objednávku.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submitOrder() {
     setBusy(true);
     setMsg(null);
@@ -908,21 +1739,12 @@ function CartSheet({
         return;
       }
 
-      const id = await createOrder({
-        full_name: name,
-        phone,
-        address,
-        note,
-        delivery_mode: deliveryMode,
-        packaging_mode: packagingMode,
-        payment_method: payment,
-        times_by_day: timesByDay,
-        cart,
-      });
+      if (payment === "card_online") {
+        setGatewayOpen(true);
+        return;
+      }
 
-      setOrderId(id);
-      clearCart();
-      setStep("done");
+      await finalizeOrder();
     } catch (e: any) {
       setMsg(e?.message ?? "Nepovedlo se odeslat objednávku.");
     } finally {
@@ -1026,7 +1848,7 @@ function CartSheet({
       value: string;
       onChange: (v: string) => void;
       placeholder?: string;
-      inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
+      inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
       autoComplete?: string;
     }) => (
       <div className={pill + " p-3"}>
@@ -1240,7 +2062,10 @@ function CartSheet({
     );
   }
 
+  const mapQuery = encodeURIComponent(address?.trim() || "Havlíčkova 72, Poděbrady");
+
   return (
+
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
       <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
 
@@ -1249,7 +2074,7 @@ function CartSheet({
           <div className="text-[14px] font-extrabold text-gray-900">
             {step === "cart" && "Košík"}
             {step === "checkout" && "Dokončení"}
-            {step === "done" && "Hotovo"}
+            {step === "done" && "Souhrn objednávky"}
           </div>
 
           <button
@@ -1636,18 +2461,101 @@ function CartSheet({
         ) : null}
 
         {step === "done" ? (
-          <div className="px-4 pb-4">
-            <div className="mt-3 rounded-2xl bg-green-50 p-4 text-green-800 ring-1 ring-green-200">
-              <div className="text-[15px] font-extrabold">Objednávka odeslaná ✅</div>
-              {orderId ? <div className="mt-1 text-[12px] font-bold text-green-900/80">ID: {orderId}</div> : null}
-              <div className="mt-1 text-[13px] font-semibold">Děkujeme! Brzy ji připravíme.</div>
-
-              <button type="button" onClick={onClose} className={"mt-3 w-full " + btnPrimary}>
-                Zavřít
-              </button>
+          <div className="max-h-[78dvh] overflow-auto px-4 pb-4 pt-3">
+            <div className="rounded-2xl bg-green-50 p-4 ring-1 ring-green-200">
+              <div className="text-[16px] font-extrabold text-green-800">Souhrn objednávky</div>
+              {orderId ? (
+                <div className="mt-1 text-[12px] font-bold text-green-900/80">Objednávka #{orderId}</div>
+              ) : null}
             </div>
+
+            <div className="mt-3 rounded-2xl bg-white p-4 ring-1 ring-black/10">
+              <div className="text-[12px] font-extrabold uppercase tracking-wide text-gray-500">Fakturační údaje</div>
+              <div className="mt-2 space-y-1 text-[14px] text-gray-800">
+                <div><span className="font-extrabold">Jméno:</span> {name || "—"}</div>
+                <div><span className="font-extrabold">Telefon:</span> {phone || "—"}</div>
+                <div><span className="font-extrabold">Adresa:</span> {address || "—"}</div>
+                <div><span className="font-extrabold">Platba:</span> {paymentLabel}</div>
+                <div><span className="font-extrabold">Balení:</span> {packagingLabel}</div>
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-2xl bg-white p-4 ring-1 ring-black/10">
+              <div className="text-[12px] font-extrabold uppercase tracking-wide text-gray-500">Mapa</div>
+              <div className="mt-3 overflow-hidden rounded-2xl ring-1 ring-black/10">
+                <iframe
+                  title="Mapa doručení"
+                  src={`https://www.google.com/maps?q=${mapQuery}&z=15&output=embed`}
+                  className="h-[220px] w-full border-0"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-2xl bg-white p-4 ring-1 ring-black/10">
+              <div className="mb-2 text-[12px] font-extrabold uppercase tracking-wide text-gray-500">Položky</div>
+              <div className="space-y-2">
+                {grouped.map((g) => (
+                  <div key={g.datum} className="rounded-2xl bg-neutral-50 p-3 ring-1 ring-black/5">
+                    <div className="mb-2 text-[12px] font-extrabold text-[#1f2f56]">{formatCartDay(g.datum)}</div>
+                    {g.items.map((it) => (
+                      <div key={it.key} className="flex items-center justify-between gap-3 py-1 text-[13px] text-gray-800">
+                        <div className="min-w-0 flex-1">
+                          {it.nazev} <span className="text-gray-500">× {it.qty}</span>
+                        </div>
+                        <div className="shrink-0 font-extrabold text-green-700">{it.cena * it.qty} Kč</div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-3 border-t border-gray-100 pt-3 text-[14px]">
+                <div className="flex items-center justify-between">
+                  <span>Jídla</span>
+                  <span className="font-extrabold">{itemsTotal} Kč</span>
+                </div>
+                {deliveryFee > 0 ? (
+                  <div className="mt-1 flex items-center justify-between">
+                    <span>Doprava</span>
+                    <span className="font-extrabold">{deliveryFee} Kč</span>
+                  </div>
+                ) : null}
+                {packagingFee > 0 ? (
+                  <div className="mt-1 flex items-center justify-between">
+                    <span>Balení</span>
+                    <span className="font-extrabold">{packagingFee} Kč</span>
+                  </div>
+                ) : null}
+                <div className="mt-2 flex items-center justify-between border-t border-gray-100 pt-2">
+                  <span className="font-bold">Celkem</span>
+                  <span className="text-[16px] font-extrabold text-green-700">{payTotal} Kč</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 text-center text-[11px] font-semibold text-gray-500">
+              Pro změnu údajů v objednávce nás kontaktujte na tel. 325 612 154
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                router.push("/");
+              }}
+              className="mt-3 w-full rounded-2xl bg-white px-4 py-3 text-[13px] font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
+            >
+              Přejít na hlavní stránku
+            </button>
           </div>
         ) : null}
+
+        <FakeGatewayModal
+          open={gatewayOpen}
+          onClose={() => setGatewayOpen(false)}
+          onPay={finalizeOrder}
+        />
       </div>
     </div>
   );
@@ -1769,6 +2677,9 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
   const [activeSection, setActiveSection] = useState<Section>("daily");
 
   const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [userPhone, setUserPhone] = useState("");
+  const [userAddress, setUserAddress] = useState("");
   const [credit, setCredit] = useState(0);
   const [authed, setAuthed] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -1778,6 +2689,20 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [cartOpen, setCartOpen] = useState(false);
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
+  const [topupOpen, setTopupOpen] = useState(false);
+  const [fakeTopupGatewayOpen, setFakeTopupGatewayOpen] = useState(false);
+  const [ordersOpen, setOrdersOpen] = useState(false);
+
+  const [darkMode, setDarkMode] = useState(false);
+  const [notifNews, setNotifNews] = useState(false);
+  const [notifSurvey, setNotifSurvey] = useState(false);
+  const [notifReview, setNotifReview] = useState(false);
+  const [language, setLanguage] = useState<LanguageCode>("cs");
 
   const openCart = useCallback(() => {
     if (onOpenCart) {
@@ -1799,6 +2724,40 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
 
   const [systemItems, setSystemItems] = useState<SystemItemRow[]>([]);
   const [loadingSystemItems, setLoadingSystemItems] = useState(true);
+
+  useEffect(() => {
+    const savedDark = typeof window !== "undefined" ? localStorage.getItem("jirka-dark-mode") : null;
+    const savedLang = typeof window !== "undefined" ? localStorage.getItem("jirka-language") : null;
+    const savedNews = typeof window !== "undefined" ? localStorage.getItem("jirka-notif-news") : null;
+    const savedSurvey = typeof window !== "undefined" ? localStorage.getItem("jirka-notif-survey") : null;
+    const savedReview = typeof window !== "undefined" ? localStorage.getItem("jirka-notif-review") : null;
+
+    if (savedDark) setDarkMode(savedDark === "1");
+    if (savedLang && ["cs", "en", "uk", "de", "es"].includes(savedLang)) {
+      setLanguage(savedLang as LanguageCode);
+    }
+    if (savedNews) setNotifNews(savedNews === "1");
+    if (savedSurvey) setNotifSurvey(savedSurvey === "1");
+    if (savedReview) setNotifReview(savedReview === "1");
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("jirka-dark-mode", darkMode ? "1" : "0");
+    document.documentElement.classList.toggle("dark", darkMode);
+  }, [darkMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("jirka-language", language);
+  }, [language]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("jirka-notif-news", notifNews ? "1" : "0");
+    localStorage.setItem("jirka-notif-survey", notifSurvey ? "1" : "0");
+    localStorage.setItem("jirka-notif-review", notifReview ? "1" : "0");
+  }, [notifNews, notifSurvey, notifReview]);
 
   useEffect(() => {
     const onDoc = (e: PointerEvent) => {
@@ -1837,6 +2796,9 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
         if (!alive) return;
 
         setUserName((p?.full_name ?? "").toString());
+        setUserEmail((p as any)?.email?.toString?.() ?? data.session?.user?.email ?? "");
+        setUserPhone((p as any)?.phone?.toString?.() ?? "");
+        setUserAddress((p as any)?.address?.toString?.() ?? "");
         setCredit(Number((p as any)?.kredit ?? 0) || 0);
         setRole(((p as any)?.role as any) === "staff" ? "staff" : "customer");
       } catch (e) {
@@ -1854,6 +2816,9 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
           if (!alive) return;
 
           setUserName((p?.full_name ?? "").toString());
+          setUserEmail((p as any)?.email?.toString?.() ?? sess?.user?.email ?? "");
+          setUserPhone((p as any)?.phone?.toString?.() ?? "");
+          setUserAddress((p as any)?.address?.toString?.() ?? "");
           setCredit(Number((p as any)?.kredit ?? 0) || 0);
           setRole(((p as any)?.role as any) === "staff" ? "staff" : "customer");
           setMenuOpen(false);
@@ -1864,8 +2829,12 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
     });
 
     const onProfileUpdated = async () => {
+      const { data } = await supabase.auth.getSession();
       const p = await getMyProfile();
       setUserName((p?.full_name ?? "").toString());
+      setUserEmail((p as any)?.email?.toString?.() ?? data.session?.user?.email ?? "");
+      setUserPhone((p as any)?.phone?.toString?.() ?? "");
+      setUserAddress((p as any)?.address?.toString?.() ?? "");
       setCredit(Number((p as any)?.kredit ?? 0) || 0);
       setRole(((p as any)?.role as any) === "staff" ? "staff" : "customer");
     };
@@ -1915,6 +2884,32 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
   async function signOut() {
     await supabase.auth.signOut();
     setMenuOpen(false);
+  }
+
+  async function saveProfile(payload: { full_name: string; phone: string; address: string }) {
+    const { data } = await supabase.auth.getSession();
+    const uid = data.session?.user?.id;
+    const email = data.session?.user?.email ?? userEmail;
+
+    if (!uid) throw new Error("Nejsi přihlášený.");
+
+    const { error } = await supabase.from("profiles").upsert(
+      {
+        id: uid,
+        full_name: payload.full_name || null,
+        phone: payload.phone || null,
+        address: payload.address || null,
+        email: email || null,
+      },
+      { onConflict: "id" }
+    );
+
+    if (error) throw new Error(error.message);
+
+    setUserName(payload.full_name);
+    setUserPhone(payload.phone);
+    setUserAddress(payload.address);
+    window.dispatchEvent(new Event("profile-updated"));
   }
 
   const shopHoursRows = useMemo(
@@ -2047,6 +3042,11 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
 
   const items = (menuByDate[selectedDate] ?? []).filter((x) => x.jidla).slice(0, 50);
 
+  async function handleFakeTopupConfirm() {
+    setFakeTopupGatewayOpen(false);
+    setTopupOpen(false);
+  }
+
   function UserArea() {
     if (!authed) {
       return (
@@ -2067,34 +3067,45 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
         <button
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
-          className="max-w-[150px] truncate rounded-2xl bg-white px-3 py-2 text-[12px] font-extrabold ring-1 ring-black/10 hover:bg-gray-50"
-          title={name}
+          className="max-w-[235px] rounded-2xl bg-white px-3 py-2 text-right text-[11px] font-extrabold leading-[1.15] ring-1 ring-black/10 hover:bg-gray-50"
+          title={`${name}${role !== "staff" ? ` • ${credit} Kč` : ""}`}
         >
-          <span className="truncate">
+          <span className="block whitespace-normal break-words text-[#1f2f56]">
             {name}
-            {role !== "staff" ? ` · ${credit} Kč` : ""}
+            {role !== "staff" ? ` • ${credit} Kč` : ""}
           </span>
-          <span className="ml-2 inline-block opacity-80">▾</span>
+          <span className="mt-0.5 inline-block opacity-80">▾</span>
         </button>
 
         {menuOpen ? (
-          <div className="absolute right-0 top-[46px] z-[120] w-64 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-black/10">
+          <div className="absolute right-0 top-[56px] z-[120] w-64 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-black/10">
             <button
               type="button"
               onClick={() => {
                 setMenuOpen(false);
-                router.push("/profil");
+                setSettingsOpen(true);
               }}
               className="w-full px-4 py-3 text-left text-sm font-extrabold hover:bg-gray-50"
             >
-              Nastavení profilu
+              Nastavení
             </button>
 
             <button
               type="button"
               onClick={() => {
                 setMenuOpen(false);
-                router.push("/kredit");
+                setOrdersOpen(true);
+              }}
+              className="w-full px-4 py-3 text-left text-sm font-extrabold hover:bg-gray-50"
+            >
+              Objednávky
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                setTopupOpen(true);
               }}
               className="w-full px-4 py-3 text-left text-sm font-extrabold hover:bg-gray-50"
             >
@@ -2108,7 +3119,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
               onClick={signOut}
               className="w-full px-4 py-3 text-left text-sm font-extrabold text-red-600 hover:bg-red-50"
             >
-              Odhlásit
+              Odhlásit se
             </button>
           </div>
         ) : null}
@@ -2408,14 +3419,14 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
 
         <div className="rounded-[24px] bg-white p-4 shadow-sm ring-1 ring-black/10">
           <div className="text-[13px] font-extrabold uppercase tracking-wide text-green-700">Kontakt</div>
-          <div className="mt-1 text-[14px] font-semibold text-gray-700">Doplníme později</div>
+          <div className="mt-1 text-[14px] font-semibold text-gray-700">325 612 154</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[100dvh] bg-white pb-40">
+    <div className={`min-h-[100dvh] pb-40 ${darkMode ? "bg-[#0f172a]" : "bg-white"}`}>
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
 
       <AllergensModal
@@ -2444,33 +3455,88 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
         credit={credit}
       />
 
-<div className="sticky top-0 z-40 border-b border-black/5 bg-white/95 backdrop-blur">
-  <div className="mx-auto w-full max-w-[680px] px-3 pb-2 pt-2">
-    <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <Image
-          src="/logo-na-mobil.png"
-          alt="Jiřka"
-          width={230}
-          height={95}
-          className="-ml-8 -mt-8 h-auto w-[200px] object-contain min-[560px]:w-[205px]"
-          priority
-        />
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        userName={userName}
+        userEmail={userEmail}
+        phone={userPhone}
+        address={userAddress}
+        onSaved={saveProfile}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        onOpenPassword={() => setPasswordOpen(true)}
+        onOpenNotifications={() => setNotificationsOpen(true)}
+        onOpenLanguage={() => setLanguageOpen(true)}
+        onOpenTopUp={() => setTopupOpen(true)}
+        onOpenOrders={() => setOrdersOpen(true)}
+      />
+
+      <ChangePasswordModal
+        open={passwordOpen}
+        onClose={() => setPasswordOpen(false)}
+        email={userEmail}
+      />
+
+      <NotificationsModal
+        open={notificationsOpen}
+        onClose={() => setNotificationsOpen(false)}
+        news={notifNews}
+        setNews={setNotifNews}
+        survey={notifSurvey}
+        setSurvey={setNotifSurvey}
+        review={notifReview}
+        setReview={setNotifReview}
+      />
+
+      <LanguageModal
+        open={languageOpen}
+        onClose={() => setLanguageOpen(false)}
+        value={language}
+        onPick={setLanguage}
+      />
+
+      <OrdersModal open={ordersOpen} onClose={() => setOrdersOpen(false)} />
+
+      <TopUpModal
+        open={topupOpen}
+        onClose={() => setTopupOpen(false)}
+        onConfirm={() => setFakeTopupGatewayOpen(true)}
+      />
+
+      <FakeGatewayModal
+        open={fakeTopupGatewayOpen}
+        onClose={() => setFakeTopupGatewayOpen(false)}
+        onPay={handleFakeTopupConfirm}
+      />
+
+      <div className="sticky top-0 z-40 border-b border-black/5 bg-white/95 backdrop-blur">
+        <div className="mx-auto w-full max-w-[680px] px-3 pb-2 pt-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <Image
+                src="/logo-na-mobil.png"
+                alt="Jiřka"
+                width={230}
+                height={95}
+                className="-ml-8 -mt-8 h-auto w-[200px] object-contain min-[560px]:w-[205px]"
+                priority
+              />
+            </div>
+
+            <div className="flex shrink-0 items-start gap-2 pt-1">
+              <StaffShortcut />
+              <UserArea />
+            </div>
+          </div>
+
+          <div className="relative z-10 -mt-12 pl-10 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
+            rozvoz obědů po Poděbradech
+          </div>
+
+          <div className="mt-1 h-[3px] w-full rounded-full bg-green-600" />
+        </div>
       </div>
-
-      <div className="flex shrink-0 items-start gap-2 pt-1">
-        <StaffShortcut />
-        <UserArea />
-      </div>
-    </div>
-
-<div className="relative z-10 -mt-12 pl-10 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
-  rozvoz obědů po Poděbradech
-</div>
-
-<div className="mt-1 h-[3px] w-full rounded-full bg-green-600" />
-  </div>
-</div>
 
       <div className="mx-auto w-full max-w-[680px] space-y-3 px-3 pb-3 pt-3">
         {activeSection === "daily" && <SectionHeaderDaily />}
