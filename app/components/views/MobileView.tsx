@@ -2198,7 +2198,9 @@ function CartSheet({
 
   const mapQuery = encodeURIComponent(address?.trim() || "Havlíčkova 72, Poděbrady");
 
-  return (    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+  return (
+
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
       <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
 
       <div
