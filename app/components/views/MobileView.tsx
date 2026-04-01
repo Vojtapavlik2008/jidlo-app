@@ -2448,24 +2448,24 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
   <div className="mx-auto w-full max-w-[680px] px-3 pb-2 pt-2">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-       <Image
-  src="/logo-na-mobil.png"
-  alt="Jiřka"
-  width={230}
-  height={95}
-  className="-ml-2 -mt-4 h-auto w-[200px] object-contain min-[560px]:w-[220px]"
-  priority
-/>
-
-<div className="-ml-2 -mt-3 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
-  rozvoz obědů po Poděbradech
-</div>
+        <Image
+          src="/logo-na-mobil.png"
+          alt="Jiřka"
+          width={230}
+          height={95}
+          className="-ml-4 -mt-4 h-auto w-[200px] object-contain min-[560px]:w-[205px]"
+          priority
+        />
       </div>
 
       <div className="flex shrink-0 items-start gap-2 pt-1">
         <StaffShortcut />
         <UserArea />
       </div>
+    </div>
+
+    <div className="-mt-1 pl-1 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
+      rozvoz obědů po Poděbradech
     </div>
 
     <div className="mt-2 h-[3px] w-full rounded-full bg-green-600" />
