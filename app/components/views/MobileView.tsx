@@ -4348,34 +4348,44 @@ function StaffShortcut() {
         t={t}
       />
 
-      <div className={`sticky top-0 z-40 backdrop-blur ${darkMode ? "border-b border-white/10 bg-slate-950/95" : "border-b border-black/5 bg-white/95"}`}>
-        <div className="mx-auto w-full max-w-[680px] px-3 pb-2 pt-2">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <Image
-                src="/logo-na-mobil.png"
-                alt="Jiřka"
-                width={230}
-                height={95}
-                className="-ml-8 -mt-8 h-auto w-[200px] object-contain min-[560px]:w-[205px]"
-                priority
-              />
-            </div>
+      <div
+  className={`sticky top-0 z-40 backdrop-blur ${
+    darkMode
+      ? "border-b border-white/10 bg-slate-950/95"
+      : "border-b border-black/5 bg-white/95"
+  }`}
+>
+  <div className="mx-auto w-full max-w-[680px] px-3 pb-2 pt-2">
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        <Image
+          src="/logo-na-mobil.png"
+          alt="Jiřka"
+          width={230}
+          height={95}
+          className="-ml-3 -mt-1 h-auto w-[185px] object-contain min-[560px]:w-[205px]"
+          priority
+        />
 
-            <div className="flex shrink-0 items-start gap-2 pt-1">
-              <StaffShortcut />
-              <UserArea />
-            </div>
-          </div>
-
-          <div className={`relative z-10 -mt-12 pl-10 text-[11px] font-semibold tracking-[0.01em] ${darkMode ? "text-slate-400" : "text-gray-500"}`}>
-            {t("routeTagline")}
-          </div>
-
-          <div className="mt-1 h-[3px] w-full rounded-full bg-green-600" />
+        <div
+          className={`-mt-3 pl-8 text-[11px] font-semibold tracking-[0.01em] ${
+            darkMode ? "text-slate-400" : "text-gray-500"
+          }`}
+        >
+          {t("routeTagline")}
         </div>
       </div>
 
+      <div className="flex shrink-0 items-start gap-2 pt-1">
+        <StaffShortcut />
+        <UserArea />
+      </div>
+    </div>
+
+    <div className="mt-2 h-[3px] w-full rounded-full bg-green-600" />
+  </div>
+</div>
+      
       <div className="mx-auto w-full max-w-[680px] space-y-3 px-3 pb-3 pt-5">
         {activeSection === "daily" && <SectionHeaderDaily />}
         {activeSection === "order" && <SectionHeaderOrder />}
