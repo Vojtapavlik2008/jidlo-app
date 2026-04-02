@@ -1731,6 +1731,89 @@ function SettingsModal({
 }
 
 /** ===================== Cart Sheet ===================== */
+function PackagingInfoModal({
+  open,
+  onClose,
+  title,
+  imgSrc,
+  lines,
+  darkMode,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  imgSrc: string;
+  lines: string[];
+  darkMode: boolean;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[270] flex items-center justify-center p-4">
+      <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
+      <div
+        className={`relative w-full max-w-md overflow-hidden rounded-3xl shadow-2xl ring-1 ${
+          darkMode ? "bg-slate-900 text-white ring-white/10" : "bg-white ring-black/10"
+        }`}
+      >
+        <div
+          className={`flex items-center justify-between px-4 pb-2 pt-3 ${
+            darkMode ? "border-b border-white/10" : "border-b border-gray-100"
+          }`}
+        >
+          <div className={`text-[14px] font-extrabold ${darkMode ? "text-white" : "text-gray-900"}`}>
+            {title}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className={`h-10 w-10 rounded-2xl font-extrabold ring-1 ${
+              darkMode
+                ? "bg-slate-800 text-white ring-white/10 hover:bg-slate-700"
+                : "bg-white ring-black/10 hover:bg-gray-50"
+            }`}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="p-4">
+          <div className="flex items-start gap-3">
+            <div
+              className={`flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl ring-1 ${
+                darkMode ? "bg-slate-800 ring-white/10" : "bg-white ring-black/10"
+              }`}
+            >
+              <Image src={imgSrc} alt={title} width={56} height={56} />
+            </div>
+
+            <div className="min-w-0">
+              <div className={`text-[13px] font-extrabold ${darkMode ? "text-white" : "text-gray-900"}`}>
+                {title}
+              </div>
+              <div className="mt-1 space-y-1">
+                {lines.map((line, i) => (
+                  <div key={i} className={`text-[13px] ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
+                    {line}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-4 w-full rounded-2xl bg-green-600 px-4 py-3 text-[13px] font-extrabold text-white hover:bg-green-700"
+          >
+            Zavřít
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CartSheet({
   open,
   onClose,
