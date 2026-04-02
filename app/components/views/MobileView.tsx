@@ -3874,100 +3874,115 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
   const items = (menuByDate[selectedDate] ?? []).filter((x) => x.jidla).slice(0, 50);
 
   function UserArea() {
-    if (!authed) {
-      return (
-        <button
-          type="button"
-          onClick={() => setAuthOpen(true)}
-          className="rounded-2xl bg-green-600 px-3 py-2 text-[12px] font-extrabold text-white hover:bg-green-700"
-        >
-          {t("signIn")}
-        </button>
-      );
-    }
-
-    const displayName = userName.trim() || "Uživatel";
-    const showCredit = credit > 0;
-    const buttonText = showCredit ? `${displayName} • ${credit} Kč` : displayName;
-
-    return (
-      <div className="relative" ref={userMenuRef}>
-        <button
-          type="button"
-          onClick={() => setMenuOpen((v) => !v)}
-          className={`flex h-[42px] w-[170px] items-center justify-between gap-2 rounded-2xl px-3 py-2 text-[12px] font-extrabold ring-1 ${darkMode ? "bg-slate-800 text-white ring-white/10 hover:bg-slate-700" : "bg-white text-[#1f2f56] ring-black/10 hover:bg-gray-50"}`}
-          title={buttonText}
-        >
-          <span className="min-w-0 flex-1 truncate text-left">{buttonText}</span>
-          <span className="shrink-0 text-[13px] opacity-80">▾</span>
-        </button>
-
-        {menuOpen ? (
-          <div className={`absolute right-0 top-[50px] z-[120] w-64 overflow-hidden rounded-2xl shadow-xl ring-1 ${darkMode ? "bg-slate-900 text-white ring-white/10" : "bg-white ring-black/10"}`}>
-            <button
-              type="button"
-              onClick={() => {
-                setMenuOpen(false);
-                setSettingsSection("menu");
-                setSettingsOpen(true);
-              }}
-              className={`w-full px-4 py-3 text-left text-sm font-extrabold ${darkMode ? "hover:bg-slate-800" : "hover:bg-gray-50"}`}
-            >
-              {t("settings")}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setMenuOpen(false);
-                setSettingsSection("orders");
-                setSettingsOpen(true);
-              }}
-              className={`w-full px-4 py-3 text-left text-sm font-extrabold ${darkMode ? "hover:bg-slate-800" : "hover:bg-gray-50"}`}
-            >
-              {t("orders")}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setMenuOpen(false);
-                setSettingsSection("topup");
-                setSettingsOpen(true);
-              }}
-              className={`w-full px-4 py-3 text-left text-sm font-extrabold ${darkMode ? "hover:bg-slate-800" : "hover:bg-gray-50"}`}
-            >
-              {t("topUpCredit")}
-            </button>
-
-            <div className={`h-px ${darkMode ? "bg-white/10" : "bg-gray-100"}`} />
-
-            <button
-              type="button"
-              onClick={signOut}
-              className={`w-full px-4 py-3 text-left text-sm font-extrabold text-red-600 ${darkMode ? "hover:bg-slate-800" : "hover:bg-red-50"}`}
-            >
-              {t("logout")}
-            </button>
-          </div>
-        ) : null}
-      </div>
-    );
-  }
-
-  function StaffShortcut() {
-    if (role !== "staff" || !authed) return null;
-
+  if (!authed) {
     return (
       <button
         type="button"
-        onClick={() => router.push("/staff")}
-        className="h-[42px] w-[170px] rounded-2xl bg-green-50 px-3 py-2 text-[12px] font-extrabold text-green-800 ring-1 ring-green-200 hover:bg-green-100"
+        onClick={() => setAuthOpen(true)}
+        className="h-[44px] w-[168px] rounded-2xl bg-green-600 px-3 py-2 text-[12px] font-extrabold text-white hover:bg-green-700"
       >
-        {t("crossroads")}
+        {t("signIn")}
       </button>
     );
   }
+
+  const displayName = userName.trim() || "Uživatel";
+  const buttonText = credit > 0 ? `${displayName} • ${credit} Kč` : displayName;
+
+  return (
+    <div className="relative shrink-0" ref={userMenuRef}>
+      <button
+        type="button"
+        onClick={() => setMenuOpen((v) => !v)}
+        className={`flex h-[44px] w-[168px] items-center justify-between gap-2 rounded-2xl px-3 py-2 text-[12px] font-extrabold ring-1 ${
+          darkMode
+            ? "bg-slate-800 text-white ring-white/10 hover:bg-slate-700"
+            : "bg-white text-[#1f2f56] ring-black/10 hover:bg-gray-50"
+        }`}
+        title={buttonText}
+      >
+        <span className="min-w-0 flex-1 truncate text-left">{buttonText}</span>
+        <span className="shrink-0 text-[13px] opacity-80">▾</span>
+      </button>
+
+      {menuOpen ? (
+        <div
+          className={`absolute right-0 top-[52px] z-[120] w-64 overflow-hidden rounded-2xl shadow-xl ring-1 ${
+            darkMode ? "bg-slate-900 text-white ring-white/10" : "bg-white ring-black/10"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false);
+              setSettingsSection("menu");
+              setSettingsOpen(true);
+            }}
+            className={`w-full px-4 py-3 text-left text-sm font-extrabold ${
+              darkMode ? "hover:bg-slate-800" : "hover:bg-gray-50"
+            }`}
+          >
+            {t("settings")}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false);
+              setSettingsSection("orders");
+              setSettingsOpen(true);
+            }}
+            className={`w-full px-4 py-3 text-left text-sm font-extrabold ${
+              darkMode ? "hover:bg-slate-800" : "hover:bg-gray-50"
+            }`}
+          >
+            {t("orders")}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false);
+              setSettingsSection("topup");
+              setSettingsOpen(true);
+            }}
+            className={`w-full px-4 py-3 text-left text-sm font-extrabold ${
+              darkMode ? "hover:bg-slate-800" : "hover:bg-gray-50"
+            }`}
+          >
+            {t("topUpCredit")}
+          </button>
+
+          <div className={`h-px ${darkMode ? "bg-white/10" : "bg-gray-100"}`} />
+
+          <button
+            type="button"
+            onClick={signOut}
+            className={`w-full px-4 py-3 text-left text-sm font-extrabold text-red-600 ${
+              darkMode ? "hover:bg-slate-800" : "hover:bg-red-50"
+            }`}
+          >
+            {t("logout")}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function StaffShortcut() {
+  if (role !== "staff" || !authed) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={() => router.push("/staff")}
+      className="h-[44px] w-[168px] rounded-2xl bg-green-50 px-3 py-2 text-[12px] font-extrabold text-green-800 ring-1 ring-green-200 hover:bg-green-100"
+    >
+      {t("crossroads")}
+    </button>
+  );
+}
 
   function SectionHeaderDaily() {
     return (
