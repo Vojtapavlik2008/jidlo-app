@@ -21,6 +21,8 @@ export async function createOrder(params: {
   full_name: string;
   phone: string;
   address: string;
+  zip_code: string;
+  city: string;
   note: string;
   delivery_mode: DeliveryMode;
   packaging_mode: PackagingMode;
@@ -34,13 +36,17 @@ export async function createOrder(params: {
 
   const total = params.cart.reduce((s, it) => s + it.cena * it.qty, 0);
 
+  const fullAddress = [params.address.trim(), `${params.zip_code.trim()} ${params.city.trim()}`.trim()]
+    .filter(Boolean)
+    .join(", ");
+
   const { data: order, error: e1 } = await supabase
     .from("orders")
     .insert({
       user_id: uid,
       full_name: params.full_name.trim() || null,
-      phone: params.phone.replace(/\D/g, "").slice(0, 9) || null,
-      address: params.address.trim() || null,
+      phone: params.phone.replace(/\D/g, "") || null,
+      address: fullAddress || null,
       note: params.note.trim() || null,
       delivery_mode: params.delivery_mode,
       packaging_mode: params.packaging_mode,
@@ -213,6 +219,8 @@ const translations = {
     fullName: "Jméno a příjmení",
     phone: "Telefon",
     address: "Adresa",
+    zipCode: "PSČ",
+    city: "Město",
     agreeTerms: "Souhlasím s podmínkami a se zpracováním osobních údajů.",
     doneEmail: "Hotovo. Pokud máš potvrzení emailem, zkontroluj email. Pak se přihlas.",
     changePassword: "Změnit heslo",
@@ -245,6 +253,8 @@ const translations = {
     todayUntil13: "Na dnešek šlo objednat jen do 13:00.",
     dailyMenu: "Denní menu",
     orderMeals: "Objednávka jídel",
+    menuShort: "Menu",
+    orderShort: "Objednávka",
     cart: "Košík",
     jirka: "Jiřka",
     about: "O nás",
@@ -280,6 +290,8 @@ const translations = {
     choosePayment: "Vybrat platbu",
     cardEntry: "Zadat kartu",
     saveProfileOk: "Profil byl uložen.",
+    chooseCountryCode: "Předvolba",
+    selectTime: "Vybrat čas",
   },
   en: {
     login: "Login",
@@ -290,7 +302,9 @@ const translations = {
     password: "Password",
     fullName: "Full name",
     phone: "Phone",
-    address: "Address",
+    address: "Street",
+    zipCode: "ZIP",
+    city: "City",
     agreeTerms: "I agree to the terms and personal data processing.",
     doneEmail: "Done. If email confirmation is needed, check your email and sign in.",
     changePassword: "Change password",
@@ -304,8 +318,8 @@ const translations = {
     newsOffers: "News and special offers",
     satisfactionSurvey: "Satisfaction survey",
     productReview: "Purchased product review",
-    weeklyMenuEmail: "Weekly menu by email",
-    weeklyMenuEmailSub: "I want to receive the weekly menu in written form by email.",
+    weeklyMenuEmail: "Weekly menu in advance",
+    weeklyMenuEmailSub: "I want to receive the weekly menu by email.",
     darkMode: "Dark mode",
     language: "Language",
     topUpCredit: "Top up credit",
@@ -319,13 +333,15 @@ const translations = {
     today: "Today",
     tomorrow: "Tomorrow",
     closedSunday: "Closed on Sunday.",
-    orderOnlyTodayFuture: "You can order only for today before 1 PM or for future days.",
+    orderOnlyTodayFuture: "You can order only for today before 1 PM or future days.",
     todayUntil13: "Ordering for today was possible only until 1 PM.",
     dailyMenu: "Daily menu",
     orderMeals: "Meal order",
+    menuShort: "Menu",
+    orderShort: "Order",
     cart: "Cart",
     jirka: "Jiřka",
-    about: "About us",
+    about: "About",
     add: "Add",
     loading: "Loading…",
     noMenuYet: "Menu has not been published yet.",
@@ -349,8 +365,8 @@ const translations = {
     map: "Map",
     items: "Items",
     goHome: "Go to homepage",
-    contactOrderChange: "To change your order details, contact us at 325 612 154",
-    noOrders: "There are no orders yet.",
+    contactOrderChange: "To change order details, contact us at 325 612 154",
+    noOrders: "No orders yet.",
     upcomingOrder: "Upcoming order",
     pastOrder: "Completed order",
     amount: "Enter amount",
@@ -358,6 +374,260 @@ const translations = {
     choosePayment: "Choose payment",
     cardEntry: "Enter card",
     saveProfileOk: "Profile saved.",
+    chooseCountryCode: "Country code",
+    selectTime: "Choose time",
+  },
+  uk: {
+    login: "Вхід",
+    register: "Реєстрація",
+    signIn: "Увійти",
+    createAccount: "Створити акаунт",
+    email: "Електронна пошта",
+    password: "Пароль",
+    fullName: "Ім'я та прізвище",
+    phone: "Телефон",
+    address: "Вулиця",
+    zipCode: "Індекс",
+    city: "Місто",
+    agreeTerms: "Я погоджуюся з умовами та обробкою персональних даних.",
+    doneEmail: "Готово. Якщо потрібне підтвердження електронною поштою, перевірте її та увійдіть.",
+    changePassword: "Змінити пароль",
+    forgotPassword: "Забули пароль",
+    oldPassword: "Старий пароль",
+    newPassword: "Новий пароль",
+    newPasswordAgain: "Повторіть новий пароль",
+    save: "Зберегти",
+    back: "Назад",
+    notifications: "Сповіщення",
+    newsOffers: "Новини та акції",
+    satisfactionSurvey: "Опитування задоволеності",
+    productReview: "Оцінка придбаного продукту",
+    weeklyMenuEmail: "Меню на тиждень наперед",
+    weeklyMenuEmailSub: "Я хочу отримувати тижневе меню на електронну пошту.",
+    darkMode: "Темний режим",
+    language: "Мова",
+    topUpCredit: "Поповнити кредит",
+    orders: "Замовлення",
+    settings: "Налаштування",
+    personalData: "Особисті дані",
+    done: "Готово",
+    pay: "Оплатити",
+    close: "Закрити",
+    laterGateway: "Платіжний шлюз буде додано пізніше.",
+    today: "Сьогодні",
+    tomorrow: "Завтра",
+    closedSunday: "У неділю зачинено.",
+    orderOnlyTodayFuture: "Можна замовляти лише на сьогодні до 13:00 або на майбутні дні.",
+    todayUntil13: "На сьогодні можна було замовити лише до 13:00.",
+    dailyMenu: "Щоденне меню",
+    orderMeals: "Замовлення їжі",
+    menuShort: "Меню",
+    orderShort: "Замовлення",
+    cart: "Кошик",
+    jirka: "Jiřka",
+    about: "Про нас",
+    add: "Додати",
+    loading: "Завантаження…",
+    noMenuYet: "Меню ще не опубліковано.",
+    routeTagline: "доставка обідів у Подєбрадах",
+    crossroads: "Панель",
+    logout: "Вийти",
+    pickupMethod: "Спосіб отримання",
+    delivery: "Доставка",
+    pickup: "Самовивіз",
+    packaging: "Упаковка",
+    preferredTime: "Бажаний час доставки",
+    optional: "(необов'язково)",
+    payment: "Оплата",
+    note: "Примітка",
+    recap: "Підсумок",
+    total: "Разом",
+    foods: "Страви",
+    deliveryFee: "Доставка",
+    orderSummary: "Підсумок замовлення",
+    billingData: "Платіжні дані",
+    map: "Мапа",
+    items: "Позиції",
+    goHome: "Перейти на головну сторінку",
+    contactOrderChange: "Щоб змінити дані замовлення, зв'яжіться з нами за тел. 325 612 154",
+    noOrders: "Замовлень поки немає.",
+    upcomingOrder: "Майбутнє замовлення",
+    pastOrder: "Видане замовлення",
+    amount: "Введіть суму",
+    min500: "Мінімум 500 CZK",
+    choosePayment: "Оберіть оплату",
+    cardEntry: "Ввести картку",
+    saveProfileOk: "Профіль збережено.",
+    chooseCountryCode: "Код країни",
+    selectTime: "Вибрати час",
+  },
+  de: {
+    login: "Anmelden",
+    register: "Registrieren",
+    signIn: "Einloggen",
+    createAccount: "Konto erstellen",
+    email: "E-Mail",
+    password: "Passwort",
+    fullName: "Vor- und Nachname",
+    phone: "Telefon",
+    address: "Straße",
+    zipCode: "PLZ",
+    city: "Stadt",
+    agreeTerms: "Ich stimme den Bedingungen und der Verarbeitung personenbezogener Daten zu.",
+    doneEmail: "Fertig. Wenn eine E-Mail-Bestätigung nötig ist, prüfe deine E-Mails und melde dich an.",
+    changePassword: "Passwort ändern",
+    forgotPassword: "Passwort vergessen",
+    oldPassword: "Altes Passwort",
+    newPassword: "Neues Passwort",
+    newPasswordAgain: "Neues Passwort wiederholen",
+    save: "Speichern",
+    back: "Zurück",
+    notifications: "Benachrichtigungen",
+    newsOffers: "Neuigkeiten und Angebote",
+    satisfactionSurvey: "Zufriedenheitsumfrage",
+    productReview: "Bewertung des gekauften Produkts",
+    weeklyMenuEmail: "Wochenmenü im Voraus",
+    weeklyMenuEmailSub: "Ich möchte das Wochenmenü per E-Mail erhalten.",
+    darkMode: "Dunkler Modus",
+    language: "Sprache",
+    topUpCredit: "Guthaben aufladen",
+    orders: "Bestellungen",
+    settings: "Einstellungen",
+    personalData: "Persönliche Daten",
+    done: "Fertig",
+    pay: "Bezahlen",
+    close: "Schließen",
+    laterGateway: "Das Zahlungsportal wird später hinzugefügt.",
+    today: "Heute",
+    tomorrow: "Morgen",
+    closedSunday: "Sonntags geschlossen.",
+    orderOnlyTodayFuture: "Bestellungen sind nur für heute bis 13:00 Uhr oder für zukünftige Tage möglich.",
+    todayUntil13: "Für heute konnte nur bis 13:00 Uhr bestellt werden.",
+    dailyMenu: "Tagesmenü",
+    orderMeals: "Essensbestellung",
+    menuShort: "Menü",
+    orderShort: "Bestellung",
+    cart: "Warenkorb",
+    jirka: "Jiřka",
+    about: "Über uns",
+    add: "Hinzufügen",
+    loading: "Lädt…",
+    noMenuYet: "Menü wurde noch nicht veröffentlicht.",
+    routeTagline: "Mittagslieferung in Poděbrady",
+    crossroads: "Übersicht",
+    logout: "Abmelden",
+    pickupMethod: "Abholmethode",
+    delivery: "Lieferung",
+    pickup: "Abholung",
+    packaging: "Verpackung",
+    preferredTime: "Bevorzugte Lieferzeit",
+    optional: "(optional)",
+    payment: "Zahlung",
+    note: "Notiz",
+    recap: "Zusammenfassung",
+    total: "Gesamt",
+    foods: "Gerichte",
+    deliveryFee: "Lieferung",
+    orderSummary: "Bestellübersicht",
+    billingData: "Rechnungsdaten",
+    map: "Karte",
+    items: "Positionen",
+    goHome: "Zur Startseite",
+    contactOrderChange: "Um Bestelldaten zu ändern, kontaktiere uns unter 325 612 154",
+    noOrders: "Noch keine Bestellungen.",
+    upcomingOrder: "Kommende Bestellung",
+    pastOrder: "Abgeschlossene Bestellung",
+    amount: "Betrag eingeben",
+    min500: "Mindestens 500 CZK",
+    choosePayment: "Zahlung wählen",
+    cardEntry: "Karte eingeben",
+    saveProfileOk: "Profil gespeichert.",
+    chooseCountryCode: "Ländervorwahl",
+    selectTime: "Zeit wählen",
+  },
+  es: {
+    login: "Iniciar sesión",
+    register: "Registrarse",
+    signIn: "Entrar",
+    createAccount: "Crear cuenta",
+    email: "Correo",
+    password: "Contraseña",
+    fullName: "Nombre completo",
+    phone: "Teléfono",
+    address: "Calle",
+    zipCode: "Código postal",
+    city: "Ciudad",
+    agreeTerms: "Acepto los términos y el tratamiento de datos personales.",
+    doneEmail: "Hecho. Si hace falta confirmación por correo, revisa tu email e inicia sesión.",
+    changePassword: "Cambiar contraseña",
+    forgotPassword: "Olvidé mi contraseña",
+    oldPassword: "Contraseña antigua",
+    newPassword: "Nueva contraseña",
+    newPasswordAgain: "Repetir nueva contraseña",
+    save: "Guardar",
+    back: "Atrás",
+    notifications: "Notificaciones",
+    newsOffers: "Novedades y ofertas",
+    satisfactionSurvey: "Encuesta de satisfacción",
+    productReview: "Valoración del producto comprado",
+    weeklyMenuEmail: "Menú semanal con antelación",
+    weeklyMenuEmailSub: "Quiero recibir el menú semanal por correo.",
+    darkMode: "Modo oscuro",
+    language: "Idioma",
+    topUpCredit: "Recargar crédito",
+    orders: "Pedidos",
+    settings: "Configuración",
+    personalData: "Datos personales",
+    done: "Hecho",
+    pay: "Pagar",
+    close: "Cerrar",
+    laterGateway: "La pasarela de pago se añadirá más tarde.",
+    today: "Hoy",
+    tomorrow: "Mañana",
+    closedSunday: "Cerrado el domingo.",
+    orderOnlyTodayFuture: "Se puede pedir solo para hoy antes de las 13:00 o para días futuros.",
+    todayUntil13: "Para hoy se podía pedir solo hasta las 13:00.",
+    dailyMenu: "Menú diario",
+    orderMeals: "Pedido de comida",
+    menuShort: "Menú",
+    orderShort: "Pedido",
+    cart: "Carrito",
+    jirka: "Jiřka",
+    about: "Sobre nosotros",
+    add: "Añadir",
+    loading: "Cargando…",
+    noMenuYet: "El menú aún no se ha publicado.",
+    routeTagline: "reparto de almuerzos en Poděbrady",
+    crossroads: "Panel",
+    logout: "Cerrar sesión",
+    pickupMethod: "Método de recogida",
+    delivery: "Entrega",
+    pickup: "Recogida",
+    packaging: "Embalaje",
+    preferredTime: "Hora preferida de entrega",
+    optional: "(opcional)",
+    payment: "Pago",
+    note: "Nota",
+    recap: "Resumen",
+    total: "Total",
+    foods: "Comidas",
+    deliveryFee: "Entrega",
+    orderSummary: "Resumen del pedido",
+    billingData: "Datos de facturación",
+    map: "Mapa",
+    items: "Artículos",
+    goHome: "Ir a la página principal",
+    contactOrderChange: "Para cambiar los datos del pedido, contáctanos al 325 612 154",
+    noOrders: "Todavía no hay pedidos.",
+    upcomingOrder: "Pedido próximo",
+    pastOrder: "Pedido completado",
+    amount: "Introducir cantidad",
+    min500: "Mínimo 500 CZK",
+    choosePayment: "Elegir pago",
+    cardEntry: "Introducir tarjeta",
+    saveProfileOk: "Perfil guardado.",
+    chooseCountryCode: "Prefijo del país",
+    selectTime: "Elegir hora",
   },
 } as const;
 
@@ -480,11 +750,27 @@ type MobileViewProps = {
 type SettingsSection =
   | "menu"
   | "personal"
-  | "dark"
   | "notifications"
   | "language"
   | "topup"
   | "orders";
+
+type CountryCodeOption = {
+  code: string;
+  flag: string;
+  dial: string;
+};
+
+const COUNTRY_CODES: CountryCodeOption[] = [
+  { code: "CZ", flag: "🇨🇿", dial: "+420" },
+  { code: "SK", flag: "🇸🇰", dial: "+421" },
+  { code: "DE", flag: "🇩🇪", dial: "+49" },
+  { code: "AT", flag: "🇦🇹", dial: "+43" },
+  { code: "PL", flag: "🇵🇱", dial: "+48" },
+  { code: "UA", flag: "🇺🇦", dial: "+380" },
+  { code: "ES", flag: "🇪🇸", dial: "+34" },
+  { code: "GB", flag: "🇬🇧", dial: "+44" },
+];
 
 /** ===================== Reusable UI ===================== */
 function CheckIcon({ show }: { show: boolean }) {
@@ -585,7 +871,6 @@ function AuthModal({
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [agree, setAgree] = useState(false);
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -667,7 +952,7 @@ function AuthModal({
   const phoneOk = digitsOnly(phone).length === 9;
   const addressOk = address.trim().length >= 5;
   const passwordOk = password.length >= 6;
-  const canRegister = emailOk && fullNameOk && phoneOk && addressOk && passwordOk && agree;
+  const canRegister = emailOk && fullNameOk && phoneOk && addressOk && passwordOk;
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
@@ -788,16 +1073,6 @@ function AuthModal({
                   <CheckIcon show={addressOk} />
                 </div>
               </label>
-
-              <label className="flex items-start gap-3 rounded-2xl bg-green-50 px-3 py-3 ring-1 ring-green-100">
-                <input
-                  type="checkbox"
-                  checked={agree}
-                  onChange={(e) => setAgree(e.target.checked)}
-                  className="mt-1"
-                />
-                <div className="text-[12px] font-semibold text-gray-700">{t("agreeTerms")}</div>
-              </label>
             </>
           ) : null}
 
@@ -814,140 +1089,6 @@ function AuthModal({
             className="w-full rounded-2xl bg-green-600 px-4 py-3 text-sm font-extrabold text-white hover:bg-green-700 disabled:opacity-50"
           >
             {busy ? "Počkej…" : tab === "login" ? t("signIn") : t("createAccount")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** ===================== Allergens Modal ===================== */
-function AllergensModal({
-  open,
-  onClose,
-  title,
-  allergens,
-  category,
-  darkMode,
-}: {
-  open: boolean;
-  onClose: () => void;
-  title: string;
-  allergens: string[];
-  category?: string | null;
-  darkMode: boolean;
-}) {
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-[220] flex items-center justify-center p-4">
-      <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
-      <div className={`relative w-full max-w-md overflow-hidden rounded-3xl shadow-2xl ring-1 ${darkMode ? "bg-slate-900 text-white ring-white/10" : "bg-white ring-black/10"}`}>
-        <div className={`flex items-center justify-between px-4 pb-2 pt-3 ${darkMode ? "border-b border-white/10" : "border-b border-gray-100"}`}>
-          <div className={`text-[15px] font-extrabold ${darkMode ? "text-white" : "text-gray-900"}`}>Informace o jídle</div>
-          <button
-            type="button"
-            onClick={onClose}
-            className={`h-10 w-10 rounded-2xl font-extrabold ring-1 ${darkMode ? "bg-slate-800 text-white ring-white/10 hover:bg-slate-700" : "bg-white ring-black/10 hover:bg-gray-50"}`}
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="max-h-[70dvh] overflow-auto px-4 pb-4">
-          <div className={`mt-3 text-[16px] font-extrabold ${darkMode ? "text-white" : "text-[#1f2f56]"}`}>{title}</div>
-
-          <div className={`mt-3 rounded-2xl p-3 ring-1 ${darkMode ? "bg-slate-800 ring-white/10" : "bg-white ring-black/10"}`}>
-            <div className={`text-[12px] font-extrabold uppercase tracking-wide ${darkMode ? "text-slate-300" : "text-gray-500"}`}>Alergeny</div>
-
-            {allergens.length === 0 ? (
-              <div className={`mt-2 text-[13px] ${darkMode ? "text-slate-200" : "text-gray-700"}`}>Nejsou uvedené alergeny.</div>
-            ) : (
-              <div className="mt-2 space-y-1.5">
-                {allergens.map((a, idx) => (
-                  <div key={idx} className={`text-[13px] ${darkMode ? "text-slate-100" : "text-gray-800"}`}>
-                    • {a}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className={`mt-3 rounded-2xl p-3 ring-1 ${darkMode ? "bg-slate-800 ring-white/10" : "bg-white ring-black/10"}`}>
-            <div className={`text-[12px] font-extrabold uppercase tracking-wide ${darkMode ? "text-slate-300" : "text-gray-500"}`}>Kategorie</div>
-            <div className={`mt-2 text-[13px] ${darkMode ? "text-slate-100" : "text-gray-800"}`}>{category?.trim() || "Neuvedeno"}</div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="mt-4 w-full rounded-2xl bg-green-600 px-4 py-3 text-[13px] font-extrabold text-white hover:bg-green-700"
-          >
-            Zavřít
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** ===================== Packaging Info Modal ===================== */
-function PackagingInfoModal({
-  open,
-  onClose,
-  title,
-  imgSrc,
-  lines,
-  darkMode,
-}: {
-  open: boolean;
-  onClose: () => void;
-  title: string;
-  imgSrc: string;
-  lines: string[];
-  darkMode: boolean;
-}) {
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-[270] flex items-center justify-center p-4">
-      <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
-      <div className={`relative w-full max-w-md overflow-hidden rounded-3xl shadow-2xl ring-1 ${darkMode ? "bg-slate-900 text-white ring-white/10" : "bg-white ring-black/10"}`}>
-        <div className={`flex items-center justify-between px-4 pb-2 pt-3 ${darkMode ? "border-b border-white/10" : "border-b border-gray-100"}`}>
-          <div className={`text-[14px] font-extrabold ${darkMode ? "text-white" : "text-gray-900"}`}>{title}</div>
-          <button
-            type="button"
-            onClick={onClose}
-            className={`h-10 w-10 rounded-2xl font-extrabold ring-1 ${darkMode ? "bg-slate-800 text-white ring-white/10 hover:bg-slate-700" : "bg-white ring-black/10 hover:bg-gray-50"}`}
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="p-4">
-          <div className="flex items-start gap-3">
-            <div className={`flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl ring-1 ${darkMode ? "bg-slate-800 ring-white/10" : "bg-white ring-black/10"}`}>
-              <Image src={imgSrc} alt={title} width={56} height={56} />
-            </div>
-
-            <div className="min-w-0">
-              <div className={`text-[13px] font-extrabold ${darkMode ? "text-white" : "text-gray-900"}`}>{title}</div>
-              <div className="mt-1 space-y-1">
-                {lines.map((x, i) => (
-                  <div key={i} className={`text-[13px] ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
-                    {x}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="mt-4 w-full rounded-2xl bg-green-600 px-4 py-3 text-[13px] font-extrabold text-white hover:bg-green-700"
-          >
-            Zavřít
           </button>
         </div>
       </div>
@@ -1120,6 +1261,7 @@ function SettingsModal({
   orders,
   onRefreshOrders,
   onTopup,
+  onOpenPassword,
   t,
 }: {
   open: boolean;
@@ -1146,6 +1288,7 @@ function SettingsModal({
   orders: OrderRowLite[];
   onRefreshOrders: () => Promise<void>;
   onTopup: (amount: number, method: string) => Promise<void>;
+  onOpenPassword: () => void;
   t: (key: keyof typeof translations["cs"]) => string;
 }) {
   const [name, setName] = useState(userName);
@@ -1204,6 +1347,13 @@ function SettingsModal({
     ? "bg-slate-800 text-white ring-white/10"
     : "bg-white text-gray-900 ring-black/10";
 
+  const languageFlag =
+    language === "cs" ? "🇨🇿" :
+    language === "en" ? "🇬🇧" :
+    language === "uk" ? "🇺🇦" :
+    language === "de" ? "🇩🇪" :
+    "🇪🇸";
+
   return (
     <BaseModal
       open={open}
@@ -1216,8 +1366,6 @@ function SettingsModal({
           ? t("settings")
           : section === "personal"
           ? t("personalData")
-          : section === "dark"
-          ? t("darkMode")
           : section === "notifications"
           ? t("notifications")
           : section === "language"
@@ -1231,24 +1379,52 @@ function SettingsModal({
     >
       <div className="max-h-[78dvh] overflow-auto p-4">
         {section === "menu" ? (
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { id: "personal", label: t("personalData") },
-              { id: "dark", label: t("darkMode") },
-              { id: "notifications", label: t("notifications") },
-              { id: "language", label: t("language") },
-              { id: "topup", label: t("topUpCredit") },
-              { id: "orders", label: t("orders") },
-            ].map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setSection(item.id as SettingsSection)}
-                className={`rounded-2xl px-4 py-4 text-left text-[13px] font-extrabold ring-1 ${darkCard}`}
-              >
-                {item.label}
-              </button>
-            ))}
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => setSection("personal")}
+              className={`w-full rounded-2xl px-4 py-4 text-left text-[13px] font-extrabold ring-1 ${darkCard}`}
+            >
+              {t("personalData")}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSection("notifications")}
+              className={`w-full rounded-2xl px-4 py-4 text-left text-[13px] font-extrabold ring-1 ${darkCard}`}
+            >
+              {t("notifications")}
+            </button>
+
+            <div className={`flex items-center justify-between rounded-2xl px-4 py-4 text-left text-[13px] font-extrabold ring-1 ${darkCard}`}>
+              <span>{t("darkMode")}</span>
+              <Toggle checked={darkMode} onChange={setDarkMode} />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSection("language")}
+              className={`flex w-full items-center justify-between rounded-2xl px-4 py-4 text-left text-[13px] font-extrabold ring-1 ${darkCard}`}
+            >
+              <span>{t("language")}</span>
+              <span className="text-xl">{languageFlag}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSection("topup")}
+              className={`w-full rounded-2xl px-4 py-4 text-left text-[13px] font-extrabold ring-1 ${darkCard}`}
+            >
+              {t("topUpCredit")}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSection("orders")}
+              className={`w-full rounded-2xl px-4 py-4 text-left text-[13px] font-extrabold ring-1 ${darkCard}`}
+            >
+              {t("orders")}
+            </button>
           </div>
         ) : null}
 
@@ -1297,9 +1473,13 @@ function SettingsModal({
               </div>
             ) : null}
 
-            <div className={`text-[12px] font-bold underline underline-offset-4 ${darkMode ? "text-slate-300" : "text-gray-600"}`}>
+            <button
+              type="button"
+              onClick={onOpenPassword}
+              className={`text-[12px] font-bold underline underline-offset-4 ${darkMode ? "text-slate-300" : "text-gray-600"}`}
+            >
               {t("changePassword")}
-            </div>
+            </button>
 
             <div className="flex gap-2">
               <button
@@ -1318,30 +1498,6 @@ function SettingsModal({
                 {t("save")}
               </button>
             </div>
-          </div>
-        ) : null}
-
-        {section === "dark" ? (
-          <div className="space-y-3">
-            <div className={`rounded-2xl p-4 ring-1 ${darkCard}`}>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-[13px] font-extrabold">{t("darkMode")}</div>
-                  <div className={`mt-1 text-[12px] ${darkMode ? "text-slate-300" : "text-gray-500"}`}>
-                    Přepnutí vzhledu této mobilní stránky.
-                  </div>
-                </div>
-                <Toggle checked={darkMode} onChange={setDarkMode} />
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setSection("menu")}
-              className={`w-full rounded-2xl px-4 py-3 text-[13px] font-extrabold ring-1 ${darkCard}`}
-            >
-              {t("back")}
-            </button>
           </div>
         ) : null}
 
@@ -1619,6 +1775,12 @@ function CartSheet({
     setTimesByDay,
   } = useOrder();
 
+  const [zipCode, setZipCode] = useState("");
+  const [city, setCity] = useState("");
+  const [countryCode, setCountryCode] = useState<CountryCodeOption>(COUNTRY_CODES[0]);
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [timeEnabled, setTimeEnabled] = useState(false);
+
   const [step, setStep] = useState<"cart" | "checkout" | "done">("cart");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -1655,6 +1817,8 @@ function CartSheet({
     setSameTimeForAll(false);
     setActiveTimeDay(null);
     setGatewayOpen(false);
+    setCountryOpen(false);
+    setTimeEnabled(false);
   }, [open]);
 
   useEffect(() => {
@@ -1680,14 +1844,25 @@ function CartSheet({
           if (!raw) return prev;
           return formatPhoneCz(raw);
         });
-        setAddress((prev) => (prev.trim() ? prev : String((p as any)?.address ?? "")));
+
+        const rawAddress = String((p as any)?.address ?? "");
+        if (!address.trim() && rawAddress) {
+          const parts = rawAddress.split(",");
+          const street = parts[0]?.trim() ?? "";
+          const second = parts[1]?.trim() ?? "";
+          const zip = second.split(" ")[0] ?? "";
+          const cityName = second.split(" ").slice(1).join(" ");
+          setAddress(street);
+          setZipCode(zip);
+          setCity(cityName);
+        }
       } catch {}
     })();
 
     return () => {
       alive = false;
     };
-  }, [open, authed, step, setName, setPhone, setAddress]);
+  }, [open, authed, step, setName, setPhone, setAddress, address]);
 
   const grouped = useMemo(() => {
     const m = new Map<string, CartItem[]>();
@@ -1799,29 +1974,29 @@ function CartSheet({
   }
 
   const timeSummary = useMemo(() => {
-    if (cartDays.length === 0) return "Vybrat čas";
+    if (cartDays.length === 0) return t("selectTime");
     const pickedDays = cartDays.filter((d) => (timesByDay as any)?.[d]);
-    if (pickedDays.length === 0) return "Vybrat čas";
+    if (pickedDays.length === 0) return t("selectTime");
 
     if (cartDays.length === 1) {
       const d = cartDays[0];
       const picked = (timesByDay as any)?.[d] as DayTime;
-      if (!picked) return "Vybrat čas";
+      if (!picked) return t("selectTime");
       return `${formatCartDay(d)} ${picked.from}–${picked.to}`;
     }
 
     if (sameTimeForAll) {
       const d = pickedDays[0];
       const picked = (timesByDay as any)?.[d] as DayTime;
-      if (!picked) return "Vybrat čas";
+      if (!picked) return t("selectTime");
       return `Všechny dny ${picked.from}–${picked.to}`;
     }
 
     const d0 = pickedDays[0];
     const t0 = (timesByDay as any)?.[d0] as DayTime;
-    if (!t0) return "Vybrat čas";
+    if (!t0) return t("selectTime");
     return `${formatCartDay(d0)} ${t0.from}–${t0.to}${pickedDays.length > 1 ? ` +${pickedDays.length - 1}` : ""}`;
-  }, [cartDays, timesByDay, sameTimeForAll]);
+  }, [cartDays, timesByDay, sameTimeForAll, t]);
 
   const evalScrollHint = () => {
     const el = scrollRef.current;
@@ -1842,13 +2017,15 @@ function CartSheet({
     try {
       const id = await createOrder({
         full_name: name,
-        phone,
+        phone: `${countryCode.dial} ${digitsOnly(phone)}`,
         address,
+        zip_code: zipCode,
+        city,
         note,
         delivery_mode: deliveryMode,
         packaging_mode: packagingMode,
         payment_method: payment,
-        times_by_day: timesByDay,
+        times_by_day: timeEnabled ? timesByDay : {},
         cart,
       });
 
@@ -1873,14 +2050,20 @@ function CartSheet({
         return;
       }
 
-      if (!name.trim() || digitsOnly(phone).length !== 9) {
-        setMsg("Vyplň jméno a telefon (9 číslic).");
+      if (!name.trim() || digitsOnly(phone).length < 6) {
+        setMsg("Vyplň jméno a telefon.");
         return;
       }
 
-      if (deliveryMode === "delivery" && !address.trim()) {
-        setMsg("Vyplň adresu pro doručení.");
-        return;
+      if (deliveryMode === "delivery") {
+        if (!address.trim()) {
+          setMsg("Vyplň ulici a číslo popisné.");
+          return;
+        }
+        if (!zipCode.trim() || !city.trim()) {
+          setMsg("Vyplň PSČ a město.");
+          return;
+        }
       }
 
       if (payment === "credit" && credit < payTotal) {
@@ -1971,6 +2154,58 @@ function CartSheet({
     );
   }
 
+  function CountryCodeSheet() {
+    if (!countryOpen) return null;
+
+    return (
+      <div className="fixed inset-0 z-[265] flex items-center justify-center p-4">
+        <button type="button" className="absolute inset-0 bg-black/40" onClick={() => setCountryOpen(false)} />
+        <div className={`relative max-h-[80dvh] w-full max-w-md overflow-hidden rounded-3xl shadow-2xl ring-1 ${darkMode ? "bg-slate-900 text-white ring-white/10" : "bg-white ring-black/10"}`}>
+          <div className={`flex items-center justify-between px-4 pb-2 pt-3 ${darkMode ? "border-b border-white/10" : "border-b border-gray-100"}`}>
+            <div className={`text-[14px] font-extrabold ${darkMode ? "text-white" : "text-gray-900"}`}>{t("chooseCountryCode")}</div>
+            <button
+              type="button"
+              onClick={() => setCountryOpen(false)}
+              className={`h-10 w-10 rounded-2xl font-extrabold ring-1 ${darkMode ? "bg-slate-800 text-white ring-white/10 hover:bg-slate-700" : "bg-white ring-black/10 hover:bg-gray-50"}`}
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="max-h-[70dvh] space-y-2 overflow-auto p-3">
+            {COUNTRY_CODES.map((item) => {
+              const active = item.dial === countryCode.dial;
+              return (
+                <button
+                  key={item.code}
+                  type="button"
+                  onClick={() => {
+                    setCountryCode(item);
+                    setCountryOpen(false);
+                  }}
+                  className={[
+                    "flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left ring-1",
+                    active
+                      ? "bg-green-50 text-gray-900 ring-green-300/70"
+                      : darkMode
+                      ? "bg-slate-800 text-white ring-white/10 hover:bg-slate-700"
+                      : "bg-white text-gray-900 ring-black/10 hover:bg-gray-50",
+                  ].join(" ")}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">{item.flag}</span>
+                    <span className="text-[13px] font-extrabold">{item.dial}</span>
+                  </div>
+                  <span className="font-extrabold text-green-700">{active ? "✓" : ""}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const RowPick = useCallback(
     ({ label, value, onClick }: { label: string; value: string; onClick: () => void }) => (
       <div className={pill + " p-3"}>
@@ -1998,6 +2233,7 @@ function CartSheet({
       placeholder,
       inputMode,
       autoComplete,
+      maxWidth = "w-[210px] max-w-[210px]",
     }: {
       label: string;
       value: string;
@@ -2005,6 +2241,7 @@ function CartSheet({
       placeholder?: string;
       inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
       autoComplete?: string;
+      maxWidth?: string;
     }) => (
       <div className={pill + " p-3"}>
         <div className="flex items-center justify-between gap-3">
@@ -2015,7 +2252,7 @@ function CartSheet({
             placeholder={placeholder}
             inputMode={inputMode}
             autoComplete={autoComplete}
-            className={`w-[210px] max-w-[210px] rounded-2xl px-3 py-2.5 text-[13px] font-semibold outline-none ring-1 ${darkMode ? "bg-slate-700 text-white ring-white/10" : "bg-white ring-black/10"}`}
+            className={`${maxWidth} rounded-2xl px-3 py-2.5 text-[13px] font-semibold outline-none ring-1 ${darkMode ? "bg-slate-700 text-white ring-white/10" : "bg-white ring-black/10"}`}
           />
         </div>
       </div>
@@ -2227,10 +2464,12 @@ function CartSheet({
     );
   }
 
-  const mapQuery = encodeURIComponent(address?.trim() || "Havlíčkova 72, Poděbrady");
+  const fullAddressForMap = encodeURIComponent(
+    [address.trim(), zipCode.trim(), city.trim()].filter(Boolean).join(", ") || "Havlíčkova 72, Poděbrady"
+  );
 
   return (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
       <button type="button" onClick={onClose} className="absolute inset-0 bg-black/40" aria-label="Zavřít" />
 
       <div
@@ -2390,48 +2629,69 @@ function CartSheet({
                   autoComplete="name"
                 />
 
-                <RowInput
-                  label={t("phone")}
-                  value={phone}
-                  onChange={(v) => setPhone(formatPhoneCz(v))}
-                  placeholder="777 777 777"
-                  inputMode="numeric"
-                  autoComplete="tel"
-                />
+                <div className={pill + " p-3"}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className={`shrink-0 text-[12px] font-extrabold ${darkMode ? "text-slate-200" : "text-gray-700"}`}>{t("phone")}</div>
+                    <div className="flex w-[210px] max-w-[210px] items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCountryOpen(true)}
+                        className={`flex shrink-0 items-center gap-1 rounded-2xl px-2.5 py-2.5 text-[12px] font-extrabold ring-1 ${darkMode ? "bg-slate-700 text-white ring-white/10" : "bg-white text-gray-900 ring-black/10"}`}
+                      >
+                        <span>{countryCode.flag}</span>
+                        <span>{countryCode.dial}</span>
+                      </button>
+
+                      <input
+                        value={phone}
+                        onChange={(e) => setPhone(formatPhoneCz(e.target.value))}
+                        placeholder="777 777 777"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        className={`min-w-0 flex-1 rounded-2xl px-3 py-2.5 text-[13px] font-semibold outline-none ring-1 ${darkMode ? "bg-slate-700 text-white ring-white/10" : "bg-white ring-black/10"}`}
+                      />
+                    </div>
+                  </div>
+                </div>
 
                 {deliveryMode === "delivery" ? (
-                  <RowInput
-                    label={t("address")}
-                    value={address}
-                    onChange={setAddress}
-                    placeholder="Ulice a č.p., město"
-                    autoComplete="street-address"
-                  />
+                  <>
+                    <RowInput
+                      label={t("address")}
+                      value={address}
+                      onChange={setAddress}
+                      placeholder="Ulice a č.p."
+                      autoComplete="street-address"
+                    />
+
+                    <div className={pill + " p-3"}>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <div className={`mb-1 text-[11px] font-extrabold ${darkMode ? "text-slate-300" : "text-gray-600"}`}>{t("zipCode")}</div>
+                          <input
+                            value={zipCode}
+                            onChange={(e) => setZipCode(digitsOnly(e.target.value).slice(0, 5))}
+                            inputMode="numeric"
+                            className={`w-full rounded-2xl px-3 py-2.5 text-[13px] font-semibold outline-none ring-1 ${darkMode ? "bg-slate-700 text-white ring-white/10" : "bg-white ring-black/10"}`}
+                          />
+                        </div>
+
+                        <div>
+                          <div className={`mb-1 text-[11px] font-extrabold ${darkMode ? "text-slate-300" : "text-gray-600"}`}>{t("city")}</div>
+                          <input
+                            value={city}
+                            onChange={(e) => setCity(e.target.value)}
+                            className={`w-full rounded-2xl px-3 py-2.5 text-[13px] font-semibold outline-none ring-1 ${darkMode ? "bg-slate-700 text-white ring-white/10" : "bg-white ring-black/10"}`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 ) : null}
 
                 <RowPick label={t("packaging")} value={packagingLabel} onClick={() => setPickOpen("packaging")} />
 
-                <div className={pill + " p-3"}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className={`text-[12px] font-extrabold ${darkMode ? "text-slate-200" : "text-gray-700"}`}>{t("preferredTime")}</div>
-                      <div className={`text-[11px] ${darkMode ? "text-slate-400" : "text-gray-500"}`}>{t("optional")}</div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setTimeOpen(true)}
-                      className="min-w-[170px] max-w-[220px] truncate rounded-2xl bg-green-50 px-3 py-2 text-[12px] font-extrabold text-green-800 ring-1 ring-green-200 hover:bg-green-100"
-                      title={timeSummary}
-                      disabled={cartCount === 0}
-                    >
-                      {timeSummary} <span className="ml-1 opacity-70">›</span>
-                    </button>
-                  </div>
-                </div>
-
                 <RowPick label={t("payment")} value={paymentLabel} onClick={() => setPickOpen("payment")} />
-                <RowTextarea label={t("note")} value={note} onChange={setNote} placeholder="Např. bez cibule, zazvonit…" />
 
                 {cartCount > 0 ? (
                   <div className={pillSoft + " p-3"}>
@@ -2461,6 +2721,33 @@ function CartSheet({
                     </div>
                   </div>
                 ) : null}
+
+                <div className={pill + " p-3"}>
+                  <label className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={timeEnabled}
+                      onChange={(e) => setTimeEnabled(e.target.checked)}
+                    />
+                    <span className={`text-[13px] font-extrabold ${darkMode ? "text-slate-100" : "text-gray-800"}`}>
+                      {t("preferredTime")}
+                    </span>
+                  </label>
+
+                  {timeEnabled ? (
+                    <button
+                      type="button"
+                      onClick={() => setTimeOpen(true)}
+                      className="mt-3 w-full rounded-2xl bg-green-50 px-3 py-3 text-left text-[12px] font-extrabold text-green-800 ring-1 ring-green-200 hover:bg-green-100"
+                      title={timeSummary}
+                      disabled={cartCount === 0}
+                    >
+                      {t("preferredTime")} · {timeSummary}
+                    </button>
+                  ) : null}
+                </div>
+
+                <RowTextarea label={t("note")} value={note} onChange={setNote} placeholder="Např. bez cibule, zazvonit…" />
 
                 {msg ? (
                   <div className={`rounded-2xl px-3 py-2 text-[12px] font-bold ring-1 ${darkMode ? "bg-slate-800 text-slate-100 ring-white/10" : "bg-neutral-50 text-neutral-700 ring-black/10"}`}>
@@ -2523,6 +2810,8 @@ function CartSheet({
               ]}
             />
 
+            <CountryCodeSheet />
+
             <PackagingInfoModal
               open={packInfoOpen}
               onClose={() => setPackInfoOpen(false)}
@@ -2546,7 +2835,7 @@ function CartSheet({
             <div className={`relative w-full max-w-md overflow-hidden rounded-3xl shadow-2xl ring-1 ${darkMode ? "bg-slate-900 text-white ring-white/10" : "bg-white ring-black/10"}`}>
               <div className={`flex items-start justify-between px-4 pb-2 pt-3 ${darkMode ? "border-b border-white/10" : "border-b border-gray-100"}`}>
                 <div>
-                  <div className={`text-[18px] font-extrabold ${darkMode ? "text-white" : "text-gray-900"}`}>Čas doručení</div>
+                  <div className={`text-[18px] font-extrabold ${darkMode ? "text-white" : "text-gray-900"}`}>{t("preferredTime")}</div>
                   <div className={`text-[12px] font-semibold ${darkMode ? "text-slate-300" : "text-gray-600"}`}>10:00 – 13:30 (po 30 min) • {t("optional")}</div>
                 </div>
 
@@ -2647,8 +2936,12 @@ function CartSheet({
               <div className={`text-[12px] font-extrabold uppercase tracking-wide ${darkMode ? "text-slate-300" : "text-gray-500"}`}>{t("billingData")}</div>
               <div className={`mt-2 space-y-1 text-[14px] ${darkMode ? "text-slate-100" : "text-gray-800"}`}>
                 <div><span className="font-extrabold">{t("fullName")}:</span> {name || "—"}</div>
-                <div><span className="font-extrabold">{t("phone")}:</span> {phone || "—"}</div>
+                <div><span className="font-extrabold">{t("phone")}:</span> {countryCode.dial} {phone || "—"}</div>
                 <div><span className="font-extrabold">{t("address")}:</span> {address || "—"}</div>
+                <div className="flex gap-6">
+                  <div><span className="font-extrabold">{t("zipCode")}:</span> {zipCode || "—"}</div>
+                  <div><span className="font-extrabold">{t("city")}:</span> {city || "—"}</div>
+                </div>
                 <div><span className="font-extrabold">{t("payment")}:</span> {paymentLabel}</div>
                 <div><span className="font-extrabold">{t("packaging")}:</span> {packagingLabel}</div>
               </div>
@@ -2659,7 +2952,7 @@ function CartSheet({
               <div className="mt-3 overflow-hidden rounded-2xl ring-1 ring-black/10">
                 <iframe
                   title="Mapa doručení"
-                  src={`https://www.google.com/maps?q=${mapQuery}&z=15&output=embed`}
+                  src={`https://www.google.com/maps?q=${fullAddressForMap}&z=15&output=embed`}
                   className="h-[220px] w-full border-0"
                   loading="lazy"
                 />
@@ -2878,6 +3171,7 @@ function DayPickerModal({
 /** ===================== Main MobileView ===================== */
 export default function MobileView({ onOpenCart }: MobileViewProps) {
   const router = useRouter();
+  const topAnchorRef = useRef<HTMLDivElement | null>(null);
 
   type Section = "daily" | "order" | "cart" | "jirka" | "about";
   const [activeSection, setActiveSection] = useState<Section>("daily");
@@ -2991,6 +3285,11 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
       document.removeEventListener("keydown", onKey);
     };
   }, []);
+
+  useEffect(() => {
+    const el = topAnchorRef.current;
+    if (el) el.scrollIntoView({ block: "start" });
+  }, [activeSection]);
 
   async function refreshOrders() {
     try {
@@ -3157,7 +3456,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
     window.dispatchEvent(new Event("profile-updated"));
   }
 
-  async function topupCredit(amount: number, method: string) {
+  async function topupCredit(amount: number, _method: string) {
     const { data: sess } = await supabase.auth.getSession();
     const uid = sess.session?.user?.id;
     if (!uid) throw new Error("Nejsi přihlášený.");
@@ -3327,12 +3626,10 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
         <button
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
-          className={`flex h-[42px] max-w-[50vw] items-center gap-2 rounded-2xl px-3 py-2 text-[12px] font-extrabold ring-1 ${darkMode ? "bg-slate-800 text-white ring-white/10 hover:bg-slate-700" : "bg-white text-[#1f2f56] ring-black/10 hover:bg-gray-50"}`}
+          className={`flex h-[42px] w-[170px] items-center justify-between gap-2 rounded-2xl px-3 py-2 text-[12px] font-extrabold ring-1 ${darkMode ? "bg-slate-800 text-white ring-white/10 hover:bg-slate-700" : "bg-white text-[#1f2f56] ring-black/10 hover:bg-gray-50"}`}
           title={buttonText}
         >
-          <span className="min-w-0 flex-1 truncate text-left text-[12px] font-extrabold">
-            {buttonText}
-          </span>
+          <span className="min-w-0 flex-1 truncate text-left">{buttonText}</span>
           <span className="shrink-0 text-[13px] opacity-80">▾</span>
         </button>
 
@@ -3348,6 +3645,30 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
               className={`w-full px-4 py-3 text-left text-sm font-extrabold ${darkMode ? "hover:bg-slate-800" : "hover:bg-gray-50"}`}
             >
               {t("settings")}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                setSettingsSection("orders");
+                setSettingsOpen(true);
+              }}
+              className={`w-full px-4 py-3 text-left text-sm font-extrabold ${darkMode ? "hover:bg-slate-800" : "hover:bg-gray-50"}`}
+            >
+              {t("orders")}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                setSettingsSection("topup");
+                setSettingsOpen(true);
+              }}
+              className={`w-full px-4 py-3 text-left text-sm font-extrabold ${darkMode ? "hover:bg-slate-800" : "hover:bg-gray-50"}`}
+            >
+              {t("topUpCredit")}
             </button>
 
             <div className={`h-px ${darkMode ? "bg-white/10" : "bg-gray-100"}`} />
@@ -3372,7 +3693,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
       <button
         type="button"
         onClick={() => router.push("/staff")}
-        className="rounded-2xl bg-green-50 px-3 py-2 text-[12px] font-extrabold text-green-800 ring-1 ring-green-200 hover:bg-green-100"
+        className="h-[42px] w-[170px] rounded-2xl bg-green-50 px-3 py-2 text-[12px] font-extrabold text-green-800 ring-1 ring-green-200 hover:bg-green-100"
       >
         {t("crossroads")}
       </button>
@@ -3672,7 +3993,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
   }
 
   return (
-    <div className={`min-h-[100dvh] pb-40 ${darkMode ? "bg-slate-950 text-white" : "bg-white text-gray-900"}`}>
+    <div ref={topAnchorRef} className={`min-h-[100dvh] pb-40 ${darkMode ? "bg-slate-950 text-white" : "bg-white text-gray-900"}`}>
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} t={t} />
 
       <AllergensModal
@@ -3731,6 +4052,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
         orders={orders}
         onRefreshOrders={refreshOrders}
         onTopup={topupCredit}
+        onOpenPassword={() => setPasswordOpen(true)}
         t={t}
       />
 
@@ -3770,7 +4092,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-[680px] space-y-3 px-3 pb-3 pt-3">
+      <div className="mx-auto w-full max-w-[680px] space-y-3 px-3 pb-3 pt-5">
         {activeSection === "daily" && <SectionHeaderDaily />}
         {activeSection === "order" && <SectionHeaderOrder />}
 
@@ -3809,7 +4131,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
             >
               <div className="flex items-center justify-between gap-3">
                 <div className={`text-[16px] font-extrabold ${cartCount > 0 ? "text-white" : darkMode ? "text-white" : "text-[#1f2f56]"}`}>
-                  {t("orderMeals")}
+                  {t("orderShort")}
                 </div>
 
                 <div className={`shrink-0 text-[18px] font-extrabold ${cartCount > 0 ? "text-white" : "text-green-700"}`}>
@@ -3824,8 +4146,8 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
       <div className={`fixed bottom-0 left-0 right-0 z-50 ${darkMode ? "border-t border-white/10 bg-slate-950" : "border-t border-gray-200 bg-white"}`}>
         <div className={`mx-auto grid w-full max-w-[680px] grid-cols-5 text-[11px] font-semibold ${darkMode ? "text-slate-300" : "text-gray-600"}`}>
           {[
-            { id: "daily", label: t("dailyMenu"), icon: "📋" },
-            { id: "order", label: t("orderMeals"), icon: "🍽️" },
+            { id: "daily", label: t("menuShort"), icon: "📋" },
+            { id: "order", label: t("orderShort"), icon: "🍽️" },
             { id: "cart", label: t("cart"), icon: "🛒" },
             { id: "jirka", label: t("jirka"), icon: "🏪" },
             { id: "about", label: t("about"), icon: "ℹ️" },
