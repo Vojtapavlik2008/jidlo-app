@@ -3345,6 +3345,99 @@ function DayPickerModal({
 }
 
 /** ===================== Main MobileView ===================== */
+function AllergensModal({
+  open,
+  onClose,
+  title,
+  allergens,
+  category,
+  darkMode,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  allergens: string[];
+  category: string | null;
+  darkMode: boolean;
+}) {
+  return (
+    <BaseModal
+      open={open}
+      onClose={onClose}
+      title={title || "Informace"}
+      darkMode={darkMode}
+      maxWidth="max-w-md"
+    >
+      <div className="space-y-4 p-4">
+        <div>
+          <div
+            className={`text-[11px] font-extrabold uppercase tracking-wide ${
+              darkMode ? "text-slate-300" : "text-gray-500"
+            }`}
+          >
+            Alergeny
+          </div>
+
+          {allergens.length > 0 ? (
+            <div className="mt-2 space-y-2">
+              {allergens.map((item, idx) => (
+                <div
+                  key={`${item}-${idx}`}
+                  className={`rounded-2xl px-3 py-2 text-[13px] font-semibold ring-1 ${
+                    darkMode
+                      ? "bg-slate-800 text-slate-100 ring-white/10"
+                      : "bg-neutral-50 text-gray-700 ring-black/10"
+                  }`}
+                >
+                  {item}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div
+              className={`mt-2 rounded-2xl px-3 py-2 text-[13px] font-semibold ring-1 ${
+                darkMode
+                  ? "bg-slate-800 text-slate-300 ring-white/10"
+                  : "bg-neutral-50 text-gray-500 ring-black/10"
+              }`}
+            >
+              Bez uvedených alergenů.
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div
+            className={`text-[11px] font-extrabold uppercase tracking-wide ${
+              darkMode ? "text-slate-300" : "text-gray-500"
+            }`}
+          >
+            Kategorie
+          </div>
+
+          <div
+            className={`mt-2 rounded-2xl px-3 py-2 text-[13px] font-semibold ring-1 ${
+              darkMode
+                ? "bg-slate-800 text-slate-100 ring-white/10"
+                : "bg-neutral-50 text-gray-700 ring-black/10"
+            }`}
+          >
+            {category?.trim() ? category : "Neuvedeno"}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full rounded-2xl bg-green-600 px-4 py-3 text-[13px] font-extrabold text-white hover:bg-green-700"
+        >
+          Zavřít
+        </button>
+      </div>
+    </BaseModal>
+  );
+}
+
 export default function MobileView({ onOpenCart }: MobileViewProps) {
   const router = useRouter();
   const topAnchorRef = useRef<HTMLDivElement | null>(null);
