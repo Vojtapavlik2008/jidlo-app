@@ -3873,13 +3873,13 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
 
   const items = (menuByDate[selectedDate] ?? []).filter((x) => x.jidla).slice(0, 50);
 
-  function UserArea() {
+ function UserArea() {
   if (!authed) {
     return (
       <button
         type="button"
         onClick={() => setAuthOpen(true)}
-        className="h-[44px] w-[168px] rounded-2xl bg-green-600 px-3 py-2 text-[12px] font-extrabold text-white hover:bg-green-700"
+        className="h-[44px] shrink-0 rounded-2xl bg-green-600 px-4 py-2 text-[12px] font-extrabold text-white hover:bg-green-700"
       >
         {t("signIn")}
       </button>
@@ -3887,21 +3887,36 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
   }
 
   const displayName = userName.trim() || "Uživatel";
-  const buttonText = credit > 0 ? `${displayName} • ${credit} Kč` : displayName;
+  const showCredit = credit > 0;
 
   return (
-    <div className="relative shrink-0" ref={userMenuRef}>
+    <div className="relative shrink-0 min-w-0" ref={userMenuRef}>
       <button
         type="button"
         onClick={() => setMenuOpen((v) => !v)}
-        className={`flex h-[44px] w-[168px] items-center justify-between gap-2 rounded-2xl px-3 py-2 text-[12px] font-extrabold ring-1 ${
+        className={`flex h-[44px] min-w-0 max-w-[50vw] items-center gap-2 rounded-2xl px-3 py-2 text-[12px] font-extrabold ring-1 ${
           darkMode
             ? "bg-slate-800 text-white ring-white/10 hover:bg-slate-700"
             : "bg-white text-[#1f2f56] ring-black/10 hover:bg-gray-50"
         }`}
-        title={buttonText}
+        title={showCredit ? `${displayName} • ${credit} Kč` : displayName}
       >
-        <span className="min-w-0 flex-1 truncate text-left">{buttonText}</span>
+        <span className="min-w-0 flex-1 truncate text-left">
+          {displayName}
+        </span>
+
+        {showCredit ? (
+          <span
+            className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-extrabold ring-1 ${
+              darkMode
+                ? "bg-green-500/15 text-green-300 ring-green-400/20"
+                : "bg-green-50 text-green-700 ring-green-200"
+            }`}
+          >
+            {credit} Kč
+          </span>
+        ) : null}
+
         <span className="shrink-0 text-[13px] opacity-80">▾</span>
       </button>
 
@@ -3969,7 +3984,6 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
     </div>
   );
 }
-
 function StaffShortcut() {
   if (role !== "staff" || !authed) return null;
 
@@ -3977,7 +3991,7 @@ function StaffShortcut() {
     <button
       type="button"
       onClick={() => router.push("/staff")}
-      className="h-[44px] w-[168px] rounded-2xl bg-green-50 px-3 py-2 text-[12px] font-extrabold text-green-800 ring-1 ring-green-200 hover:bg-green-100"
+      className="h-[44px] shrink-0 rounded-2xl bg-green-50 px-4 py-2 text-[12px] font-extrabold text-green-800 ring-1 ring-green-200 hover:bg-green-100"
     >
       {t("crossroads")}
     </button>
