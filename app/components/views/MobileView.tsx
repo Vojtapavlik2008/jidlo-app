@@ -4355,7 +4355,7 @@ function StaffShortcut() {
         />
       </div>
 
-      <div className="flex shrink-0 items-start gap-2 -mt-[2px]">
+      <div className="flex shrink-0 items-start gap-2 -mt-[20px]">
         <StaffShortcut />
         <UserArea />
       </div>
