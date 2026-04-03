@@ -4369,9 +4369,16 @@ function StaffShortcut() {
       : "border-b border-black/5 bg-white/95"
   }`}
 >
+  <div
+  className={`sticky top-0 z-40 backdrop-blur ${
+    darkMode
+      ? "border-b border-white/10 bg-slate-950/95"
+      : "border-b border-black/5 bg-white/95"
+  }`}
+>
   <div className="mx-auto w-full max-w-[680px] px-3 pb-2 pt-2">
-    <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0 flex-1">
+    <div className="flex items-start justify-between gap-2">
+      <div className="min-w-0 flex-1 pr-1">
         <Image
           src="/logo-na-mobil.png"
           alt="Jiřka"
