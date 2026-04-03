@@ -3879,9 +3879,9 @@ function UserArea() {
       <button
         type="button"
         onClick={() => setAuthOpen(true)}
-        className="h-[44px] min-w-[124px] max-w-[50vw] shrink-0 rounded-[18px] bg-white px-4 py-2 text-[12px] font-extrabold text-[#1f2f56] ring-1 ring-black/10 hover:bg-gray-50"
+        className="flex h-[46px] min-w-[118px] max-w-[50vw] shrink-0 items-center rounded-[20px] bg-white px-4 text-[12px] font-extrabold text-[#2d3b63] ring-1 ring-[#d9d9d9] hover:bg-gray-50"
       >
-        {t("signIn")}
+        <span className="truncate">{t("signIn")}</span>
       </button>
     );
   }
@@ -3894,14 +3894,16 @@ function UserArea() {
       <button
         type="button"
         onClick={() => setMenuOpen((v) => !v)}
-        className={`flex h-[44px] min-w-[124px] max-w-[50vw] items-center gap-2 rounded-[18px] px-4 py-2 text-[12px] font-extrabold ring-1 ${
+        title={showCredit ? `${displayName} • ${credit} Kč` : displayName}
+        className={`flex h-[46px] min-w-[118px] max-w-[50vw] shrink-0 items-center gap-2 rounded-[20px] px-4 text-[12px] font-extrabold ring-1 ${
           darkMode
             ? "bg-slate-800 text-white ring-white/10 hover:bg-slate-700"
-            : "bg-white text-[#1f2f56] ring-black/10 hover:bg-gray-50"
+            : "bg-white text-[#2d3b63] ring-[#d9d9d9] hover:bg-gray-50"
         }`}
-        title={showCredit ? `${displayName} • ${credit} Kč` : displayName}
       >
-        <span className="min-w-0 flex-1 truncate text-left">{displayName}</span>
+        <span className="min-w-0 flex-1 truncate text-left">
+          {displayName}
+        </span>
 
         {showCredit ? (
           <span
@@ -3915,12 +3917,12 @@ function UserArea() {
           </span>
         ) : null}
 
-        <span className="shrink-0 text-[12px] opacity-70">▾</span>
+        <span className="shrink-0 text-[11px] opacity-70">▼</span>
       </button>
 
       {menuOpen ? (
         <div
-          className={`absolute right-0 top-[52px] z-[120] w-64 overflow-hidden rounded-2xl shadow-xl ring-1 ${
+          className={`absolute right-0 top-[54px] z-[120] w-64 overflow-hidden rounded-2xl shadow-xl ring-1 ${
             darkMode ? "bg-slate-900 text-white ring-white/10" : "bg-white ring-black/10"
           }`}
         >
@@ -3990,7 +3992,7 @@ function StaffShortcut() {
     <button
       type="button"
       onClick={() => router.push("/staff")}
-      className="h-[44px] min-w-[124px] shrink-0 rounded-[18px] bg-green-50 px-4 py-2 text-[12px] font-extrabold text-green-800 ring-1 ring-green-200 hover:bg-green-100"
+      className="flex h-[46px] min-w-[118px] shrink-0 items-center justify-center rounded-[20px] bg-[#eefaf1] px-4 text-[12px] font-extrabold text-[#14844b] ring-1 ring-[#a9e7ba] hover:bg-[#e4f7e9]"
     >
       {t("crossroads")}
     </button>
@@ -4370,34 +4372,34 @@ function StaffShortcut() {
       : "border-b border-black/5 bg-white/95"
   }`}
 >
-  <div className="mx-auto w-full max-w-[680px] px-3 pb-2 pt-2">
-    <div className="flex items-start justify-between gap-2">
-      <div className="min-w-0 flex-1">
+  <div className="mx-auto w-full max-w-[680px] px-4 pb-2 pt-3">
+    <div className="flex items-start justify-between gap-3">
+      <div className="shrink-0 pt-1">
         <Image
           src="/logo-na-mobil.png"
           alt="Jiřka"
-          width={230}
-          height={95}
-          className="-ml-[8px] -mt-[2px] h-auto w-[178px] object-contain min-[560px]:w-[198px]"
+          width={140}
+          height={62}
+          className="ml-0 h-auto w-[108px] object-contain min-[560px]:w-[118px]"
           priority
         />
 
         <div
-          className={`-mt-[11px] pl-[34px] text-[11px] font-semibold leading-none tracking-[0.01em] ${
-            darkMode ? "text-slate-400" : "text-gray-500"
+          className={`-mt-[6px] ml-[24px] whitespace-nowrap text-[11px] font-semibold leading-none tracking-[0.01em] ${
+            darkMode ? "text-slate-400" : "text-[#6b7280]"
           }`}
         >
           {t("routeTagline")}
         </div>
       </div>
 
-      <div className="flex shrink-0 items-start gap-2 pt-[6px]">
+      <div className="flex shrink-0 items-start gap-2 pt-[2px]">
         <StaffShortcut />
         <UserArea />
       </div>
     </div>
 
-    <div className="mt-[6px] h-[4px] w-full rounded-full bg-green-600" />
+    <div className="mt-[10px] h-[4px] w-full rounded-full bg-green-600" />
   </div>
 </div>
   
