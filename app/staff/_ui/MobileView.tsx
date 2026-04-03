@@ -34,26 +34,26 @@ function WebButton() {
   return (
     <Link
       href="/"
-      className="inline-flex h-[36px] min-w-[104px] items-center justify-center gap-2 rounded-2xl bg-white px-3 text-[12px] font-extrabold text-[#2f406b] ring-1 ring-black/10 transition hover:bg-gray-50"
+      className="inline-flex h-[40px] min-w-[112px] items-center justify-center rounded-[22px] border border-[#a9e5ba] bg-[#edf9f0] px-5 text-[13px] font-extrabold text-[#2f6e43] shadow-sm transition hover:bg-[#e3f5e7]"
     >
-      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-50 text-[11px] text-green-700 ring-1 ring-green-200">
-        🌐
-      </span>
-      <span>Web</span>
-      <span className="text-[11px] opacity-70">→</span>
+      Web
     </Link>
   );
 }
 
 export default function MobileView({ tiles }: { tiles: StaffHubTile[] }) {
-  const firstRow = tiles.slice(0, 2);
-  const middleTiles = tiles.slice(2, 6);
+  const pokladnaTile = tiles[0];
+  const onlineTile = tiles[1];
+  const customersTile = tiles[2];
+  const menuOrderTile = tiles[3];
+  const menuManageTile = tiles[4];
+  const reportsTile = tiles[5];
   const deliveryTile = tiles[6];
 
   return (
     <div className="min-h-screen bg-white">
       <div className="sticky top-0 z-20 border-b border-black/5 bg-white/95 backdrop-blur">
-        <div className="mx-auto w-full max-w-md px-3 pb-2 pt-2">
+        <div className="mx-auto w-full max-w-md px-3 pb-2 pt-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="text-[26px] font-extrabold leading-none text-gray-900">
@@ -64,38 +64,72 @@ export default function MobileView({ tiles }: { tiles: StaffHubTile[] }) {
               </p>
             </div>
 
-            <div className="-mt-[2px] shrink-0">
+            <div className="shrink-0 pt-1">
               <WebButton />
             </div>
           </div>
 
-          <div className="mt-3 h-[3px] w-full rounded-full bg-green-600" />
+          <div className="mt-4 h-[4px] w-full rounded-full bg-green-600" />
         </div>
       </div>
 
-      <div className="mx-auto flex min-h-[calc(100vh-72px)] w-full max-w-md flex-col px-3 pb-4 pt-5">
+      <div className="mx-auto flex min-h-[calc(100vh-84px)] w-full max-w-md flex-col px-3 pb-4 pt-5">
         <div className="grid grid-cols-2 gap-3">
-          {firstRow.map((tile) => (
+          {pokladnaTile ? (
             <Tile
-              key={tile.href}
-              href={tile.href}
-              title={tile.title}
-              bg={tile.bg}
-              variant={tile.variant}
+              href={pokladnaTile.href}
+              title={pokladnaTile.title}
+              bg={pokladnaTile.bg}
+              variant="top"
             />
-          ))}
+          ) : null}
+
+          {onlineTile ? (
+            <Tile
+              href={onlineTile.href}
+              title={onlineTile.title}
+              bg={onlineTile.bg}
+              variant="top"
+            />
+          ) : null}
         </div>
 
         <div className="mt-14 grid grid-cols-2 gap-3">
-          {middleTiles.map((tile) => (
+          {customersTile ? (
             <Tile
-              key={tile.href}
-              href={tile.href}
-              title={tile.title}
-              bg={tile.bg}
-              variant={tile.variant}
+              href={customersTile.href}
+              title={customersTile.title}
+              bg={customersTile.bg}
+              variant="bottom"
             />
-          ))}
+          ) : null}
+
+          {menuOrderTile ? (
+            <Tile
+              href={menuOrderTile.href}
+              title={menuOrderTile.title}
+              bg={menuOrderTile.bg}
+              variant="bottom"
+            />
+          ) : null}
+
+          {menuManageTile ? (
+            <Tile
+              href={menuManageTile.href}
+              title={menuManageTile.title}
+              bg={menuManageTile.bg}
+              variant="bottom"
+            />
+          ) : null}
+
+          {reportsTile ? (
+            <Tile
+              href={reportsTile.href}
+              title="Reporty"
+              bg={reportsTile.bg}
+              variant="bottom"
+            />
+          ) : null}
         </div>
 
         <div className="flex-1" />
@@ -106,7 +140,7 @@ export default function MobileView({ tiles }: { tiles: StaffHubTile[] }) {
               href={deliveryTile.href}
               title={deliveryTile.title}
               bg="#16a34a"
-              variant={deliveryTile.variant}
+              variant="bottom"
             />
           </div>
         ) : null}
