@@ -3879,7 +3879,7 @@ function UserArea() {
       <button
         type="button"
         onClick={() => setAuthOpen(true)}
-        className="inline-flex h-[38px] min-w-[104px] max-w-[42vw] items-center rounded-2xl bg-white px-3 text-[11px] font-extrabold text-[#2f406b] ring-1 ring-black/10 hover:bg-gray-50"
+        className="inline-flex h-[36px] min-w-[96px] max-w-[40vw] items-center rounded-2xl bg-white px-3 text-[12px] font-extrabold text-[#2f406b] ring-1 ring-black/10 hover:bg-gray-50"
       >
         <span className="truncate">{t("signIn")}</span>
       </button>
@@ -3894,7 +3894,7 @@ function UserArea() {
       <button
         type="button"
         onClick={() => setMenuOpen((v) => !v)}
-        className="inline-flex h-[38px] min-w-[104px] max-w-[42vw] items-center gap-2 rounded-2xl bg-white px-3 text-[11px] font-extrabold text-[#2f406b] ring-1 ring-black/10 hover:bg-gray-50"
+        className="inline-flex h-[36px] min-w-[96px] max-w-[40vw] items-center gap-1.5 rounded-2xl bg-white px-3 text-[12px] font-extrabold text-[#2f406b] ring-1 ring-black/10 hover:bg-gray-50"
         title={showCredit ? `${name} · ${credit} Kč` : name}
       >
         <span className="min-w-0 flex-1 truncate text-left">
@@ -3902,7 +3902,7 @@ function UserArea() {
         </span>
 
         {showCredit ? (
-          <span className="shrink-0 rounded-full bg-green-50 px-1.5 py-[3px] text-[9-[3px] text-[9px] leading-none text-green-700 ring-1 ring-green-200">
+          <span className="shrink-0 rounded-full bg-green-50 px-1.5 py-[2px] text-[9px] leading-none text-green-700 ring-1 ring-green-200">
             {credit} Kč
           </span>
         ) : null}
@@ -3911,7 +3911,7 @@ function UserArea() {
       </button>
 
       {menuOpen ? (
-        <div className="absolute right-0 top-[50px] z-[120] w-64 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-black/10">
+        <div className="absolute right-0 top-[46px] z-[120] w-64 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-black/10">
           <button
             type="button"
             onClick={() => {
@@ -3970,7 +3970,7 @@ function StaffShortcut() {
     <button
       type="button"
       onClick={() => router.push("/staff")}
-      className="inline-flex h-[38px] min-w-[104px] items-center justify-center rounded-2xl bg-green-50 px-3 text-[11px] font-extrabold text-green-800 ring-1 ring-green-200 hover:bg-green-100"
+      className="inline-flex h-[36px] min-w-[96px] items-center justify-center rounded-2xl bg-green-50 px-3 text-[12px] font-extrabold text-green-800 ring-1 ring-green-200 hover:bg-green-100"
     >
       Rozcestník
     </button>
@@ -4350,18 +4350,18 @@ function StaffShortcut() {
           alt="Jiřka"
           width={230}
           height={95}
-          className="-ml-9 -mt-10 h-auto w-[255px] object-contain min-[560px]:w-[262px]"
+          className="-ml-10 -mt-12 h-auto w-[300px] object-contain min-[560px]:w-[310px]"
           priority
         />
       </div>
 
-      <div className="flex shrink-0 items-start gap-2 pt-2">
+      <div className="flex shrink-0 items-start gap-2 -mt-[2px]">
         <StaffShortcut />
         <UserArea />
       </div>
     </div>
 
-    <div className="relative z-10 -mt-9 pl-9 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
+    <div className="relative z-10 -mt-10 pl-9 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
       rozvoz obědů po Poděbradech
     </div>
 
