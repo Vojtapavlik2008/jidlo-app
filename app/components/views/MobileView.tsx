@@ -3879,53 +3879,39 @@ function UserArea() {
       <button
         type="button"
         onClick={() => setAuthOpen(true)}
-        className="flex h-[42px] min-w-[108px] max-w-[46vw] shrink-0 items-center overflow-hidden rounded-[20px] bg-white px-4 text-[12px] font-extrabold text-[#2f406b] ring-1 ring-[#dddddd] hover:bg-gray-50"
+        className="inline-flex h-[42px] min-w-[126px] max-w-[50vw] items-center rounded-2xl bg-white px-4 text-[12px] font-extrabold text-[#2f406b] ring-1 ring-black/10 hover:bg-gray-50"
       >
-        <span className="truncate leading-none">{t("signIn")}</span>
+        <span className="truncate">{t("signIn")}</span>
       </button>
     );
   }
 
-  const displayName = userName.trim() || "Uživatel";
-  const showCredit = credit > 0;
+  const name = userName.trim() || "Uživatel";
+  const showCredit = role !== "staff" && credit > 0;
 
   return (
-    <div className="relative shrink-0 min-w-0" ref={userMenuRef}>
+    <div className="relative shrink-0" ref={userMenuRef}>
       <button
         type="button"
         onClick={() => setMenuOpen((v) => !v)}
-        title={showCredit ? `${displayName} • ${credit} Kč` : displayName}
-        className={`flex h-[42px] min-w-[108px] max-w-[46vw] shrink-0 items-center gap-2 overflow-hidden rounded-[20px] px-4 text-[12px] font-extrabold ring-1 ${
-          darkMode
-            ? "bg-slate-800 text-white ring-white/10 hover:bg-slate-700"
-            : "bg-white text-[#2f406b] ring-[#dddddd] hover:bg-gray-50"
-        }`}
+        className="inline-flex h-[42px] min-w-[126px] max-w-[50vw] items-center gap-2 rounded-2xl bg-white px-4 text-[12px] font-extrabold text-[#2f406b] ring-1 ring-black/10 hover:bg-gray-50"
+        title={showCredit ? `${name} · ${credit} Kč` : name}
       >
-        <span className="min-w-0 flex-1 truncate text-left leading-none">
-          {displayName}
+        <span className="min-w-0 flex-1 truncate text-left">
+          {name}
         </span>
 
         {showCredit ? (
-          <span
-            className={`shrink-0 rounded-full px-2 py-[3px] text-[10px] font-extrabold leading-none ring-1 ${
-              darkMode
-                ? "bg-green-500/15 text-green-300 ring-green-400/20"
-                : "bg-green-50 text-green-700 ring-green-200"
-            }`}
-          >
+          <span className="shrink-0 rounded-full bg-green-50 px-2 py-[3px] text-[10px] leading-none text-green-700 ring-1 ring-green-200">
             {credit} Kč
           </span>
         ) : null}
 
-        <span className="shrink-0 text-[10px] leading-none opacity-60">▼</span>
+        <span className="shrink-0 text-[11px] opacity-70">▾</span>
       </button>
 
       {menuOpen ? (
-        <div
-          className={`absolute right-0 top-[50px] z-[120] w-64 overflow-hidden rounded-2xl shadow-xl ring-1 ${
-            darkMode ? "bg-slate-900 text-white ring-white/10" : "bg-white ring-black/10"
-          }`}
-        >
+        <div className="absolute right-0 top-[50px] z-[120] w-64 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-black/10">
           <button
             type="button"
             onClick={() => {
@@ -3933,9 +3919,7 @@ function UserArea() {
               setSettingsSection("menu");
               setSettingsOpen(true);
             }}
-            className={`w-full px-4 py-3 text-left text-sm font-extrabold ${
-              darkMode ? "hover:bg-slate-800" : "hover:bg-gray-50"
-            }`}
+            className="w-full px-4 py-3 text-left text-sm font-extrabold hover:bg-gray-50"
           >
             {t("settings")}
           </button>
@@ -3947,9 +3931,7 @@ function UserArea() {
               setSettingsSection("orders");
               setSettingsOpen(true);
             }}
-            className={`w-full px-4 py-3 text-left text-sm font-extrabold ${
-              darkMode ? "hover:bg-slate-800" : "hover:bg-gray-50"
-            }`}
+            className="w-full px-4 py-3 text-left text-sm font-extrabold hover:bg-gray-50"
           >
             {t("orders")}
           </button>
@@ -3961,21 +3943,17 @@ function UserArea() {
               setSettingsSection("topup");
               setSettingsOpen(true);
             }}
-            className={`w-full px-4 py-3 text-left text-sm font-extrabold ${
-              darkMode ? "hover:bg-slate-800" : "hover:bg-gray-50"
-            }`}
+            className="w-full px-4 py-3 text-left text-sm font-extrabold hover:bg-gray-50"
           >
             {t("topUpCredit")}
           </button>
 
-          <div className={`h-px ${darkMode ? "bg-white/10" : "bg-gray-100"}`} />
+          <div className="h-px bg-gray-100" />
 
           <button
             type="button"
             onClick={signOut}
-            className={`w-full px-4 py-3 text-left text-sm font-extrabold text-red-600 ${
-              darkMode ? "hover:bg-slate-800" : "hover:bg-red-50"
-            }`}
+            className="w-full px-4 py-3 text-left text-sm font-extrabold text-red-600 hover:bg-red-50"
           >
             {t("logout")}
           </button>
@@ -3993,9 +3971,9 @@ function StaffShortcut() {
     <button
       type="button"
       onClick={() => router.push("/staff")}
-      className="flex h-[42px] min-w-[108px] shrink-0 items-center justify-center rounded-[20px] bg-[#edf9f0] px-4 text-[12px] font-extrabold text-[#11874b] ring-1 ring-[#a7e0b6] hover:bg-[#e4f7e9]"
+      className="inline-flex h-[42px] min-w-[126px] items-center justify-center rounded-2xl bg-green-50 px-4 text-[12px] font-extrabold text-green-800 ring-1 ring-green-200 hover:bg-green-100"
     >
-      {t("crossroads")}
+      Rozcestník
     </button>
   );
 }
@@ -4364,41 +4342,31 @@ function StaffShortcut() {
         t={t}
       />
 
-<div
-  className={`sticky top-0 z-40 backdrop-blur ${
-    darkMode
-      ? "border-b border-white/10 bg-slate-950/95"
-      : "border-b border-black/5 bg-white/95"
-  }`}
->
-  <div className="mx-auto w-full max-w-[680px] px-[16px] pb-[8px] pt-[14px]">
-    <div className="flex items-start justify-between gap-[8px]">
-      <div className="min-w-0 flex-1">
+<div className="sticky top-0 z-40 border-b border-black/5 bg-white/95 backdrop-blur">
+  <div className="mx-auto w-full max-w-[680px] px-3 pb-2 pt-2">
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
         <Image
           src="/logo-na-mobil.png"
           alt="Jiřka"
-          width={120}
-          height={58}
-          className="ml-[6px] block h-auto w-[92px] object-contain min-[560px]:w-[98px]"
+          width={230}
+          height={95}
+          className="-ml-8 -mt-8 h-auto w-[200px] object-contain min-[560px]:w-[205px]"
           priority
         />
-
-        <div
-          className={`-mt-[2px] ml-[14px] whitespace-nowrap text-[11px] font-semibold leading-none tracking-[-0.01em] ${
-            darkMode ? "text-slate-400" : "text-[#6b7280]"
-          }`}
-        >
-          {t("routeTagline")}
-        </div>
       </div>
 
-      <div className="flex shrink-0 items-start gap-[8px] pt-[2px]">
+      <div className="flex shrink-0 items-start gap-2 pt-1">
         <StaffShortcut />
         <UserArea />
       </div>
     </div>
 
-    <div className="mt-[8px] h-[5px] w-full rounded-full bg-green-600" />
+    <div className="relative z-10 -mt-12 pl-10 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
+      rozvoz obědů po Poděbradech
+    </div>
+
+    <div className="mt-1 h-[3px] w-full rounded-full bg-green-600" />
   </div>
 </div>
   
