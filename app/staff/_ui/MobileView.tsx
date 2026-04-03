@@ -94,7 +94,7 @@ export default function MobileView({ tiles }: { tiles: StaffHubTile[] }) {
           ) : null}
         </div>
 
-        <div className="h-[220px] shrink-0" />
+        <div className="h-[180px] shrink-0" />
 
         <div className="mt-auto space-y-3">
           <div className="grid grid-cols-2 gap-3">
