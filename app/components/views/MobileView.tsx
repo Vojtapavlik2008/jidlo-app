@@ -3873,13 +3873,13 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
 
   const items = (menuByDate[selectedDate] ?? []).filter((x) => x.jidla).slice(0, 50);
 
- function UserArea() {
+function UserArea() {
   if (!authed) {
     return (
       <button
         type="button"
         onClick={() => setAuthOpen(true)}
-        className="h-[44px] shrink-0 rounded-2xl bg-green-600 px-4 py-2 text-[12px] font-extrabold text-white hover:bg-green-700"
+        className="h-[44px] min-w-[124px] max-w-[50vw] shrink-0 rounded-[18px] bg-white px-4 py-2 text-[12px] font-extrabold text-[#1f2f56] ring-1 ring-black/10 hover:bg-gray-50"
       >
         {t("signIn")}
       </button>
@@ -3890,24 +3890,22 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
   const showCredit = credit > 0;
 
   return (
-    <div className="relative shrink-0 min-w-0" ref={userMenuRef}>
+    <div className="relative shrink-0" ref={userMenuRef}>
       <button
         type="button"
         onClick={() => setMenuOpen((v) => !v)}
-        className={`flex h-[44px] min-w-0 max-w-[50vw] items-center gap-2 rounded-2xl px-3 py-2 text-[12px] font-extrabold ring-1 ${
+        className={`flex h-[44px] min-w-[124px] max-w-[50vw] items-center gap-2 rounded-[18px] px-4 py-2 text-[12px] font-extrabold ring-1 ${
           darkMode
             ? "bg-slate-800 text-white ring-white/10 hover:bg-slate-700"
             : "bg-white text-[#1f2f56] ring-black/10 hover:bg-gray-50"
         }`}
         title={showCredit ? `${displayName} • ${credit} Kč` : displayName}
       >
-        <span className="min-w-0 flex-1 truncate text-left">
-          {displayName}
-        </span>
+        <span className="min-w-0 flex-1 truncate text-left">{displayName}</span>
 
         {showCredit ? (
           <span
-            className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-extrabold ring-1 ${
+            className={`shrink-0 rounded-full px-2 py-[3px] text-[10px] leading-none font-extrabold ring-1 ${
               darkMode
                 ? "bg-green-500/15 text-green-300 ring-green-400/20"
                 : "bg-green-50 text-green-700 ring-green-200"
@@ -3917,7 +3915,7 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
           </span>
         ) : null}
 
-        <span className="shrink-0 text-[13px] opacity-80">▾</span>
+        <span className="shrink-0 text-[12px] opacity-70">▾</span>
       </button>
 
       {menuOpen ? (
@@ -3984,6 +3982,21 @@ export default function MobileView({ onOpenCart }: MobileViewProps) {
     </div>
   );
 }
+
+function StaffShortcut() {
+  if (role !== "staff" || !authed) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={() => router.push("/staff")}
+      className="h-[44px] min-w-[124px] shrink-0 rounded-[18px] bg-green-50 px-4 py-2 text-[12px] font-extrabold text-green-800 ring-1 ring-green-200 hover:bg-green-100"
+    >
+      {t("crossroads")}
+    </button>
+  );
+}
+  
 function StaffShortcut() {
   if (role !== "staff" || !authed) return null;
 
@@ -4362,14 +4375,7 @@ function StaffShortcut() {
         t={t}
       />
 
-      <div
-  className={`sticky top-0 z-40 backdrop-blur ${
-    darkMode
-      ? "border-b border-white/10 bg-slate-950/95"
-      : "border-b border-black/5 bg-white/95"
-  }`}
->
-  <div
+<div
   className={`sticky top-0 z-40 backdrop-blur ${
     darkMode
       ? "border-b border-white/10 bg-slate-950/95"
@@ -4378,18 +4384,18 @@ function StaffShortcut() {
 >
   <div className="mx-auto w-full max-w-[680px] px-3 pb-2 pt-2">
     <div className="flex items-start justify-between gap-2">
-      <div className="min-w-0 flex-1 pr-1">
+      <div className="min-w-0 flex-1">
         <Image
           src="/logo-na-mobil.png"
           alt="Jiřka"
           width={230}
           height={95}
-          className="-ml-3 -mt-1 h-auto w-[185px] object-contain min-[560px]:w-[205px]"
+          className="-ml-[8px] -mt-[2px] h-auto w-[178px] object-contain min-[560px]:w-[198px]"
           priority
         />
 
         <div
-          className={`-mt-3 pl-8 text-[11px] font-semibold tracking-[0.01em] ${
+          className={`-mt-[11px] pl-[34px] text-[11px] font-semibold leading-none tracking-[0.01em] ${
             darkMode ? "text-slate-400" : "text-gray-500"
           }`}
         >
@@ -4397,15 +4403,16 @@ function StaffShortcut() {
         </div>
       </div>
 
-      <div className="flex shrink-0 items-start gap-2 pt-1">
+      <div className="flex shrink-0 items-start gap-2 pt-[6px]">
         <StaffShortcut />
         <UserArea />
       </div>
     </div>
 
-    <div className="mt-2 h-[3px] w-full rounded-full bg-green-600" />
+    <div className="mt-[6px] h-[4px] w-full rounded-full bg-green-600" />
   </div>
 </div>
+  
       
       <div className="mx-auto w-full max-w-[680px] space-y-3 px-3 pb-3 pt-5">
         {activeSection === "daily" && <SectionHeaderDaily />}
