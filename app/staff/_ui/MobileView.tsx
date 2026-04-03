@@ -34,9 +34,9 @@ function WebButton() {
   return (
     <Link
       href="/"
-      className="inline-flex h-[40px] min-w-[112px] items-center justify-center rounded-[22px] border border-[#a9e5ba] bg-[#edf9f0] px-5 text-[13px] font-extrabold text-[#2f6e43] shadow-sm transition hover:bg-[#e3f5e7]"
+      className="inline-flex h-[40px] min-w-[118px] items-center justify-center rounded-[22px] border border-[#a9e5ba] bg-[#edf9f0] px-5 text-[13px] font-extrabold text-[#2f6e43] shadow-sm transition hover:bg-[#e3f5e7]"
     >
-      Web
+      Web <span className="ml-2 text-[13px]">→</span>
     </Link>
   );
 }
@@ -94,56 +94,58 @@ export default function MobileView({ tiles }: { tiles: StaffHubTile[] }) {
           ) : null}
         </div>
 
-        <div className="mt-14 grid grid-cols-2 gap-3">
-          {customersTile ? (
-            <Tile
-              href={customersTile.href}
-              title={customersTile.title}
-              bg={customersTile.bg}
-              variant="bottom"
-            />
-          ) : null}
+        <div className="h-[220px] shrink-0" />
 
-          {menuOrderTile ? (
-            <Tile
-              href={menuOrderTile.href}
-              title={menuOrderTile.title}
-              bg={menuOrderTile.bg}
-              variant="bottom"
-            />
-          ) : null}
+        <div className="mt-auto space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            {customersTile ? (
+              <Tile
+                href={customersTile.href}
+                title={customersTile.title}
+                bg={customersTile.bg}
+                variant="bottom"
+              />
+            ) : null}
 
-          {menuManageTile ? (
-            <Tile
-              href={menuManageTile.href}
-              title={menuManageTile.title}
-              bg={menuManageTile.bg}
-              variant="bottom"
-            />
-          ) : null}
+            {menuOrderTile ? (
+              <Tile
+                href={menuOrderTile.href}
+                title={menuOrderTile.title}
+                bg={menuOrderTile.bg}
+                variant="bottom"
+              />
+            ) : null}
+          </div>
 
-          {reportsTile ? (
-            <Tile
-              href={reportsTile.href}
-              title="Reporty"
-              bg={reportsTile.bg}
-              variant="bottom"
-            />
-          ) : null}
-        </div>
+          <div className="grid grid-cols-2 gap-3">
+            {menuManageTile ? (
+              <Tile
+                href={menuManageTile.href}
+                title={menuManageTile.title}
+                bg={menuManageTile.bg}
+                variant="bottom"
+              />
+            ) : null}
 
-        <div className="flex-1" />
+            {reportsTile ? (
+              <Tile
+                href={reportsTile.href}
+                title="Reporty"
+                bg={reportsTile.bg}
+                variant="bottom"
+              />
+            ) : null}
+          </div>
 
-        {deliveryTile ? (
-          <div className="pt-3">
+          {deliveryTile ? (
             <Tile
               href={deliveryTile.href}
               title={deliveryTile.title}
               bg="#16a34a"
               variant="bottom"
             />
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
     </div>
   );
