@@ -3978,22 +3978,46 @@ function StaffShortcut() {
 }
 
   function SectionHeaderDaily() {
-    return (
-      <div className="px-0.5 pt-0.5">
-        <div className="flex items-start justify-between gap-3">
-          <div className={`text-[23px] font-extrabold leading-none ${darkMode ? "text-white" : "text-green-700"}`}>{t("dailyMenu")}</div>
+  const canEditMenu = authed && role === "staff";
+
+  return (
+    <div className="px-0.5 pt-0.5">
+      <div className="flex items-start justify-between gap-3">
+        <div
+          className={`text-[23px] font-extrabold leading-none ${
+            darkMode ? "text-white" : "text-green-700"
+          }`}
+        >
+          {t("dailyMenu")}
+        </div>
+
+        <div className="flex items-center gap-3 pt-1">
+          {canEditMenu ? (
+            <button
+              type="button"
+              onClick={() => router.push("/staff/sprava-menu")}
+              className={`text-[13px] font-bold underline decoration-1 underline-offset-4 ${
+                darkMode ? "text-slate-400" : "text-gray-500"
+              }`}
+            >
+              Upravit menu
+            </button>
+          ) : null}
 
           <button
             type="button"
             onClick={() => setDayPickerOpen(true)}
-            className={`pt-1 text-right text-[13px] font-bold underline decoration-1 underline-offset-4 ${darkMode ? "text-slate-200" : "text-gray-700"}`}
+            className={`text-right text-[13px] font-bold underline decoration-1 underline-offset-4 ${
+              darkMode ? "text-slate-200" : "text-gray-700"
+            }`}
           >
             {formatSelectedDaySmart(selectedDate, t)}
           </button>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   function SectionHeaderOrder() {
     return (
@@ -4341,34 +4365,41 @@ function StaffShortcut() {
         t={t}
       />
 
-<div className="sticky top-0 z-40 border-b border-black/5 bg-white/95 backdrop-blur">
+<div
+  className={`sticky top-0 z-40 border-b ${
+    darkMode ? "border-white/10 bg-slate-950/95" : "border-black/5 bg-white/95"
+  } backdrop-blur`}
+>
   <div className="mx-auto w-full max-w-[680px] px-3 pb-2 pt-2">
     <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0">
+      <div className="shrink-0 pt-1">
         <Image
           src="/logo-na-mobil.png"
           alt="Jiřka"
-          width={230}
-          height={95}
-          className="-ml-10 -mt-12 h-auto w-[300px] object-contain min-[560px]:w-[310px]"
+          width={160}
+          height={68}
+          className="h-auto w-[150px] object-contain min-[560px]:w-[160px]"
           priority
         />
       </div>
 
-      <div className="flex shrink-0 items-start gap-2 -mt-[16px]">
+      <div className="flex shrink-0 items-start gap-2 pt-1">
         <StaffShortcut />
         <UserArea />
       </div>
     </div>
 
-    <div className="relative z-10 -mt-10 pl-9 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
-      rozvoz obědů po Poděbradech
+    <div
+      className={`-mt-1 pl-[58px] text-[11px] font-semibold tracking-[0.01em] ${
+        darkMode ? "text-slate-400" : "text-gray-500"
+      }`}
+    >
+      {t("routeTagline")}
     </div>
 
-    <div className="mt-1 h-[3px] w-full rounded-full bg-green-600" />
+    <div className="mt-3 h-[3px] w-full rounded-full bg-green-600" />
   </div>
 </div>
-  
       
       <div className="mx-auto w-full max-w-[680px] space-y-3 px-3 pb-3 pt-5">
         {activeSection === "daily" && <SectionHeaderDaily />}
