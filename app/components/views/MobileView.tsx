@@ -4379,18 +4379,19 @@ function StaffShortcut() {
         />
       </div>
 
-<div className="flex min-w-[300px] shrink-0 items-start justify-end gap-2 -mt-[16px]">
-  {authed && role === "staff" ? (
-    <StaffShortcut />
-  ) : (
-    <div
-      aria-hidden="true"
-      className="h-[36px] min-w-[96px] rounded-2xl opacity-0 pointer-events-none"
-    />
-  )}
+      <div className="flex min-w-[300px] shrink-0 items-start justify-end gap-2 -mt-[16px]">
+        {authed && role === "staff" ? (
+          <StaffShortcut />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="h-[36px] min-w-[96px] rounded-2xl opacity-0 pointer-events-none"
+          />
+        )}
 
-  <UserArea />
-</div>
+        <UserArea />
+      </div>
+    </div>
 
     <div className="relative z-10 -mt-10 pl-9 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
       {t("routeTagline")}
