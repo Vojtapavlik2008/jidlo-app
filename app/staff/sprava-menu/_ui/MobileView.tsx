@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { AlphaKeyboard, CalendarPopover } from "./widgets";
+import { CalendarPopover } from "./widgets";
 
 export type Jidlo = {
   id: string;
@@ -68,7 +68,6 @@ export function MobileView(props: {
     todayISO,
     maxISO,
     days,
-    dayLabels,
     activeDay,
     setActiveDay,
     value,
@@ -81,22 +80,14 @@ export function MobileView(props: {
     search,
     setSearch,
     searchRef,
-    alphaKbOpen,
     setAlphaKbOpen,
-    onSwitchToNumeric,
-    numKbOpen,
     setNumKbOpen,
-    onNumInsert,
-    onNumBackspace,
-    onNumClear,
-    onNumDone,
     prettyCZLong,
     startWeekOf,
   } = props;
 
   const [weekMenuOpen, setWeekMenuOpen] = useState(false);
   const weekMenuRef = useRef<HTMLDivElement | null>(null);
-  const numberInputRef = useRef<HTMLInputElement | null>(null);
 
   const outer = "rounded-[26px] bg-green-50/45 ring-2 ring-green-200/70 p-3";
   const panel = "rounded-[24px] bg-white ring-2 ring-green-200/70 p-3";
@@ -117,24 +108,6 @@ export function MobileView(props: {
     setCalOpen(false);
   };
 
-  const openNumericKeyboard = () => {
-    setAlphaKbOpen(false);
-    setNumKbOpen(true);
-    numberInputRef.current?.blur();
-  };
-
-  const openAlphaKeyboard = () => {
-    setNumKbOpen(false);
-    setAlphaKbOpen(true);
-    setTimeout(() => searchRef.current?.focus(), 40);
-  };
-
-  const switchBackToNumeric = () => {
-    setAlphaKbOpen(false);
-    setNumKbOpen(true);
-    onSwitchToNumeric();
-  };
-
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
       if (!weekMenuRef.current) return;
@@ -146,27 +119,7 @@ export function MobileView(props: {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
-  useEffect(() => {
-    if (!alphaKbOpen) return;
-    const t = window.setTimeout(() => {
-      searchRef.current?.focus();
-    }, 60);
-    return () => window.clearTimeout(t);
-  }, [alphaKbOpen, searchRef]);
-
   const shortDayTabs = ["Po", "Út", "St", "Čt", "Pá", "So"];
-
-  const topActionBase =
-    "inline-flex h-11 items-center justify-center rounded-full px-4 text-[12px] font-extrabold shadow-sm transition";
-  const weekBtnBase =
-    "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[20px] transition";
-  const dayBtnBase =
-    "h-11 rounded-full px-0 text-[12px] font-extrabold transition ring-1";
-
-  const numKeyBase =
-    "flex h-[72px] items-center justify-center rounded-[18px] bg-[#5f5f62] text-white shadow-sm active:scale-[0.99] transition select-none";
-  const numKeyText = "text-[28px] font-medium";
-  const numSubText = "mt-1 text-[10px] font-semibold tracking-[0.28em] text-white/90";
 
   return (
     <div className="md:hidden px-3 pb-4">
@@ -178,20 +131,14 @@ export function MobileView(props: {
         <div className="flex items-center gap-2">
           <Link
             href="/staff/jidla"
-            className={
-              topActionBase +
-              " bg-white text-slate-700 ring-2 ring-slate-200 hover:bg-slate-50"
-            }
+            className="inline-flex h-11 items-center justify-center rounded-full bg-white px-4 text-[12px] font-extrabold text-slate-700 shadow-sm ring-2 ring-slate-200 transition hover:bg-slate-50"
           >
             Upravit jídla
           </Link>
 
           <Link
             href="/staff"
-            className={
-              topActionBase +
-              " bg-green-50 text-green-900 ring-2 ring-green-200 hover:bg-green-100/70"
-            }
+            className="inline-flex h-11 items-center justify-center rounded-full bg-green-50 px-4 text-[12px] font-extrabold text-green-900 shadow-sm ring-2 ring-green-200 transition hover:bg-green-100/70"
           >
             Rozcestník
           </Link>
@@ -208,10 +155,7 @@ export function MobileView(props: {
               onClick={() => pickWeek(weekOptions[weekIndex - 1]?.key ?? weekMonday)}
               disabled={!canPrevWeek}
               type="button"
-              className={
-                weekBtnBase +
-                " bg-white ring-2 ring-green-200/80 hover:bg-green-50 disabled:opacity-40"
-              }
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[20px] ring-2 ring-green-200/80 transition hover:bg-green-50 disabled:opacity-40"
             >
               ←
             </button>
@@ -225,6 +169,7 @@ export function MobileView(props: {
                 <span className="min-w-0 truncate text-[14px] font-extrabold text-gray-900">
                   {weekLabel}
                 </span>
+
                 <span className="shrink-0 text-[11px] font-black leading-none text-green-800">
                   <span className="block">▲</span>
                   <span className="-mt-0.5 block">▼</span>
@@ -261,10 +206,7 @@ export function MobileView(props: {
               onClick={() => pickWeek(weekOptions[weekIndex + 1]?.key ?? weekMonday)}
               disabled={!canNextWeek}
               type="button"
-              className={
-                weekBtnBase +
-                " bg-white ring-2 ring-green-200/80 hover:bg-green-50 disabled:opacity-40"
-              }
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[20px] ring-2 ring-green-200/80 transition hover:bg-green-50 disabled:opacity-40"
             >
               →
             </button>
@@ -303,14 +245,13 @@ export function MobileView(props: {
                   onClick={() => setActiveDay(d)}
                   type="button"
                   className={
-                    dayBtnBase +
-                    " " +
+                    "h-11 rounded-full px-0 text-[12px] font-extrabold ring-1 transition " +
                     (active
                       ? "bg-green-600 text-white ring-green-600"
                       : "bg-white text-green-800 ring-green-200/80 hover:bg-green-50")
                   }
                 >
-                  {shortDayTabs[idx] ?? dayLabels[idx] ?? "Den"}
+                  {shortDayTabs[idx] ?? "Den"}
                 </button>
               );
             })}
@@ -338,21 +279,21 @@ export function MobileView(props: {
             </button>
           </div>
 
-          <div className="mt-3 relative">
+          <div className="mt-3">
             <input
-              ref={numberInputRef}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              onClick={openNumericKeyboard}
-              onFocus={openNumericKeyboard}
+              onFocus={() => {
+                setNumKbOpen(false);
+                setAlphaKbOpen(false);
+              }}
               placeholder="např. 1, 5, 12"
-              inputMode="none"
+              inputMode="decimal"
               enterKeyHint="done"
               autoComplete="off"
               autoCorrect="off"
               spellCheck={false}
-              readOnly
-              className="h-12 w-full rounded-[18px] bg-green-50 px-4 text-[15px] font-semibold text-gray-900 placeholder:text-gray-400 ring-2 ring-green-200/80 focus:outline-none"
+              className="h-12 w-full rounded-[18px] bg-green-50 px-4 text-[15px] font-semibold text-gray-900 placeholder:text-gray-400 ring-2 ring-green-200/80 focus:outline-none focus:ring-2 focus:ring-green-500/30"
             />
           </div>
 
@@ -392,6 +333,7 @@ export function MobileView(props: {
                         – {j.nazev}
                       </div>
                     </div>
+
                     <div className="shrink-0 whitespace-nowrap text-[12px] font-extrabold text-green-900">
                       {j.cena ?? "—"} Kč
                     </div>
@@ -400,161 +342,31 @@ export function MobileView(props: {
               </div>
             )}
           </div>
+
+          <div className={"mt-3 " + softCard}>
+            <div className="text-[12px] font-extrabold text-gray-900">
+              Vyhledávání
+            </div>
+
+            <div className="mt-2">
+              <input
+                ref={searchRef}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onFocus={() => {
+                  setNumKbOpen(false);
+                  setAlphaKbOpen(false);
+                }}
+                placeholder="Začni psát název…"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                className="h-12 w-full rounded-[16px] bg-white px-4 text-[14px] font-semibold text-gray-900 placeholder:text-gray-400 ring-1 ring-green-200/90 focus:outline-none focus:ring-2 focus:ring-green-500/30"
+              />
+            </div>
+          </div>
         </div>
       </section>
-
-      {numKbOpen ? (
-        <>
-          <button
-            type="button"
-            onClick={() => setNumKbOpen(false)}
-            className="fixed inset-0 z-40 bg-black/30"
-            aria-label="Zavřít"
-          />
-
-          <div className="fixed inset-x-0 bottom-0 z-50">
-            <div className="mx-auto w-full max-w-[560px] rounded-t-[30px] bg-[#3a3a3d] px-3 pb-4 pt-3 shadow-2xl">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={onNumClear}
-                  className="rounded-[14px] px-3 py-2 text-[13px] font-bold text-white/90 active:scale-[0.99]"
-                >
-                  Smazat
-                </button>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={openAlphaKeyboard}
-                    className="flex h-12 min-w-[58px] items-center justify-center rounded-[16px] border border-[#7fd59a] bg-[#454548] px-3 text-[18px] font-semibold text-[#9be0af] active:scale-[0.99]"
-                    title="Přepnout na psaní"
-                  >
-                    Aa
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={onNumDone}
-                    className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-[#4aa948] text-[28px] font-bold text-white active:scale-[0.99]"
-                    title="Hotovo"
-                  >
-                    ✓
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { main: "1" },
-                  { main: "2", sub: "ABC" },
-                  { main: "3", sub: "DEF" },
-                  { main: "4", sub: "GHI" },
-                  { main: "5", sub: "JKL" },
-                  { main: "6", sub: "MNO" },
-                  { main: "7", sub: "PQRS" },
-                  { main: "8", sub: "TUV" },
-                  { main: "9", sub: "WXYZ" },
-                ].map((key) => (
-                  <button
-                    key={key.main}
-                    type="button"
-                    onClick={() => onNumInsert(key.main)}
-                    className={numKeyBase}
-                  >
-                    <div className="flex flex-col items-center justify-center leading-none">
-                      <span className={numKeyText}>{key.main}</span>
-                      {key.sub ? <span className={numSubText}>{key.sub}</span> : null}
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              <div className="mt-3 grid grid-cols-3 gap-3">
-                <button
-                  type="button"
-                  onClick={() => onNumInsert(",")}
-                  className={numKeyBase}
-                >
-                  <span className={numKeyText}>,</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => onNumInsert("0")}
-                  className={numKeyBase}
-                >
-                  <span className={numKeyText}>0</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={onNumBackspace}
-                  className={numKeyBase}
-                  title="Smazat znak"
-                >
-                  <span className="text-[28px] font-medium">⌫</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="h-[360px]" />
-        </>
-      ) : null}
-
-      {alphaKbOpen ? (
-        <>
-          <button
-            type="button"
-            onClick={() => setAlphaKbOpen(false)}
-            className="fixed inset-0 z-40 bg-black/30"
-            aria-label="Zavřít vyhledávání"
-          />
-
-          <div className="fixed inset-x-0 bottom-0 z-50">
-            <div className="mx-auto w-full max-w-[560px] rounded-t-[30px] bg-white px-3 pb-4 pt-3 shadow-2xl">
-              <div className="flex items-center gap-2">
-                <input
-                  ref={searchRef}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Začni psát název jídla…"
-                  className="h-12 min-w-0 flex-1 rounded-[16px] bg-green-50 px-4 text-[14px] font-semibold text-gray-900 placeholder:text-gray-400 ring-2 ring-green-200/80 focus:outline-none"
-                />
-
-                <button
-                  type="button"
-                  onClick={switchBackToNumeric}
-                  className="h-12 rounded-[16px] bg-white px-3 text-[13px] font-extrabold text-slate-700 ring-2 ring-slate-200 transition hover:bg-slate-50"
-                >
-                  123
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setAlphaKbOpen(false)}
-                  className="h-12 w-12 rounded-[16px] bg-green-600 text-[26px] font-bold text-white transition hover:brightness-95"
-                  title="Hotovo"
-                >
-                  ✓
-                </button>
-              </div>
-
-              <div className="mt-3">
-                <AlphaKeyboard
-                  onClose={() => setAlphaKbOpen(false)}
-                  inputRef={searchRef}
-                  setValue={setSearch as any}
-                  onSwitchToNumeric={switchBackToNumeric}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="h-[390px]" />
-        </>
-      ) : null}
     </div>
   );
 }
