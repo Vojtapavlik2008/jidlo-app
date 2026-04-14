@@ -2801,7 +2801,7 @@ function CartSheet({
                   label={t("fullName")}
                   value={name}
                   onChange={setName}
-                  placeholder="Vojtěch Pavlík"
+                  placeholder="Jméno a Příjmení"
                   autoComplete="name"
                 />
 
