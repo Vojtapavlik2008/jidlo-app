@@ -1130,7 +1130,7 @@ function AllergensModal({
                   <input
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Vojtěch Pavlík"
+                    placeholder="Jméno a Příjmení"
                     autoComplete="name"
                     className="h-11 flex-1 bg-transparent text-sm font-semibold outline-none"
                   />
