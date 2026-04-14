@@ -3879,7 +3879,7 @@ function UserArea() {
       <button
         type="button"
         onClick={() => setAuthOpen(true)}
-        className="inline-flex h-[36px] min-w-[96px] max-w-[40vw] items-center rounded-2xl bg-white px-3 text-[12px] font-extrabold text-[#2f406b] ring-1 ring-black/10 hover:bg-gray-50"
+        className="inline-flex h-[36px] min-w-[96px] max-w-[40vw] items-center justify-center rounded-2xl bg-white px-3 text-[12px] font-extrabold text-[#2f406b] ring-1 ring-black/10 hover:bg-gray-50"
       >
         <span className="truncate">{t("signIn")}</span>
       </button>
@@ -4379,11 +4379,18 @@ function StaffShortcut() {
         />
       </div>
 
-      <div className="flex shrink-0 items-start gap-2 -mt-[16px]">
-        <StaffShortcut />
-        <UserArea />
-      </div>
-    </div>
+<div className="flex min-w-[300px] shrink-0 items-start justify-end gap-2 -mt-[16px]">
+  {authed && role === "staff" ? (
+    <StaffShortcut />
+  ) : (
+    <div
+      aria-hidden="true"
+      className="h-[36px] min-w-[96px] rounded-2xl opacity-0 pointer-events-none"
+    />
+  )}
+
+  <UserArea />
+</div>
 
     <div className="relative z-10 -mt-10 pl-9 text-[11px] font-semibold tracking-[0.01em] text-gray-500">
       {t("routeTagline")}
