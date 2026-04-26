@@ -65,7 +65,7 @@ export default function DesktopView({
           <h1 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">
             Personální rozcestník
           </h1>
-          <p className="mt-1 text-sm font-semibold text-gray-500">Administrace jídelny</p>
+          
         </div>
 
         <Link
